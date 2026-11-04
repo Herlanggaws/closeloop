@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Closeloop widget demo</title>
+    <style>
+      body { font-family: Inter, system-ui, sans-serif; margin: 40px; color: #171717; }
+      .balance { font-size: 32px; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <h1>Demo app</h1>
+    <p class="balance" data-closeloop-mask>Rp 12.450.000</p>
+    <p>Click <strong>Report</strong> in the corner to send feedback.</p>
+    <script>
+      const key = new URLSearchParams(location.search).get("key") || "pk_replace_me";
+      const s = document.createElement("script");
+      s.src = "/w.js";
+      s.dataset.key = key;
+      s.dataset.api = "http://localhost:8080";
+      s.dataset.userId = "demo-user";
+      s.dataset.email = "demo-user@example.com";
+      s.dataset.appVersion = "0.1.0";
+      document.body.appendChild(s);
+    </script>
+  </body>
+</html>

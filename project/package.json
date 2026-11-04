@@ -1,0 +1,11 @@
+{
+  "name": "closeloop",
+  "private": true,
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "dev:backend": "bash scripts/dev-backend.sh",
+    "dev:frontend": "bash scripts/dev-frontend.sh",
+    "db:migrate": "bash scripts/migrate.sh",
+    "db:seed": "bash scripts/seed.sh"
+  }
+}

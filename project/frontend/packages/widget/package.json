@@ -1,0 +1,16 @@
+{
+  "name": "@closeloop/widget",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node esbuild.mjs --watch",
+    "build": "node esbuild.mjs"
+  },
+  "dependencies": {
+    "modern-screenshot": "^4.6.0",
+    "preact": "^10.26.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

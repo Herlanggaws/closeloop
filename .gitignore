@@ -1,0 +1,29 @@
+# Dependencies & build
+node_modules/
+.next/
+.turbo/
+dist/
+.dist/
+*.log
+
+# Local env & data (keep examples)
+.env
+.env.*
+*.env
+!.env.example
+!**/.env.example
+.data/
+project/.data/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Generated widget CDN copy (built from packages/widget)
+project/frontend/public/w.js
+project/frontend/public/w.js.map
+
+# Pen HTML intermediate exports (TSX screens are source of truth)
+project/frontend/src/design-exports/

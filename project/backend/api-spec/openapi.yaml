@@ -1,0 +1,31 @@
+openapi: 3.0.3
+info:
+  title: Closeloop API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/auth/register:
+    post:
+      summary: Register
+  /api/auth/login:
+    post:
+      summary: Login
+  /v1/ingest/reports:
+    post:
+      summary: Create report
+  /mcp:
+    post:
+      summary: MCP JSON-RPC
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
