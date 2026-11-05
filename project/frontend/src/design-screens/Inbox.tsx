@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { API_URL, api, clearProjectSelection } from "@/lib/api";
 
 type TicketType = "bug" | "idea" | "question" | "";
-type TicketStatus = "open" | "fixed" | "duplicate" | "";
+type TicketStatus = "open" | "in_progress" | "fixed" | "wont_fix" | "duplicate" | "";
 
 type Ticket = {
   id: string;
@@ -37,10 +37,12 @@ const TYPE_TABS: { id: TicketType; label: string }[] = [
 ];
 
 const STATUS_OPTIONS: { id: TicketStatus; label: string }[] = [
-  { id: "open", label: "Open" },
-  { id: "fixed", label: "Fixed" },
-  { id: "duplicate", label: "Duplicate" },
   { id: "", label: "All" },
+  { id: "open", label: "Open" },
+  { id: "in_progress", label: "In progress" },
+  { id: "fixed", label: "Fixed" },
+  { id: "wont_fix", label: "Won't fix" },
+  { id: "duplicate", label: "Duplicate" },
 ];
 
 const TYPE_STYLE: Record<string, { bg: string; text: string; label: string }> = {
@@ -51,8 +53,18 @@ const TYPE_STYLE: Record<string, { bg: string; text: string; label: string }> = 
 
 const STATUS_DOT: Record<string, string> = {
   open: "#266DF0",
+  in_progress: "#EA6C0C",
   fixed: "#16A34A",
+  wont_fix: "#A3A3A3",
   duplicate: "#A3A3A3",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  open: "Open",
+  in_progress: "In progress",
+  fixed: "Fixed",
+  wont_fix: "Won't fix",
+  duplicate: "Duplicate",
 };
 
 function shortId(id: string) {
@@ -98,7 +110,7 @@ export function Inbox() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [typeFilter, setTypeFilter] = useState<TicketType>("");
-  const [statusFilter, setStatusFilter] = useState<TicketStatus>("open");
+  const [statusFilter, setStatusFilter] = useState<TicketStatus>("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -202,7 +214,14 @@ export function Inbox() {
     return counts;
   }, [tickets]);
 
-  const openCountLabel = statusFilter === "open" ? `${filtered.length} open` : `${filtered.length}`;
+  const openCountLabel =
+    statusFilter === "open"
+      ? `${filtered.length} open`
+      : statusFilter === "in_progress"
+        ? `${filtered.length} in progress`
+        : statusFilter === "fixed"
+          ? `${filtered.length} fixed`
+          : `${filtered.length}`;
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -479,8 +498,8 @@ export function Inbox() {
                         className="h-1.5 w-1.5 rounded-full"
                         style={{ background: STATUS_DOT[ticket.status] || "#A3A3A3" }}
                       />
-                      <span className="font-ds-ui text-[11px] font-medium capitalize text-[#171717]">
-                        {ticket.status}
+                      <span className="font-ds-ui text-[11px] font-medium text-[#171717]">
+                        {STATUS_LABEL[ticket.status] || ticket.status}
                       </span>
                     </span>
                   </div>
