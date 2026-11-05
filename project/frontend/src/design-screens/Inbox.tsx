@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { API_URL, api } from "@/lib/api";
+import { API_URL, api, clearProjectSelection } from "@/lib/api";
 
 type TicketType = "bug" | "idea" | "question" | "";
 type TicketStatus = "open" | "fixed" | "duplicate" | "";
@@ -126,9 +126,15 @@ export function Inbox() {
         localStorage.setItem("closeloop_public_key", projectRes.public_key);
         setMe(meRes);
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load project");
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : "Failed to load project";
+        // Stale project id after DB reset / account switch → re-onboard
+        if (/no access|forbidden|not found/i.test(message)) {
+          clearProjectSelection();
+          router.replace("/app/onboarding");
+          return;
         }
+        setError(message);
       }
     }
 
@@ -155,10 +161,15 @@ export function Inbox() {
         setError("");
       })
       .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load tickets");
-          setTickets([]);
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : "Failed to load tickets";
+        if (/no access|forbidden|not found/i.test(message)) {
+          clearProjectSelection();
+          router.replace("/app/onboarding");
+          return;
         }
+        setError(message);
+        setTickets([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

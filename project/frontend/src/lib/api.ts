@@ -13,6 +13,13 @@ export function setAccessToken(t: string) {
 
 export function clearSession() {
   localStorage.removeItem("closeloop_access");
+  localStorage.removeItem("closeloop_project");
+  localStorage.removeItem("closeloop_public_key");
+}
+
+export function clearProjectSelection() {
+  localStorage.removeItem("closeloop_project");
+  localStorage.removeItem("closeloop_public_key");
 }
 
 let refreshInFlight: Promise<boolean> | null = null;
@@ -49,11 +56,20 @@ function redirectToLogin() {
   window.location.replace("/login");
 }
 
+function isAuthPath(path: string) {
+  return path.startsWith("/api/auth/");
+}
+
 export async function api<T>(
   path: string,
   init: RequestInit = {},
   retried = false,
 ): Promise<T> {
+  if (!isAuthPath(path) && path.startsWith("/api/") && !token()) {
+    redirectToLogin();
+    throw new Error("Not signed in");
+  }
+
   const headers = new Headers(init.headers);
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
@@ -68,7 +84,7 @@ export async function api<T>(
   });
   const data = await res.json().catch(() => ({}));
 
-  if (res.status === 401 && !retried && !path.startsWith("/api/auth/")) {
+  if (res.status === 401 && !retried && !isAuthPath(path)) {
     const refreshed = await refreshAccessToken();
     if (refreshed) return api<T>(path, init, true);
     redirectToLogin();

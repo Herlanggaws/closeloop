@@ -1,39 +1,63 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { usePathname, useRouter } from "next/navigation";
+import { api, clearProjectSelection, clearSession } from "@/lib/api";
+
+type ProjectRow = { id?: string; ID?: string };
+
+function projectIdOf(p: ProjectRow) {
+  return p.id || p.ID || "";
+}
 
 /** Auth gate only — each screen artboard includes its own sidebar chrome. */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    const token = localStorage.getItem("closeloop_access");
-    if (!token) {
+    const access = localStorage.getItem("closeloop_access");
+    if (!access) {
+      clearSession();
       router.replace("/login");
       return;
     }
 
     const timeout = window.setTimeout(() => {
-      if (!cancelled) router.replace("/login");
+      if (!cancelled) {
+        clearSession();
+        router.replace("/login");
+      }
     }, 8000);
 
-    api<{ projects: { id?: string; ID?: string }[] }>("/api/projects")
+    api<{ projects: ProjectRow[] }>("/api/projects")
       .then((res) => {
         if (cancelled) return;
-        const p = res.projects?.[0];
-        if (p) {
-          localStorage.setItem("closeloop_project", p.id || p.ID || "");
+
+        const projects = res.projects || [];
+        if (projects.length === 0) {
+          clearProjectSelection();
+          setReady(true);
+          if (!pathname?.startsWith("/app/onboarding")) {
+            router.replace("/app/onboarding");
+          }
+          return;
         }
+
+        const stored = localStorage.getItem("closeloop_project") || "";
+        const match = projects.find((p) => projectIdOf(p) === stored);
+        const chosen = match || projects[0];
+        const id = projectIdOf(chosen);
+        if (id) localStorage.setItem("closeloop_project", id);
         setReady(true);
       })
       .catch(() => {
-        // api() already tries refresh + redirects on hard auth failure
-        if (!cancelled) setReady(false);
+        if (cancelled) return;
+        clearSession();
+        router.replace("/login");
       })
       .finally(() => window.clearTimeout(timeout));
 
@@ -41,7 +65,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [router]);
+  }, [router, pathname]);
 
   if (!ready) {
     return (
