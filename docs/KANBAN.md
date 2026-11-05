@@ -47,7 +47,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-15 Billing & credits | `/app/settings/billing` | Manual plan now; MoR later |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |
-| S-18…S-21 Widget UX | `/preview/widget/*` | Ship in real widget bundle |
+| S-18…S-20 Widget UX | `/preview/widget/*` | Ship in real widget bundle |
+| S-21 Fixed banner | `/preview/widget/fixed` + `@closeloop/widget` | **Wired** ingest updates → S-21 banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` | Needs F3 SDK |
 | S-23 / S-27 Emails | `/preview/email/*` | React Email + Resend |
 | S-24…S-26 Public board | `/board`, `/idea`, `/roadmap` | SSR board + votes |
@@ -77,7 +78,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F5** Wire Connect MCP (S-05) — token, Cursor/Claude install copy, test connection
 - [x] **F5** Free-plan read-only MCP (create scopes + write tools gated; UI badge)
 - [ ] **F6** Resend email on fixed (S-23 template)
-- [ ] **F6** In-app fixed banner via ingest updates (S-21)
+- [x] **F6** In-app fixed banner via ingest updates (S-21)
 - [x] **F6** Per-project notify kill switch (S-12)
 - [ ] Dogfood: 100% Bear Budget feedback via Closeloop (no SSH + psql)
 

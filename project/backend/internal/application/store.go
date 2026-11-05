@@ -950,7 +950,7 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 		SELECT DISTINCT r.id, r.email
 		FROM reports rep
 		JOIN reporters r ON r.id=rep.reporter_id
-		WHERE rep.ticket_id=$1 AND r.email IS NOT NULL AND r.email<>''`, ticketID)
+		WHERE rep.ticket_id=$1`, ticketID)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -972,11 +972,11 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 		}
 		_, _ = s.DB.ExecContext(ctx, `
 			INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
-			VALUES ($1,$2,'email',$3,now())`, ticketID, rid, body)
-		_, _ = s.DB.ExecContext(ctx, `
-			INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
 			VALUES ($1,$2,'in_app',$3,now())`, ticketID, rid, body)
-		if email.Valid {
+		if email.Valid && email.String != "" {
+			_, _ = s.DB.ExecContext(ctx, `
+				INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
+				VALUES ($1,$2,'email',$3,now())`, ticketID, rid, body)
 			mails = append(mails, struct{ Email, Body string }{Email: email.String, Body: body})
 		}
 		count++
@@ -986,10 +986,11 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 
 func (s *Store) UnseenUpdates(ctx context.Context, projectID, externalUID, email string) ([]map[string]any, error) {
 	q := `
-		SELECT n.id, n.ticket_id, n.body, t.title, n.sent_at
+		SELECT n.id, n.ticket_id, n.body, t.title, p.name, n.sent_at
 		FROM notifications n
 		JOIN reporters r ON r.id=n.reporter_id
 		JOIN tickets t ON t.id=n.ticket_id
+		JOIN projects p ON p.id=t.project_id
 		WHERE n.channel='in_app' AND n.seen_at IS NULL AND r.project_id=$1`
 	args := []any{projectID}
 	if externalUID != "" {
@@ -1009,13 +1010,19 @@ func (s *Store) UnseenUpdates(ctx context.Context, projectID, externalUID, email
 	var out []map[string]any
 	var ids []string
 	for rows.Next() {
-		var id, ticketID, body, title string
+		var id, ticketID, body, title, projectName string
 		var sent sql.NullTime
-		if err := rows.Scan(&id, &ticketID, &body, &title, &sent); err != nil {
+		if err := rows.Scan(&id, &ticketID, &body, &title, &projectName, &sent); err != nil {
 			return nil, err
 		}
 		ids = append(ids, id)
-		item := map[string]any{"id": id, "ticket_id": ticketID, "body": body, "title": title}
+		item := map[string]any{
+			"id":           id,
+			"ticket_id":    ticketID,
+			"body":         body,
+			"title":        title,
+			"project_name": projectName,
+		}
 		if sent.Valid {
 			item["sent_at"] = sent.Time
 		}

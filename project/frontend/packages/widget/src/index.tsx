@@ -13,6 +13,16 @@ type Config = {
   selectors: string[];
 };
 
+type BannerUpdate = {
+  body: string;
+  ticketId: string;
+  projectName: string;
+};
+
+function shortId(id: string) {
+  return id.replace(/-/g, "").slice(0, 6);
+}
+
 function readConfig(): Config {
   const script = document.currentScript as HTMLScriptElement | null;
   const el =
@@ -88,32 +98,57 @@ async function submitReport(cfg: Config, payload: { type: string; message: strin
   return data;
 }
 
+async function fetchUpdates(cfg: Config): Promise<BannerUpdate | null> {
+  if (!cfg.userId && !cfg.email) return null;
+  const q = new URLSearchParams();
+  if (cfg.userId) q.set("user_id", cfg.userId);
+  if (cfg.email) q.set("email", cfg.email);
+  const res = await fetch(`${cfg.api}/v1/ingest/updates?${q}`, {
+    headers: { "X-Closeloop-Key": cfg.key },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const update = data.updates?.[0];
+  if (!update?.body) return null;
+  return {
+    body: update.body,
+    ticketId: update.ticket_id || "",
+    projectName: update.project_name || "the team",
+  };
+}
+
 function Widget({ cfg }: { cfg: Config }) {
   const [state, setState] = useState<State>("launcher");
   const [type, setType] = useState("bug");
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState(cfg.email || "");
   const [busy, setBusy] = useState(false);
-  const [banner, setBanner] = useState("");
+  const [banner, setBanner] = useState<BannerUpdate | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!cfg.userId && !cfg.email) return;
-    const q = new URLSearchParams();
-    if (cfg.userId) q.set("user_id", cfg.userId);
-    if (cfg.email) q.set("email", cfg.email);
-    fetch(`${cfg.api}/v1/ingest/updates?${q}`, {
-      headers: { "X-Closeloop-Key": cfg.key },
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        const u = d.updates?.[0];
-        if (u?.body) {
-          setBanner(u.body);
-          setState("banner");
-        }
-      })
-      .catch(() => undefined);
+    let cancelled = false;
+
+    async function loadUpdates() {
+      try {
+        const update = await fetchUpdates(cfg);
+        if (cancelled || !update) return;
+        setBanner(update);
+        setState("banner");
+      } catch {
+        // ignore poll errors
+      }
+    }
+
+    loadUpdates();
+    const onIdentify = () => {
+      void loadUpdates();
+    };
+    document.addEventListener("closeloop:identify", onIdentify);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("closeloop:identify", onIdentify);
+    };
   }, [cfg]);
 
   const host = useMemo(() => {
@@ -151,8 +186,33 @@ function Widget({ cfg }: { cfg: Config }) {
     textarea, input { width:100%; border:1px solid #1717171f; border-radius:10px; padding:10px; font-size:13px; margin-bottom:10px; }
     .muted { color:#737373; font-size:12px; }
     .err { color:#da314a; font-size:12px; margin-bottom:8px; }
-    .banner { position:fixed; left:50%; transform:translateX(-50%); bottom:24px; background:#171717; color:#fff; border-radius:12px; padding:12px 16px; z-index:2147483000; max-width:480px; }
+    .banner {
+      position:fixed; left:50%; top:24px; transform:translateX(-50%);
+      display:flex; align-items:center; gap:14px;
+      width:min(560px, calc(100vw - 32px));
+      padding:14px 16px; background:#fff;
+      border:1px solid #17171714; border-radius:12px;
+      box-shadow:0 16px 40px #1717171f, 0 4px 8px #1717170f;
+      z-index:2147483000;
+    }
+    .banner-icon {
+      width:36px; height:36px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      background:#f0fdf4; border-radius:999px;
+    }
+    .banner-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+    .banner-title { font-size:14px; font-weight:600; color:#171717; }
+    .banner-body { font-size:13px; line-height:19px; color:#737373; }
+    .banner-meta { font-size:11.5px; color:#a3a3a3; }
+    .banner-x {
+      width:16px; height:16px; flex-shrink:0; padding:0; border:0;
+      background:transparent; cursor:pointer; color:#a3a3a3;
+    }
   `;
+
+  const reportMeta = banner
+    ? `Report #${shortId(banner.ticketId) || "—"} · from the ${banner.projectName} team`
+    : "";
 
   const ui = (
     <>
@@ -195,13 +255,30 @@ function Widget({ cfg }: { cfg: Config }) {
         </div>
       )}
       {state === "banner" && banner && (
-        <div class="banner">
-          <strong>Your report was fixed</strong>
-          <div class="muted" style={{ color: "#fff", opacity: 0.8, marginTop: 4 }}>
-            {banner}
+        <div class="banner" role="status">
+          <div class="banner-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
           </div>
-          <button class="chip" style={{ marginTop: 8 }} onClick={() => setState("launcher")}>
-            Dismiss
+          <div class="banner-text">
+            <div class="banner-title">Your report was fixed</div>
+            <div class="banner-body">{banner.body}</div>
+            <div class="banner-meta">{reportMeta}</div>
+          </div>
+          <button
+            type="button"
+            class="banner-x"
+            aria-label="Dismiss"
+            onClick={() => {
+              setBanner(null);
+              setState("launcher");
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" stroke-width="2" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
       )}
@@ -249,6 +326,7 @@ if (cfg.key) {
           app_version: cfg.appVersion,
         }),
       }).catch(() => undefined);
+      document.dispatchEvent(new CustomEvent("closeloop:identify"));
     },
   };
 }
