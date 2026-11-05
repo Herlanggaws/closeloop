@@ -14,15 +14,39 @@ import {
 type ProjectInfo = { id: string; name: string };
 type MeResponse = { user: { email: string }; org: { name: string; plan: string } };
 
+type McpClientSighting = {
+  key: string;
+  name: string;
+  last_seen_at: string;
+};
+
 type McpTokenRow = {
   id: string;
   prefix: string;
   scopes: string[];
+  clients?: McpClientSighting[];
   last_used_at: string | null;
   created_at: string;
 };
 
 type ClientTab = "cursor" | "claude";
+
+const INSTALL_CLIENTS: {
+  id: ClientTab;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    id: "cursor",
+    label: "Cursor",
+    hint: "Paste into Cursor Settings → MCP → mcp.json (or project .cursor/mcp.json).",
+  },
+  {
+    id: "claude",
+    label: "Claude Code",
+    hint: "Paste into your Claude Code MCP config (claude_desktop_config / MCP servers).",
+  },
+];
 
 type McpRpcResponse = {
   result?: {
@@ -179,10 +203,48 @@ export function McpServer() {
     return used[0]?.last_used_at || null;
   }, [tokens]);
 
+  const clientSightings = useMemo(() => {
+    const byKey = new Map<string, McpClientSighting>();
+    for (const token of tokens) {
+      for (const client of token.clients || []) {
+        const prev = byKey.get(client.key);
+        if (
+          !prev ||
+          new Date(client.last_seen_at).getTime() > new Date(prev.last_seen_at).getTime()
+        ) {
+          byKey.set(client.key, client);
+        }
+      }
+    }
+    return byKey;
+  }, [tokens]);
+
+  const clientStatuses = useMemo(
+    () =>
+      INSTALL_CLIENTS.map((client) => {
+        const sighting = clientSightings.get(client.id);
+        return {
+          ...client,
+          connected: Boolean(sighting),
+          lastSeenAt: sighting?.last_seen_at || null,
+        };
+      }),
+    [clientSightings],
+  );
+
+  const extraClients = useMemo(
+    () =>
+      [...clientSightings.values()].filter(
+        (c) => c.key !== "cursor" && c.key !== "claude",
+      ),
+    [clientSightings],
+  );
+
   const anyWrite = tokens.some((t) => t.scopes.includes("write"));
   const projectName = project?.name || "Project";
   const plan = me?.org.plan || "Indie";
   const email = me?.user.email || "";
+  const activeInstall = INSTALL_CLIENTS.find((c) => c.id === clientTab) || INSTALL_CLIENTS[0];
 
   async function createToken() {
     if (!project || creating) return;
@@ -348,7 +410,7 @@ export function McpServer() {
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span
                         className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${
@@ -372,6 +434,60 @@ export function McpServer() {
                     </p>
                   </div>
                 </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {clientStatuses.map((client) => (
+                    <div
+                      key={client.id}
+                      className="flex items-center justify-between gap-3 rounded-[10px] border border-[#17171714] bg-white px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
+                              client.connected
+                                ? "bg-[#16A34A] text-white"
+                                : "bg-[#F5F5F5] text-[#A3A3A3]"
+                            }`}
+                          >
+                            {client.connected ? "✓" : "·"}
+                          </span>
+                          <span className="font-ds-ui text-[13px] font-semibold text-[#171717]">
+                            {client.label}
+                          </span>
+                        </div>
+                        <p className="mt-1 font-ds-ui text-[12px] text-[#737373]">
+                          {client.connected
+                            ? `Last seen ${relativeTime(client.lastSeenAt || "")}`
+                            : "Not connected yet"}
+                        </p>
+                      </div>
+                      {!client.connected && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClientTab(client.id);
+                            document
+                              .getElementById("mcp-install-clients")
+                              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }}
+                          className="h-8 shrink-0 cursor-pointer rounded-md border border-[#1717171F] bg-white px-3 font-ds-ui text-[12px] font-medium text-[#171717]"
+                        >
+                          Install
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {extraClients.length > 0 && (
+                  <p className="mt-3 font-ds-ui text-[12px] text-[#737373]">
+                    Also seen:{" "}
+                    {extraClients
+                      .map((c) => `${c.name} (${relativeTime(c.last_seen_at)})`)
+                      .join(" · ")}
+                  </p>
+                )}
               </section>
 
               {freshToken && (
@@ -501,16 +617,61 @@ export function McpServer() {
                 </section>
               )}
 
-              <section className="rounded-2xl border border-[#17171714] bg-white p-5">
+              <section
+                id="mcp-install-clients"
+                className="rounded-2xl border border-[#17171714] bg-white p-5"
+              >
                 <h3 className="font-ds-ui text-[14px] font-semibold text-[#171717]">
-                  Install config
+                  Install in another client
                 </h3>
                 <p className="mt-1 font-ds-ui text-[12px] text-[#737373]">
-                  Endpoint <code className="text-[#171717]">{API_URL}/mcp</code>. Use your saved
-                  token — we cannot show previous secrets again.
+                  One token works in both Cursor and Claude Code. Paste the same secret into the
+                  second app, or generate a fresh token above if you no longer have it. Endpoint{" "}
+                  <code className="text-[#171717]">{API_URL}/mcp</code>.
                 </p>
-                <pre className="mt-3 overflow-x-auto rounded-lg bg-[#0A0A0A] p-4 text-xs text-[#86EFAC]">
-                  {buildConfig("cl_mcp_…")}
+
+                <div className="mt-4 mb-2 flex flex-wrap gap-1.5 rounded-[10px] bg-[#F5F5F5] p-1">
+                  {INSTALL_CLIENTS.map((tab) => {
+                    const active = clientTab === tab.id;
+                    const status = clientStatuses.find((c) => c.id === tab.id);
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setClientTab(tab.id)}
+                        className={`cursor-pointer rounded-md px-3 py-1.5 text-[13px] font-medium transition ${
+                          active
+                            ? "bg-white text-[#171717] shadow-[0_1px_2px_#17171714]"
+                            : "text-[#737373] hover:text-[#171717]"
+                        }`}
+                      >
+                        {tab.label}
+                        {status?.connected ? " · connected" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mb-2 font-ds-ui text-[12px] text-[#737373]">{activeInstall.hint}</p>
+                {!freshToken && (
+                  <p className="mb-2 font-ds-ui text-[12px] text-[#A3A3A3]">
+                    Replace <code className="text-[#171717]">cl_mcp_…</code> with your saved token,
+                    or click Generate new token.
+                  </p>
+                )}
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[13px] font-medium text-[#171717]">
+                    {activeInstall.label} config
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copy("config", config)}
+                    className="cursor-pointer text-[13px] font-medium underline-offset-2 hover:underline"
+                  >
+                    {copied === "config" ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <pre className="overflow-x-auto rounded-lg bg-[#0A0A0A] p-4 text-xs text-[#86EFAC]">
+                  {config}
                 </pre>
               </section>
             </>

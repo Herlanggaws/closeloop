@@ -323,11 +323,18 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, not
 	return err
 }
 
+type MCPClientSighting struct {
+	Key        string    `json:"key"`
+	Name       string    `json:"name"`
+	LastSeenAt time.Time `json:"last_seen_at"`
+}
+
 type MCPToken struct {
 	ID         string
 	ProjectID  string
 	Prefix     string
 	Scopes     []string
+	Clients    []MCPClientSighting
 	LastUsedAt sql.NullTime
 	CreatedAt  time.Time
 }
@@ -337,14 +344,33 @@ func (t MCPToken) MarshalJSON() ([]byte, error) {
 	if t.LastUsedAt.Valid {
 		lastUsed = t.LastUsedAt.Time
 	}
+	clients := t.Clients
+	if clients == nil {
+		clients = []MCPClientSighting{}
+	}
 	return json.Marshal(map[string]any{
 		"id":           t.ID,
 		"project_id":   t.ProjectID,
 		"prefix":       t.Prefix,
 		"scopes":       t.Scopes,
+		"clients":      clients,
 		"last_used_at": lastUsed,
 		"created_at":   t.CreatedAt,
 	})
+}
+
+func NormalizeMCPClient(rawName string) (key, label string) {
+	n := strings.ToLower(strings.TrimSpace(rawName))
+	switch {
+	case n == "" || strings.Contains(n, "closeloop"):
+		return "", ""
+	case strings.Contains(n, "cursor"):
+		return "cursor", "Cursor"
+	case strings.Contains(n, "claude") || strings.Contains(n, "anthropic"):
+		return "claude", "Claude Code"
+	default:
+		return n, strings.TrimSpace(rawName)
+	}
 }
 
 func (s *Store) CreateMCPToken(ctx context.Context, projectID string, write bool) (raw string, prefix string, err error) {
@@ -366,7 +392,7 @@ func (s *Store) CreateMCPToken(ctx context.Context, projectID string, write bool
 
 func (s *Store) ListMCPTokens(ctx context.Context, projectID string) ([]MCPToken, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, project_id, prefix, scopes, last_used_at, created_at
+		SELECT id, project_id, prefix, scopes, COALESCE(clients, '[]'::jsonb), last_used_at, created_at
 		FROM mcp_tokens
 		WHERE project_id=$1
 		ORDER BY created_at DESC`, projectID)
@@ -378,16 +404,64 @@ func (s *Store) ListMCPTokens(ctx context.Context, projectID string) ([]MCPToken
 	for rows.Next() {
 		var t MCPToken
 		var sc StringArray
-		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Prefix, &sc, &t.LastUsedAt, &t.CreatedAt); err != nil {
+		var clientsJSON []byte
+		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Prefix, &sc, &clientsJSON, &t.LastUsedAt, &t.CreatedAt); err != nil {
 			return nil, err
 		}
 		t.Scopes = []string(sc)
+		t.Clients = decodeMCPClients(clientsJSON)
 		out = append(out, t)
 	}
 	if out == nil {
 		out = []MCPToken{}
 	}
 	return out, rows.Err()
+}
+
+func decodeMCPClients(raw []byte) []MCPClientSighting {
+	if len(raw) == 0 {
+		return []MCPClientSighting{}
+	}
+	var clients []MCPClientSighting
+	if err := json.Unmarshal(raw, &clients); err != nil || clients == nil {
+		return []MCPClientSighting{}
+	}
+	return clients
+}
+
+func (s *Store) RecordMCPClient(ctx context.Context, rawToken, clientName string) {
+	key, label := NormalizeMCPClient(clientName)
+	if key == "" {
+		return
+	}
+	hash := auth.SHA256(rawToken)
+	var clientsJSON []byte
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT COALESCE(clients, '[]'::jsonb) FROM mcp_tokens WHERE token_hash=$1`, hash).
+		Scan(&clientsJSON)
+	if err != nil {
+		return
+	}
+	clients := decodeMCPClients(clientsJSON)
+	now := time.Now().UTC()
+	found := false
+	for i := range clients {
+		if clients[i].Key == key {
+			clients[i].Name = label
+			clients[i].LastSeenAt = now
+			found = true
+			break
+		}
+	}
+	if !found {
+		clients = append(clients, MCPClientSighting{Key: key, Name: label, LastSeenAt: now})
+	}
+	encoded, err := json.Marshal(clients)
+	if err != nil {
+		return
+	}
+	_, _ = s.DB.ExecContext(ctx, `
+		UPDATE mcp_tokens SET clients=$2, last_used_at=now() WHERE token_hash=$1`, hash, encoded)
 }
 
 func (s *Store) DeleteMCPToken(ctx context.Context, projectID, tokenID string) error {
