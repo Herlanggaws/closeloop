@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { InstallWidget } from "@/design-screens/InstallWidget";
+import { InstallStatus } from "@/design-screens/InstallStatus";
 
 export const metadata: Metadata = {
   title: "Install widget · Closeloop",
 };
 
 export default function Page() {
-  return <InstallWidget />;
+  return <InstallStatus />;
 }

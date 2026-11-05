@@ -31,7 +31,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | Screen | Route | Wire to |
 | --- | --- | --- |
 | S-03 Create project | `/app/onboarding` | **Wired** name + platforms → POST /api/projects → install |
-| S-04 Install widget | `/app/install` | **Wired** public key + snippet + demo host + first-report poll |
+| S-04 Install widget | `/app/onboarding/install` | **Wired** wizard public key + snippet + demo + first-report poll |
+| S-04b Install status | `/app/install` | **Wired** app-shell status, snippet, first-report, demo link |
 | S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** wizard token + scopes + Cursor/Claude copy + test connection |
 | S-05b MCP status | `/app/mcp` | **Wired** app-shell status, token list, revoke, generate |
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |

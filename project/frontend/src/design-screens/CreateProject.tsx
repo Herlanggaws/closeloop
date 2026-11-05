@@ -50,7 +50,7 @@ export function CreateProject() {
       localStorage.setItem("closeloop_project", res.project.id);
       localStorage.setItem("closeloop_public_key", res.public_key);
       localStorage.setItem("closeloop_platforms", JSON.stringify(selected));
-      router.push("/app/install");
+      router.push("/app/onboarding/install");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create project");
     } finally {
