@@ -32,7 +32,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | --- | --- | --- |
 | S-03 Create project | `/app/onboarding` | **Wired** name + platforms → POST /api/projects → install |
 | S-04 Install widget | `/app/install` | **Wired** public key + snippet + demo host + first-report poll |
-| S-05 Connect MCP | `/app/mcp` | Create token + Cursor/Claude config copy |
+| S-05 Connect MCP | `/app/mcp` | **Wired** token + scopes + Cursor/Claude copy + test connection |
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |
 | S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Linked/Sentry/Auto PR stubs |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
@@ -72,8 +72,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F4** Wire merge duplicates (S-08) — pick parent + POST merge; activity event
 - [ ] **F4** Platform filter on inbox list (backend still ignores `platform` query)
 - [ ] **F4** Sentry / PostHog deep links when integration present
-- [ ] **F5** One-click Cursor / Claude Code install docs from S-05
-- [ ] **F5** Free-plan read-only MCP enforcement end-to-end
+- [x] **F5** Wire Connect MCP (S-05) — token, Cursor/Claude install copy, test connection
+- [x] **F5** Free-plan read-only MCP (create scopes + write tools gated; UI badge)
 - [ ] **F6** Resend email on fixed (S-23 template)
 - [ ] **F6** In-app fixed banner via ingest updates (S-21)
 - [ ] **F6** Per-project notify kill switch (S-12)
@@ -132,10 +132,10 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 ## Suggested next sprint (M1 wire-up)
 
-1. Reconnect **S-03 → S-06 → S-07 → S-08 → S-09** to live APIs (keep pixel UI). S-03…S-09 wired; **S-05 Connect MCP** next. Demo host: `/demo.html?key=…`.
+1. Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired (demo host `/demo.html?key=…`). Next: production **widget** polish (S-18…S-21) or **F6** notify.
 2. Ship production **widget** (S-18…S-21) against ingest API + masking.
 3. Finish **F6** email (Resend) + in-app banner.
-4. Harden **MCP** install path for Cursor / Claude Code on Bear Budget.
+4. MCP token rotate/revoke UI + dogfood Closeloop on Bear Budget.
 5. Start **M0** waitlist + 5 builder interviews in parallel.
 
 ---

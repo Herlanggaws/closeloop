@@ -1,33 +1,95 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
 import { API_URL, api, logout } from "@/lib/api";
 
+type ClientTab = "cursor" | "claude";
+
+type CreateTokenResponse = {
+  token: string;
+  prefix?: string;
+  scopes?: string[];
+};
+
+type McpRpcResponse = {
+  result?: {
+    tools?: { name: string }[];
+    content?: { type: string; text?: string }[];
+    isError?: boolean;
+  };
+  error?: { message?: string };
+};
+
+function buildConfig(token: string) {
+  return JSON.stringify(
+    {
+      mcpServers: {
+        closeloop: {
+          url: `${API_URL}/mcp`,
+          headers: { Authorization: `Bearer ${token || "cl_mcp_…"}` },
+        },
+      },
+    },
+    null,
+    2,
+  );
+}
+
+async function mcpRpc(
+  token: string,
+  method: string,
+  params?: Record<string, unknown>,
+  id = 1,
+): Promise<McpRpcResponse> {
+  const res = await fetch(`${API_URL}/mcp`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id,
+      method,
+      ...(params ? { params } : {}),
+    }),
+  });
+  const data = (await res.json().catch(() => ({}))) as McpRpcResponse;
+  if (!res.ok) {
+    throw new Error(data.error?.message || `MCP HTTP ${res.status}`);
+  }
+  if (data.error?.message) {
+    throw new Error(data.error.message);
+  }
+  return data;
+}
+
 export function ConnectMCP() {
   const router = useRouter();
+  const [ready, setReady] = useState(false);
   const [token, setToken] = useState("");
+  const [scopes, setScopes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [copied, setCopied] = useState<"token" | "config" | "">("");
+  const [clientTab, setClientTab] = useState<ClientTab>("cursor");
   const [error, setError] = useState("");
+  const [testStatus, setTestStatus] = useState<"idle" | "ok" | "fail">("idle");
+  const [testMessage, setTestMessage] = useState("");
 
-  const config = useMemo(
-    () =>
-      JSON.stringify(
-        {
-          mcpServers: {
-            closeloop: {
-              url: `${API_URL}/mcp`,
-              headers: { Authorization: `Bearer ${token || "cl_mcp_…"}` },
-            },
-          },
-        },
-        null,
-        2,
-      ),
-    [token],
-  );
+  useEffect(() => {
+    if (!localStorage.getItem("closeloop_project")) {
+      router.replace("/app/onboarding");
+      return;
+    }
+    setReady(true);
+  }, [router]);
+
+  const config = useMemo(() => buildConfig(token), [token]);
+  const canWrite = scopes.includes("write");
+  const scopeLabel = canWrite ? "Read + write" : "Read-only · Free plan";
 
   async function createToken() {
     const projectId = localStorage.getItem("closeloop_project");
@@ -37,11 +99,14 @@ export function ConnectMCP() {
     }
     setLoading(true);
     setError("");
+    setTestStatus("idle");
+    setTestMessage("");
     try {
-      const res = await api<{ token: string }>(`/api/projects/${projectId}/mcp-tokens`, {
+      const res = await api<CreateTokenResponse>(`/api/projects/${projectId}/mcp-tokens`, {
         method: "POST",
       });
       setToken(res.token);
+      setScopes(res.scopes || ["read"]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create token");
     } finally {
@@ -53,6 +118,57 @@ export function ConnectMCP() {
     await navigator.clipboard.writeText(value);
     setCopied(kind);
     setTimeout(() => setCopied(""), 1500);
+  }
+
+  async function testConnection() {
+    if (!token || testing) return;
+    setTesting(true);
+    setError("");
+    setTestStatus("idle");
+    setTestMessage("");
+    try {
+      await mcpRpc(token, "initialize", {
+        protocolVersion: "2024-11-05",
+        capabilities: {},
+        clientInfo: { name: "closeloop-web", version: "0.1.0" },
+      });
+      const listed = await mcpRpc(token, "tools/list", undefined, 2);
+      const tools = listed.result?.tools || [];
+      const called = await mcpRpc(
+        token,
+        "tools/call",
+        { name: "list_open_feedback", arguments: { status: "open", limit: 1 } },
+        3,
+      );
+      if (called.result?.isError) {
+        throw new Error(called.result.content?.[0]?.text || "list_open_feedback failed");
+      }
+      let ticketHint = "";
+      const text = called.result?.content?.[0]?.text || "";
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        if (Array.isArray(parsed)) {
+          ticketHint = ` · ${parsed.length} open ticket${parsed.length === 1 ? "" : "s"}`;
+        }
+      } catch {
+        // text may not be JSON; ignore
+      }
+      setTestStatus("ok");
+      setTestMessage(`Connected · ${tools.length} tools${ticketHint}`);
+    } catch (err) {
+      setTestStatus("fail");
+      setTestMessage(err instanceof Error ? err.message : "Connection failed");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  if (!ready) {
+    return (
+      <div className="box-border flex min-h-screen w-full items-center justify-center bg-[#F7F7F7]">
+        <p className="font-ds-ui text-sm text-[#737373]">Loading…</p>
+      </div>
+    );
   }
 
   return (
@@ -89,11 +205,11 @@ export function ConnectMCP() {
           <div className="flex flex-col gap-6 p-8">
             <div>
               <h1 className="font-ds-sans text-[26px] font-medium tracking-[-0.6px] text-[#171717]">
-                Create a token
+                Connect an agent
               </h1>
               <p className="mt-1.5 text-sm text-[#737373]">
-                Copy it now — we store only a hash and can&apos;t show it again. You can rotate or revoke
-                later in settings.
+                Create a token, copy the config into Cursor or Claude Code, then test the connection.
+                We store only a hash — the full token is shown once.
               </p>
             </div>
 
@@ -108,6 +224,17 @@ export function ConnectMCP() {
               </button>
             ) : (
               <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2 py-1 font-ds-ui text-[12px] font-medium text-[#171717]">
+                    {scopeLabel}
+                  </span>
+                  {!canWrite && (
+                    <span className="font-ds-ui text-[12px] text-[#A3A3A3]">
+                      Upgrade later to let agents change status and mark fixed.
+                    </span>
+                  )}
+                </div>
+
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-[13px] font-medium text-[#171717]">Token</span>
@@ -123,9 +250,39 @@ export function ConnectMCP() {
                     {token}
                   </code>
                 </div>
+
                 <div>
+                  <div className="mb-2 flex flex-wrap gap-1.5 rounded-[10px] bg-[#F5F5F5] p-1">
+                    {(
+                      [
+                        { id: "cursor", label: "Cursor" },
+                        { id: "claude", label: "Claude Code" },
+                      ] as const
+                    ).map((tab) => {
+                      const active = clientTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setClientTab(tab.id)}
+                          className={`cursor-pointer rounded-md px-3 py-1.5 text-[13px] font-medium transition ${
+                            active
+                              ? "bg-white text-[#171717] shadow-[0_1px_2px_#17171714]"
+                              : "text-[#737373] hover:text-[#171717]"
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mb-2 font-ds-ui text-[12px] text-[#737373]">
+                    {clientTab === "cursor"
+                      ? "Paste into Cursor Settings → MCP → mcp.json (or project .cursor/mcp.json)."
+                      : "Paste into your Claude Code MCP config (claude_desktop_config / MCP servers)."}
+                  </p>
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[13px] font-medium text-[#171717]">Cursor / Claude config</span>
+                    <span className="text-[13px] font-medium text-[#171717]">Config</span>
                     <button
                       type="button"
                       onClick={() => copy("config", config)}
@@ -137,6 +294,40 @@ export function ConnectMCP() {
                   <pre className="overflow-x-auto rounded-lg bg-[#0A0A0A] p-4 text-xs text-[#86EFAC]">
                     {config}
                   </pre>
+                </div>
+
+                <div
+                  className={`flex flex-col gap-3 rounded-[10px] border p-4 ${
+                    testStatus === "ok"
+                      ? "border-[#16A34A33] bg-[#F0FDF4]"
+                      : testStatus === "fail"
+                        ? "border-[#DA314A33] bg-[#FEF2F2]"
+                        : "border-[#17171714] bg-[#FAFAFA]"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-ds-ui text-[13px] font-medium text-[#171717]">
+                        {testStatus === "ok"
+                          ? "Connection OK"
+                          : testStatus === "fail"
+                            ? "Connection failed"
+                            : "Test connection"}
+                      </p>
+                      <p className="mt-0.5 font-ds-ui text-[12px] text-[#737373]">
+                        {testMessage ||
+                          "Calls initialize, tools/list, and list_open_feedback against your project."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={testing}
+                      onClick={testConnection}
+                      className="inline-flex h-9 shrink-0 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 text-[13px] font-medium text-[#171717] disabled:opacity-50"
+                    >
+                      {testing ? "Testing…" : testStatus === "ok" ? "Test again" : "Test connection"}
+                    </button>
+                  </div>
                 </div>
               </>
             )}
