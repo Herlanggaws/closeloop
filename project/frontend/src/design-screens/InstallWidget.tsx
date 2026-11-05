@@ -326,7 +326,7 @@ export function InstallWidget() {
             )}
             <button
               type="button"
-              onClick={() => router.push("/app/mcp")}
+              onClick={() => router.push("/app/onboarding/mcp")}
               className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#171717] px-4 text-sm font-medium text-white"
             >
               Continue to agent setup

@@ -323,6 +323,30 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, not
 	return err
 }
 
+type MCPToken struct {
+	ID         string
+	ProjectID  string
+	Prefix     string
+	Scopes     []string
+	LastUsedAt sql.NullTime
+	CreatedAt  time.Time
+}
+
+func (t MCPToken) MarshalJSON() ([]byte, error) {
+	var lastUsed any
+	if t.LastUsedAt.Valid {
+		lastUsed = t.LastUsedAt.Time
+	}
+	return json.Marshal(map[string]any{
+		"id":           t.ID,
+		"project_id":   t.ProjectID,
+		"prefix":       t.Prefix,
+		"scopes":       t.Scopes,
+		"last_used_at": lastUsed,
+		"created_at":   t.CreatedAt,
+	})
+}
+
 func (s *Store) CreateMCPToken(ctx context.Context, projectID string, write bool) (raw string, prefix string, err error) {
 	rawToken, err := auth.RandomToken(24)
 	if err != nil {
@@ -338,6 +362,48 @@ func (s *Store) CreateMCPToken(ctx context.Context, projectID string, write bool
 		INSERT INTO mcp_tokens(project_id, token_hash, prefix, scopes) VALUES ($1,$2,$3,$4)`,
 		projectID, auth.SHA256(raw), prefix, asArray(scopes))
 	return raw, prefix, err
+}
+
+func (s *Store) ListMCPTokens(ctx context.Context, projectID string) ([]MCPToken, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id, project_id, prefix, scopes, last_used_at, created_at
+		FROM mcp_tokens
+		WHERE project_id=$1
+		ORDER BY created_at DESC`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []MCPToken
+	for rows.Next() {
+		var t MCPToken
+		var sc StringArray
+		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Prefix, &sc, &t.LastUsedAt, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		t.Scopes = []string(sc)
+		out = append(out, t)
+	}
+	if out == nil {
+		out = []MCPToken{}
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) DeleteMCPToken(ctx context.Context, projectID, tokenID string) error {
+	res, err := s.DB.ExecContext(ctx, `
+		DELETE FROM mcp_tokens WHERE id=$1 AND project_id=$2`, tokenID, projectID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *Store) MCPByToken(ctx context.Context, raw string) (projectID string, scopes []string, plan string, err error) {

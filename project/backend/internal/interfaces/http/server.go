@@ -44,7 +44,9 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/projects", s.authRequired(), s.createProject)
 		api.GET("/projects/:id", s.authRequired(), s.getProject)
 		api.PATCH("/projects/:id", s.authRequired(), s.patchProject)
+		api.GET("/projects/:id/mcp-tokens", s.authRequired(), s.listMCPTokens)
 		api.POST("/projects/:id/mcp-tokens", s.authRequired(), s.createMCPToken)
+		api.DELETE("/projects/:id/mcp-tokens/:tokenId", s.authRequired(), s.deleteMCPToken)
 		api.GET("/projects/:id/tickets", s.authRequired(), s.listTickets)
 		api.GET("/tickets/:id", s.authRequired(), s.getTicket)
 		api.PATCH("/tickets/:id", s.authRequired(), s.patchTicket)
@@ -325,6 +327,19 @@ func (s *Server) patchProject(c *gin.Context) {
 	c.JSON(200, gin.H{"project": p})
 }
 
+func (s *Server) listMCPTokens(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	list, err := s.Store.ListMCPTokens(c.Request.Context(), id)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"tokens": list})
+}
+
 func (s *Server) createMCPToken(c *gin.Context) {
 	id := c.Param("id")
 	if !s.requireProjectAccess(c, id) {
@@ -342,6 +357,19 @@ func (s *Server) createMCPToken(c *gin.Context) {
 		return
 	}
 	c.JSON(201, gin.H{"token": raw, "prefix": prefix, "scopes": ternary(write, []string{"read", "write"}, []string{"read"})})
+}
+
+func (s *Server) deleteMCPToken(c *gin.Context) {
+	projectID := c.Param("id")
+	tokenID := c.Param("tokenId")
+	if !s.requireProjectAccess(c, projectID) {
+		return
+	}
+	if err := s.Store.DeleteMCPToken(c.Request.Context(), projectID, tokenID); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"ok": true})
 }
 
 func (s *Server) listTickets(c *gin.Context) {

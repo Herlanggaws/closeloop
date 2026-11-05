@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { ConnectMCP } from "@/design-screens/ConnectMCP";
+import { McpServer } from "@/design-screens/McpServer";
 
 export const metadata: Metadata = {
-  title: "Connect MCP · Closeloop",
+  title: "MCP server · Closeloop",
 };
 
 export default function Page() {
-  return <ConnectMCP />;
+  return <McpServer />;
 }

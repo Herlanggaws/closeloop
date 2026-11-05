@@ -32,7 +32,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | --- | --- | --- |
 | S-03 Create project | `/app/onboarding` | **Wired** name + platforms → POST /api/projects → install |
 | S-04 Install widget | `/app/install` | **Wired** public key + snippet + demo host + first-report poll |
-| S-05 Connect MCP | `/app/mcp` | **Wired** token + scopes + Cursor/Claude copy + test connection |
+| S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** wizard token + scopes + Cursor/Claude copy + test connection |
+| S-05b MCP status | `/app/mcp` | **Wired** app-shell status, token list, revoke, generate |
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |
 | S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Linked/Sentry/Auto PR stubs |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
@@ -63,7 +64,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
 - [x] **F1** Log out (revoke refresh + clear session)
 - [ ] **F1** Multi-project UI + plan limits
-- [ ] **F1** MCP token rotate / revoke UI
+- [x] **F1** MCP token list / revoke / generate UI (`/app/mcp`)
 - [ ] **F1** Team invite + roles (US-05) — API + S-14
 - [ ] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
 - [ ] **F2** Sensitive selectors from project settings applied before capture
@@ -135,7 +136,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 1. Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired (demo host `/demo.html?key=…`). Next: production **widget** polish (S-18…S-21) or **F6** notify.
 2. Ship production **widget** (S-18…S-21) against ingest API + masking.
 3. Finish **F6** email (Resend) + in-app banner.
-4. MCP token rotate/revoke UI + dogfood Closeloop on Bear Budget.
+4. Dogfood Closeloop on Bear Budget (MCP status page shipped).
 5. Start **M0** waitlist + 5 builder interviews in parallel.
 
 ---

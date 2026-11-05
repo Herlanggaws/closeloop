@@ -338,10 +338,10 @@ export function ConnectMCP() {
           <div className="flex items-center justify-end border-t border-[#17171714] bg-[#FAFAFA] px-8 py-4">
             <button
               type="button"
-              onClick={() => router.push("/app/inbox")}
+              onClick={() => router.push("/app/mcp")}
               className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#171717] px-4 text-sm font-medium text-white"
             >
-              Open inbox
+              Open MCP server
               <span aria-hidden>→</span>
             </button>
           </div>

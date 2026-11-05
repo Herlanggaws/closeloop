@@ -1,6 +1,7 @@
 export { CreateProject } from "./CreateProject";
 export { InstallWidget } from "./InstallWidget";
 export { ConnectMCP } from "./ConnectMCP";
+export { McpServer } from "./McpServer";
 export { InboxEmpty } from "./InboxEmpty";
 export { Inbox } from "./Inbox";
 export { ReportDetail } from "./ReportDetail";
