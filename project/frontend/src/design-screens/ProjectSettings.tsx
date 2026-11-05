@@ -13,7 +13,9 @@ import {
 type ProjectInfo = {
   id: string;
   name: string;
+  platforms?: string[];
   notify_enabled: boolean;
+  sensitive_selectors?: string[];
 };
 
 type MeResponse = {
@@ -24,6 +26,13 @@ type MeResponse = {
 type ProjectResponse = {
   public_key: string;
   project: ProjectInfo;
+};
+
+const PLATFORM_LABELS: Record<string, string> = {
+  web: "Web",
+  android: "Android",
+  ios: "iOS",
+  flutter: "Flutter",
 };
 
 export function ProjectSettings() {
@@ -81,6 +90,10 @@ export function ProjectSettings() {
   const projectName = project?.name || "Project";
   const plan = me?.org.plan || "Indie";
   const email = me?.user.email || "";
+  const platforms = project?.platforms?.length ? project.platforms : ["web"];
+  const selectors = project?.sensitive_selectors?.length
+    ? project.sensitive_selectors
+    : ["[data-closeloop-mask]"];
 
   async function copyPublicKey() {
     if (!publicKey) return;
@@ -174,7 +187,7 @@ export function ProjectSettings() {
           </h1>
         </header>
 
-        <div className="flex flex-1 flex-col gap-0 overflow-y-auto px-6 py-2">
+        <div className="flex flex-1 flex-col overflow-y-auto px-6 py-2 pb-10">
           {loading ? (
             <p className="py-6 font-ds-ui text-sm text-[#737373]">Loading…</p>
           ) : (
@@ -185,19 +198,39 @@ export function ProjectSettings() {
                 </div>
               )}
 
-              <section className="flex flex-col gap-6 border-b border-[#17171714] py-7 sm:flex-row sm:gap-12">
-                <div className="w-full shrink-0 sm:w-[280px]">
-                  <h2 className="font-ds-sans text-[15px] font-semibold tracking-[-0.2px] text-[#171717]">
-                    Keys
-                  </h2>
-                  <p className="mt-1 font-ds-ui text-[12.5px] leading-[19px] text-[#737373]">
-                    The public key ships in your app and can only create reports.
-                  </p>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1.5 font-ds-ui text-[12.5px] font-medium text-[#171717]">
-                    Public key
+              <SettingsSection
+                title="General"
+                description="Name and platforms for this project."
+              >
+                <Field label="Project name">
+                  <div className="flex h-9 items-center rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-ui text-[13px] text-[#171717]">
+                    {projectName}
                   </div>
+                </Field>
+                <div className="flex flex-wrap gap-2">
+                  {platforms.map((id) => (
+                    <span
+                      key={id}
+                      className="rounded-md border border-[#1717171F] bg-white px-2 py-1 font-ds-sans text-[13px] font-medium tracking-[-0.2px] text-[#171717]"
+                    >
+                      {PLATFORM_LABELS[id] || id}
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    disabled
+                    className="cursor-not-allowed rounded-md border border-[#1717171F] bg-white px-3 py-1 font-ds-sans text-[13px] font-medium tracking-[-0.2px] text-[#A3A3A3]"
+                  >
+                    Add platform
+                  </button>
+                </div>
+              </SettingsSection>
+
+              <SettingsSection
+                title="Keys"
+                description="The public key ships in your app and can only create reports."
+              >
+                <Field label="Public key">
                   <div className="flex h-9 items-center gap-2 rounded-md border border-[#1717171F] bg-white px-2.5">
                     <code className="min-w-0 flex-1 truncate font-ds-mono text-[13px] text-[#171717]">
                       {publicKey || "—"}
@@ -211,51 +244,134 @@ export function ProjectSettings() {
                       {copied ? "Copied" : "Copy"}
                     </button>
                   </div>
-                  <p className="mt-3 font-ds-ui text-[12px] text-[#A3A3A3]">
-                    MCP tokens are managed on the{" "}
-                    <Link href="/app/mcp" className="text-[#171717] underline-offset-2 hover:underline">
-                      MCP server
-                    </Link>{" "}
-                    page.
-                  </p>
-                </div>
-              </section>
+                </Field>
+                <p className="font-ds-ui text-[12px] text-[#A3A3A3]">
+                  MCP tokens are managed on the{" "}
+                  <Link
+                    href="/app/mcp"
+                    className="text-[#171717] underline-offset-2 hover:underline"
+                  >
+                    MCP server
+                  </Link>{" "}
+                  page.
+                </p>
+              </SettingsSection>
 
-              <section className="flex flex-col gap-6 border-b border-[#17171714] py-7 sm:flex-row sm:gap-12">
-                <div className="w-full shrink-0 sm:w-[280px]">
-                  <h2 className="font-ds-sans text-[15px] font-semibold tracking-[-0.2px] text-[#171717]">
-                    Reporter notifications
-                  </h2>
-                  <p className="mt-1 font-ds-ui text-[12.5px] leading-[19px] text-[#737373]">
-                    Who hears back when a ticket is marked fixed.
+              <SettingsSection
+                title="Privacy and masking"
+                description="Masked content is blurred on the device. It never reaches our servers."
+              >
+                <ToggleRow
+                  title="Mask all text inputs"
+                  description="Passwords and card fields are always masked"
+                  checked
+                  disabled
+                />
+                <Field label="Also mask these selectors">
+                  <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-[#1717171F] p-2">
+                    {selectors.map((selector) => (
+                      <span
+                        key={selector}
+                        className="rounded bg-[#F5F5F5] px-2 py-0.5 font-ds-mono text-[11.5px] text-[#171717]"
+                      >
+                        {selector}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 font-ds-ui text-[12px] text-[#A3A3A3]">
+                    Editing selectors comes next — values already saved on the project are shown.
                   </p>
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-                  <ToggleRow
-                    title="Email reporters who left an address"
-                    description="Sent when a ticket is marked fixed"
-                    checked={notifyEnabled}
-                    disabled={savingNotify || !project}
-                    onToggle={toggleNotify}
-                  />
-                  <ToggleRow
-                    title="Show an in-app banner"
-                    description="Coming later — shown once the next time they open your app"
-                    checked={false}
-                    disabled
-                  />
-                  <ToggleRow
-                    title="Notify voters on the public board"
-                    description="Coming later — when an idea moves to Released"
-                    checked={false}
-                    disabled
-                  />
-                </div>
-              </section>
+                </Field>
+              </SettingsSection>
+
+              <SettingsSection
+                title="Reporter notifications"
+                description="Who hears back when a ticket is marked fixed."
+              >
+                <ToggleRow
+                  title="Email reporters who left an address"
+                  description="Sent when a ticket is marked fixed"
+                  checked={notifyEnabled}
+                  disabled={savingNotify || !project}
+                  onToggle={toggleNotify}
+                />
+                <ToggleRow
+                  title="Show an in-app banner"
+                  description="Coming later — shown once the next time they open your app"
+                  checked={false}
+                  disabled
+                />
+                <ToggleRow
+                  title="Notify voters on the public board"
+                  description="Coming later — when an idea moves to Released"
+                  checked={false}
+                  disabled
+                />
+              </SettingsSection>
+
+              <SettingsSection
+                title="Public board domain"
+                description="Where visitors see ideas and the roadmap."
+              >
+                <Field label="Custom domain">
+                  <div className="flex h-9 items-center rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5 font-ds-ui text-[13px] text-[#A3A3A3]">
+                    board.yourapp.com
+                  </div>
+                  <p className="mt-1.5 font-ds-ui text-[12px] text-[#A3A3A3]">
+                    Coming with the public board (S-11 / F9).
+                  </p>
+                </Field>
+              </SettingsSection>
+
+              <SettingsSection
+                title="Delete project"
+                description="Removes reports, tokens, and keys for this project."
+              >
+                <button
+                  type="button"
+                  disabled
+                  className="h-9 cursor-not-allowed rounded-md border border-[#DA314A33] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#DA314A] opacity-60"
+                >
+                  Delete project
+                </button>
+              </SettingsSection>
             </>
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+function SettingsSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-6 border-b border-[#17171714] py-7 sm:flex-row sm:gap-12">
+      <div className="w-full shrink-0 sm:w-[280px]">
+        <h2 className="font-ds-sans text-[15px] font-semibold tracking-[-0.2px] text-[#171717]">
+          {title}
+        </h2>
+        <p className="mt-1 font-ds-ui text-[12.5px] leading-[19px] text-[#737373]">
+          {description}
+        </p>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-3.5">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1.5 font-ds-ui text-[12.5px] font-medium text-[#171717]">{label}</div>
+      {children}
     </div>
   );
 }

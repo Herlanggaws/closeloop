@@ -41,7 +41,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed (notify enqueue); channel toggles visual |
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | Publish flags, roadmap columns |
-| S-12 Project settings | `/app/settings` | **Partial** public key + notify kill switch; masking/board later |
+| S-12 Project settings | `/app/settings` | **Partial** general/keys/masking/notify/board/delete shell; notify + public key live |
 | S-13 Integrations | `/app/settings/integrations` | OAuth connects (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | Invite + roles (US-05) |
 | S-15 Billing & credits | `/app/settings/billing` | Manual plan now; MoR later |
