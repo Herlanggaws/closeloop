@@ -146,7 +146,15 @@ func (s *Server) issueSession(c *gin.Context, user application.User) {
 		mapErr(c, err)
 		return
 	}
-	c.SetCookie("refresh_token", refresh, int((30 * 24 * time.Hour).Seconds()), "/", "", false, true)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		Path:     "/",
+		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
 	c.JSON(200, gin.H{"access_token": access, "user": gin.H{"id": user.ID, "email": user.Email, "name": user.Name}})
 }
 

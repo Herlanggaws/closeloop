@@ -32,7 +32,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         setReady(true);
       })
       .catch(() => {
-        if (!cancelled) router.replace("/login");
+        // api() already tries refresh + redirects on hard auth failure
+        if (!cancelled) setReady(false);
       })
       .finally(() => window.clearTimeout(timeout));
 
