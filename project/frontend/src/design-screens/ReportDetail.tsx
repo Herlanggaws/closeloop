@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { api } from "@/lib/api";
+import { api, logout } from "@/lib/api";
 import {
   STATUS_META,
   STATUS_OPTIONS,
@@ -205,8 +205,17 @@ export function ReportDetail() {
                 {initials(email)}
               </span>
             </div>
-            <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
-              {displayName(email)}
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
+                {displayName(email)}
+              </div>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="cursor-pointer font-ds-ui text-[11px] text-[#A3A3A3] hover:text-[#171717]"
+              >
+                Log out
+              </button>
             </div>
           </div>
         )}

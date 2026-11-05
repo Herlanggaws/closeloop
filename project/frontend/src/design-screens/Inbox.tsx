@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { API_URL, api, clearProjectSelection } from "@/lib/api";
+import { API_URL, api, clearProjectSelection, logout } from "@/lib/api";
 
 type TicketType = "bug" | "idea" | "question" | "";
 type TicketStatus = "open" | "in_progress" | "fixed" | "wont_fix" | "duplicate" | "";
@@ -334,7 +334,7 @@ export function Inbox() {
           <NavItem href="/app/settings/billing" label="Billing" />
         </nav>
 
-        <div className="mt-auto flex flex-col gap-2">
+        <div className="mt-auto flex flex-col gap-1">
           {email && (
             <div className="flex items-center gap-2.5 px-1.5 py-1">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#171717]">
@@ -342,8 +342,17 @@ export function Inbox() {
                   {initials(email)}
                 </span>
               </div>
-              <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
-                {displayName(email)}
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
+                  {displayName(email)}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="cursor-pointer font-ds-ui text-[11px] text-[#A3A3A3] hover:text-[#171717]"
+                >
+                  Log out
+                </button>
               </div>
             </div>
           )}

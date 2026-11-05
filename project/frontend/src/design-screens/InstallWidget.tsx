@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
-import { API_URL, api } from "@/lib/api";
+import { API_URL, api, logout } from "@/lib/api";
 
 const PLATFORM_ORDER = ["web", "android", "ios", "flutter", "react-native"] as const;
 const POLL_MS = 3000;
@@ -195,13 +195,22 @@ export function InstallWidget() {
           <span className="h-px w-10 bg-[#1717171F]" />
           <Step n={3} label="Connect agent" />
         </nav>
-        <button
-          type="button"
-          onClick={() => router.push("/app/inbox")}
-          className="cursor-pointer text-[13px] text-[#737373] hover:text-[#171717]"
-        >
-          Skip setup
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="cursor-pointer text-[13px] text-[#737373] hover:text-[#171717]"
+          >
+            Log out
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/app/inbox")}
+            className="cursor-pointer text-[13px] text-[#737373] hover:text-[#171717]"
+          >
+            Skip setup
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1 justify-center px-4 py-14">

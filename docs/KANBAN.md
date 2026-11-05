@@ -61,6 +61,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 #### M1 · Inti web (F1, F2, F4, F5, F6) — priority
 - [ ] **F1** Google OAuth
 - [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
+- [x] **F1** Log out (revoke refresh + clear session)
 - [ ] **F1** Multi-project UI + plan limits
 - [ ] **F1** MCP token rotate / revoke UI
 - [ ] **F1** Team invite + roles (US-05) — API + S-14

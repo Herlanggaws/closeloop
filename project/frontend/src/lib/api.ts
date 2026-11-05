@@ -15,11 +15,28 @@ export function clearSession() {
   localStorage.removeItem("closeloop_access");
   localStorage.removeItem("closeloop_project");
   localStorage.removeItem("closeloop_public_key");
+  localStorage.removeItem("closeloop_platforms");
 }
 
 export function clearProjectSelection() {
   localStorage.removeItem("closeloop_project");
   localStorage.removeItem("closeloop_public_key");
+  localStorage.removeItem("closeloop_platforms");
+}
+
+export async function logout() {
+  try {
+    await fetch(`${API_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // Still clear local session if the network call fails.
+  }
+  clearSession();
+  if (typeof window !== "undefined") {
+    window.location.replace("/login");
+  }
 }
 
 let refreshInFlight: Promise<boolean> | null = null;

@@ -38,6 +38,7 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/auth/register", s.register)
 		api.POST("/auth/login", s.login)
 		api.POST("/auth/refresh", s.refresh)
+		api.POST("/auth/logout", s.logout)
 		api.GET("/me", s.authRequired(), s.me)
 		api.GET("/projects", s.authRequired(), s.listProjects)
 		api.POST("/projects", s.authRequired(), s.createProject)
@@ -205,6 +206,21 @@ func (s *Server) refresh(c *gin.Context) {
 		return
 	}
 	s.issueSession(c, user)
+}
+
+func (s *Server) logout(c *gin.Context) {
+	raw, _ := c.Cookie("refresh_token")
+	_ = s.Store.RevokeRefresh(c.Request.Context(), raw)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+	c.JSON(200, gin.H{"ok": true})
 }
 
 func (s *Server) me(c *gin.Context) {

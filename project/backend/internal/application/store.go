@@ -186,6 +186,16 @@ func (s *Store) UserByRefresh(ctx context.Context, raw string) (User, error) {
 	return user, err
 }
 
+func (s *Store) RevokeRefresh(ctx context.Context, raw string) error {
+	if raw == "" {
+		return nil
+	}
+	_, err := s.DB.ExecContext(ctx, `
+		UPDATE refresh_tokens SET revoked_at=now()
+		WHERE token_hash=$1 AND revoked_at IS NULL`, auth.SHA256(raw))
+	return err
+}
+
 func (s *Store) PrimaryOrg(ctx context.Context, userID string) (Org, string, error) {
 	var org Org
 	var role string

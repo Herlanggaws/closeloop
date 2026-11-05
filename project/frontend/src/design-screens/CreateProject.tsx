@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
-import { api } from "@/lib/api";
+import { api, logout } from "@/lib/api";
 
 const PLATFORMS = [
   { id: "web", label: "Web", hint: "Script tag or npm" },
@@ -77,13 +77,22 @@ export function CreateProject() {
           <span className="h-px w-10 bg-[#1717171F]" />
           <Step n={3} label="Connect agent" />
         </nav>
-        <button
-          type="button"
-          onClick={() => router.push("/app/inbox")}
-          className="cursor-pointer text-[13px] text-[#737373] hover:text-[#171717]"
-        >
-          Skip setup
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="cursor-pointer text-[13px] text-[#737373] hover:text-[#171717]"
+          >
+            Log out
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/app/inbox")}
+            className="cursor-pointer text-[13px] text-[#737373] hover:text-[#171717]"
+          >
+            Skip setup
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1 justify-center px-4 py-14">
