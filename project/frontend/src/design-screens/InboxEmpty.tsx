@@ -4,11 +4,11 @@ export function InboxEmpty() {
     <>
 <div
       data-pencil-name="S-06 Inbox — Empty State"
-      className="box-border w-[1440px] h-[900px] flex flex-row gap-0 justify-start items-start bg-[#FFFFFF]"
+      className="box-border flex min-h-screen w-full flex-row items-start justify-start gap-0 bg-[#FFFFFF]"
     >
       <div
         data-pencil-name="Sidebar"
-        className="box-border w-[247.5px] shrink-0 h-[900px] flex flex-col gap-[2px] p-[12px] justify-start items-start bg-[#FAFAFA] [border-width:0px_1px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:0px_-0.5px_0px_0px]"
+        className="box-border flex h-screen w-[248px] shrink-0 flex-col items-start justify-start gap-[2px] bg-[#FAFAFA] p-[12px] [border-width:0px_1px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:0px_-0.5px_0px_0px]"
       >
         <div
           data-pencil-name="Project Switcher"
@@ -398,11 +398,11 @@ export function InboxEmpty() {
       </div>
       <div
         data-pencil-name="Main"
-        className="box-border [flex:1_1_0] h-full flex flex-col gap-0 justify-start items-start"
+        className="box-border flex min-h-screen min-w-0 [flex:1_1_0] flex-col items-start justify-start gap-0"
       >
         <div
           data-pencil-name="Header"
-          className="box-border w-[1192px] h-[59.5px] shrink-0 flex flex-row gap-0 p-[0px_24px] justify-between items-center [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:0px_0px_-0.5px_0px]"
+          className="box-border flex min-h-[59.5px] w-full shrink-0 flex-row items-center justify-between gap-0 p-[0px_24px] [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:0px_0px_-0.5px_0px]"
         >
           <div
             data-pencil-name="T"

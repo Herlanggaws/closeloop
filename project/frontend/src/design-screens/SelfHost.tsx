@@ -4,7 +4,7 @@ export function SelfHost() {
     <>
 <div
       data-pencil-name="S-17 Self-host License"
-      className="box-border w-[1440px] h-[900px] flex flex-col gap-[24px] justify-center items-center bg-[#F7F7F7]"
+      className="box-border flex min-h-screen w-full flex-col items-center justify-center gap-[24px] bg-[#F7F7F7]"
     >
       <div
         data-pencil-name="Brand"
