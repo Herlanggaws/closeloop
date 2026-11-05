@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
 import { MergeDuplicates } from "@/design-screens/MergeDuplicates";
 
 export const metadata: Metadata = {
@@ -7,9 +6,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <MergeDuplicates />
-    </DesignFrame>
-  );
+  return <MergeDuplicates />;
 }

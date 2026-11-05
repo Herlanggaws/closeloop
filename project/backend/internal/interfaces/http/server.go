@@ -442,6 +442,10 @@ func (s *Server) mergeTickets(c *gin.Context) {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
 		return
 	}
+	if body.ParentID == "" || len(body.ChildIDs) == 0 {
+		writeErr(c, 400, "INVALID_INPUT", "parent_id and child_ids required")
+		return
+	}
 	t, err := s.Store.GetTicket(c.Request.Context(), body.ParentID)
 	if err != nil {
 		mapErr(c, err)
@@ -450,7 +454,8 @@ func (s *Server) mergeTickets(c *gin.Context) {
 	if !s.requireProjectAccess(c, t.ProjectID) {
 		return
 	}
-	if err := s.Store.MergeTickets(c.Request.Context(), body.ParentID, body.ChildIDs); err != nil {
+	actor := "user:" + c.GetString("email")
+	if err := s.Store.MergeTickets(c.Request.Context(), body.ParentID, actor, body.ChildIDs); err != nil {
 		mapErr(c, err)
 		return
 	}

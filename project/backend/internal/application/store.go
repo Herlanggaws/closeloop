@@ -649,26 +649,64 @@ func (s *Store) AddNote(ctx context.Context, ticketID, actor, body string) error
 	return err
 }
 
-func (s *Store) MergeTickets(ctx context.Context, parentID string, childIDs []string) error {
+func (s *Store) MergeTickets(ctx context.Context, parentID, actor string, childIDs []string) error {
+	if len(childIDs) == 0 {
+		return ErrInvalidInput
+	}
+
+	parent, err := s.GetTicket(ctx, parentID)
+	if err != nil {
+		return err
+	}
+
+	mergedChildren := make([]string, 0, len(childIDs))
+	for _, childID := range childIDs {
+		if childID == parentID {
+			continue
+		}
+		child, err := s.GetTicket(ctx, childID)
+		if err != nil {
+			return err
+		}
+		if child.ProjectID != parent.ProjectID {
+			return ErrInvalidInput
+		}
+		mergedChildren = append(mergedChildren, childID)
+	}
+	if len(mergedChildren) == 0 {
+		return ErrInvalidInput
+	}
+
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	for _, child := range childIDs {
-		if child == parentID {
-			continue
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE reports SET ticket_id=$1 WHERE ticket_id=$2`, parentID, child); err != nil {
+
+	for _, childID := range mergedChildren {
+		if _, err := tx.ExecContext(ctx, `UPDATE reports SET ticket_id=$1 WHERE ticket_id=$2`, parentID, childID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE tickets SET status='duplicate', updated_at=now() WHERE id=$1`, child); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE tickets SET status='duplicate', updated_at=now() WHERE id=$1`, childID); err != nil {
 			return err
 		}
 	}
+
+	var reportCount int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM reports WHERE ticket_id=$1`, parentID).Scan(&reportCount); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `
-		UPDATE tickets SET report_count=(SELECT COUNT(*) FROM reports WHERE ticket_id=$1), updated_at=now()
-		WHERE id=$1`, parentID); err != nil {
+		UPDATE tickets SET report_count=$2, updated_at=now()
+		WHERE id=$1`, parentID, reportCount); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO ticket_events(ticket_id, actor, kind, payload)
+		VALUES ($1,$2,'merged',$3)`, parentID, actor, mustJSON(map[string]any{
+		"child_ids":    mergedChildren,
+		"report_count": reportCount,
+	})); err != nil {
 		return err
 	}
 	return tx.Commit()

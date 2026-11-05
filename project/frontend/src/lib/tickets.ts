@@ -150,6 +150,13 @@ export function eventDescription(event: TicketEvent) {
     const toLabel = STATUS_META[to]?.label || to || "?";
     return `changed status ${fromLabel} → ${toLabel}`;
   }
+  if (event.kind === "merged") {
+    const childIds = Array.isArray(payload.child_ids) ? payload.child_ids : [];
+    const n = childIds.length;
+    return n > 0
+      ? `merged ${n} duplicate${n === 1 ? "" : "s"} into this ticket`
+      : "merged duplicates into this ticket";
+  }
   if (event.kind === "created") return "reported this";
   return event.kind.replace(/_/g, " ");
 }
