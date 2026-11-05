@@ -343,8 +343,10 @@ func (s *Server) getTicket(c *gin.Context) {
 		return
 	}
 	reports, _ := s.Store.TicketReports(c.Request.Context(), t.ID)
+	events, _ := s.Store.ListTicketEvents(c.Request.Context(), t.ID)
 	atts, _ := s.Store.TicketAttachments(c.Request.Context(), t.ID)
-	var attOut []gin.H
+	reporterTotal, reporterEmail, _ := s.Store.TicketReporterStats(c.Request.Context(), t.ID)
+	attOut := make([]gin.H, 0, len(atts))
 	for _, a := range atts {
 		item := gin.H{"id": a.ID, "report_id": a.ReportID, "kind": a.Kind, "uploaded": a.Uploaded}
 		if a.Uploaded {
@@ -354,7 +356,22 @@ func (s *Server) getTicket(c *gin.Context) {
 		}
 		attOut = append(attOut, item)
 	}
-	c.JSON(200, gin.H{"ticket": t, "reports": reports, "attachments": attOut})
+	if events == nil {
+		events = []application.TicketEvent{}
+	}
+	if reports == nil {
+		reports = []application.Report{}
+	}
+	c.JSON(200, gin.H{
+		"ticket":      t,
+		"reports":     reports,
+		"attachments": attOut,
+		"events":      events,
+		"reporters": gin.H{
+			"total":      reporterTotal,
+			"with_email": reporterEmail,
+		},
+	})
 }
 
 func (s *Server) patchTicket(c *gin.Context) {

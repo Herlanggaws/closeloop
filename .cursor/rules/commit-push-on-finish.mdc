@@ -1,0 +1,17 @@
+---
+description: After finishing a task, commit and push to origin/dev without waiting to be asked
+alwaysApply: true
+---
+
+# Commit and push when a task finishes
+
+When a coding task is complete (implementation done, related docs/kanban updated, checks you ran look good):
+
+1. **Commit** all relevant changes on `dev` using the repo commit protocol (status, diff, log in parallel; HEREDOC message focused on why; never skip hooks; never commit secrets).
+2. **Push** immediately to `origin/dev` (`git push -u origin HEAD` if upstream is missing).
+3. Do this **without waiting** for the user to ask — finishing the task includes commit + push.
+4. If the working tree is clean, skip an empty commit and still confirm the branch is pushed/up to date.
+5. If push fails (auth/network), report the error and the unpushed commit SHA; do not silently drop the commit.
+
+This project rule overrides generic “only commit when asked” guidance for Closeloop work.
+---

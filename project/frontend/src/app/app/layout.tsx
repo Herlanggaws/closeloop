@@ -10,16 +10,36 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    api<{ projects: { ID?: string; id?: string; Name?: string; name?: string }[] }>("/api/projects")
+    let cancelled = false;
+
+    const token = localStorage.getItem("closeloop_access");
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) router.replace("/login");
+    }, 8000);
+
+    api<{ projects: { id?: string; ID?: string }[] }>("/api/projects")
       .then((res) => {
+        if (cancelled) return;
         const p = res.projects?.[0];
         if (p) {
-          const id = p.id || p.ID || "";
-          localStorage.setItem("closeloop_project", id);
+          localStorage.setItem("closeloop_project", p.id || p.ID || "");
         }
         setReady(true);
       })
-      .catch(() => router.replace("/login"));
+      .catch(() => {
+        if (!cancelled) router.replace("/login");
+      })
+      .finally(() => window.clearTimeout(timeout));
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
   }, [router]);
 
   if (!ready) {

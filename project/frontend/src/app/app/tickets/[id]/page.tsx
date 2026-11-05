@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
 import { ReportDetail } from "@/design-screens/ReportDetail";
 
 export const metadata: Metadata = {
@@ -7,9 +6,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <ReportDetail />
-    </DesignFrame>
-  );
+  return <ReportDetail />;
 }

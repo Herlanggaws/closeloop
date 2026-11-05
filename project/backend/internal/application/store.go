@@ -55,21 +55,55 @@ type Ticket struct {
 	Status      string         `json:"status"`
 	Title       string         `json:"title"`
 	ReportCount int            `json:"report_count"`
-	FixedAt     sql.NullTime   `json:"fixed_at"`
-	FixedNote   sql.NullString `json:"fixed_note"`
+	FixedAt     sql.NullTime   `json:"-"`
+	FixedNote   sql.NullString `json:"-"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
+func (t Ticket) MarshalJSON() ([]byte, error) {
+	var fixedAt any
+	var fixedNote any
+	if t.FixedAt.Valid {
+		fixedAt = t.FixedAt.Time
+	}
+	if t.FixedNote.Valid {
+		fixedNote = t.FixedNote.String
+	}
+	return json.Marshal(map[string]any{
+		"id":           t.ID,
+		"project_id":   t.ProjectID,
+		"type":         t.Type,
+		"status":       t.Status,
+		"title":        t.Title,
+		"report_count": t.ReportCount,
+		"fixed_at":     fixedAt,
+		"fixed_note":   fixedNote,
+		"created_at":   t.CreatedAt,
+		"updated_at":   t.UpdatedAt,
+	})
+}
+
 type Report struct {
-	ID         string          `json:"id"`
-	TicketID   string          `json:"ticket_id"`
-	ReporterID sql.NullString  `json:"reporter_id"`
-	Message    string          `json:"message"`
-	Platform   string          `json:"platform"`
-	Context    json.RawMessage `json:"context"`
-	AppVersion sql.NullString  `json:"app_version"`
-	CreatedAt  time.Time       `json:"created_at"`
+	ID             string          `json:"id"`
+	TicketID       string          `json:"ticket_id"`
+	ReporterID     *string         `json:"reporter_id"`
+	ReporterEmail  *string         `json:"reporter_email,omitempty"`
+	ExternalUserID *string         `json:"external_user_id,omitempty"`
+	Message        string          `json:"message"`
+	Platform       string          `json:"platform"`
+	Context        json.RawMessage `json:"context"`
+	AppVersion     *string         `json:"app_version"`
+	CreatedAt      time.Time       `json:"created_at"`
+}
+
+type TicketEvent struct {
+	ID        string          `json:"id"`
+	TicketID  string          `json:"ticket_id"`
+	Actor     string          `json:"actor"`
+	Kind      string          `json:"kind"`
+	Payload   json.RawMessage `json:"payload"`
+	CreatedAt time.Time       `json:"created_at"`
 }
 
 func (s *Store) Register(ctx context.Context, email, password, name string) (User, Org, error) {
@@ -470,21 +504,84 @@ func (s *Store) GetTicket(ctx context.Context, ticketID string) (Ticket, error) 
 
 func (s *Store) TicketReports(ctx context.Context, ticketID string) ([]Report, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, ticket_id, reporter_id, message, platform, context, app_version, created_at
-		FROM reports WHERE ticket_id=$1 ORDER BY created_at`, ticketID)
+		SELECT rep.id, rep.ticket_id, rep.reporter_id, r.email, r.external_user_id,
+			rep.message, rep.platform, rep.context, rep.app_version, rep.created_at
+		FROM reports rep
+		LEFT JOIN reporters r ON r.id = rep.reporter_id
+		WHERE rep.ticket_id=$1
+		ORDER BY rep.created_at`, ticketID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []Report
 	for rows.Next() {
-		var r Report
-		if err := rows.Scan(&r.ID, &r.TicketID, &r.ReporterID, &r.Message, &r.Platform, &r.Context, &r.AppVersion, &r.CreatedAt); err != nil {
+		var (
+			r          Report
+			reporterID sql.NullString
+			email      sql.NullString
+			externalID sql.NullString
+			appVersion sql.NullString
+		)
+		if err := rows.Scan(
+			&r.ID, &r.TicketID, &reporterID, &email, &externalID,
+			&r.Message, &r.Platform, &r.Context, &appVersion, &r.CreatedAt,
+		); err != nil {
 			return nil, err
+		}
+		if reporterID.Valid {
+			r.ReporterID = &reporterID.String
+		}
+		if email.Valid && email.String != "" {
+			r.ReporterEmail = &email.String
+		}
+		if externalID.Valid && externalID.String != "" {
+			r.ExternalUserID = &externalID.String
+		}
+		if appVersion.Valid {
+			r.AppVersion = &appVersion.String
+		}
+		if len(r.Context) == 0 {
+			r.Context = json.RawMessage(`{}`)
 		}
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) ListTicketEvents(ctx context.Context, ticketID string) ([]TicketEvent, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id, ticket_id, actor, kind, payload, created_at
+		FROM ticket_events
+		WHERE ticket_id=$1
+		ORDER BY created_at`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []TicketEvent
+	for rows.Next() {
+		var e TicketEvent
+		if err := rows.Scan(&e.ID, &e.TicketID, &e.Actor, &e.Kind, &e.Payload, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		if len(e.Payload) == 0 {
+			e.Payload = json.RawMessage(`{}`)
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) TicketReporterStats(ctx context.Context, ticketID string) (total int, withEmail int, err error) {
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT
+			COUNT(DISTINCT r.id),
+			COUNT(DISTINCT r.id) FILTER (WHERE r.email IS NOT NULL AND r.email <> '')
+		FROM reports rep
+		JOIN reporters r ON r.id = rep.reporter_id
+		WHERE rep.ticket_id=$1`, ticketID).Scan(&total, &withEmail)
+	return total, withEmail, err
 }
 
 func (s *Store) TicketAttachments(ctx context.Context, ticketID string) ([]struct {

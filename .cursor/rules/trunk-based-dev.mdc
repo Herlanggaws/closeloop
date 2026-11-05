@@ -1,0 +1,14 @@
+---
+description: Trunk-based workflow — all development lands on the dev branch first
+alwaysApply: true
+---
+
+# Trunk-based development (`dev`)
+
+- Integration trunk is **`dev`**. Do all feature work on `dev` (or a short-lived branch that merges into `dev` the same day).
+- Never push feature work straight to `main`. `main` is for stable / release promotion only.
+- Before coding, ensure the current branch is `dev` (or create/checkout `dev` from the latest remote `dev`/`main` as appropriate).
+- Push completed work to `origin/dev` with `-u` when the branch is new.
+- Keep branches short-lived; prefer direct commits on `dev` for small Closeloop tasks unless the user asks for a separate branch/PR.
+- Do not force-push `dev` or `main` unless the user explicitly requests it.
+---

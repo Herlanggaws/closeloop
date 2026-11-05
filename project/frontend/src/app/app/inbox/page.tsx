@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
 import { Inbox } from "@/design-screens/Inbox";
 
 export const metadata: Metadata = {
@@ -7,9 +6,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <Inbox />
-    </DesignFrame>
-  );
+  return <Inbox />;
 }

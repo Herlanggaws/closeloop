@@ -33,10 +33,10 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-03 Create project | `/app/onboarding` | Live create-project form + platforms |
 | S-04 Install widget | `/app/install` | Real public key + snippet + first-report wait |
 | S-05 Connect MCP | `/app/mcp` | Create token + Cursor/Claude config copy |
-| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | Filters, selection, live ticket list |
-| S-07 Report detail | `/app/tickets/[id]` | Screenshot, context, status, notes |
+| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; merge UI stub; detail still design |
+| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Linked/Sentry/Auto PR stubs |
 | S-08 Merge duplicates | `/app/inbox/merge` | Multi-select → merge API |
-| S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | Note + preview + `mark_fixed` |
+| S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed (notify enqueue); channel toggles visual |
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | Publish flags, roadmap columns |
 | S-12 Project settings | `/app/settings` | Keys, masking selectors, notify toggle |
@@ -65,8 +65,9 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] **F1** Team invite + roles (US-05) — API + S-14
 - [ ] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
 - [ ] **F2** Sensitive selectors from project settings applied before capture
-- [ ] **F4** Wire inbox + detail to API (replace static design shells)
-- [ ] **F4** Filters (type, status, platform), bulk select, empty state logic
+- [x] **F4** Wire inbox to API (list, type/status filters, empty, test report) — detail still design
+- [x] **F4** Wire report detail (S-07) + mark fixed (S-09) to API
+- [ ] **F4** Platform filter + merge duplicates API (S-08); bulk select stubbed in inbox
 - [ ] **F4** Sentry / PostHog deep links when integration present
 - [ ] **F5** One-click Cursor / Claude Code install docs from S-05
 - [ ] **F5** Free-plan read-only MCP enforcement end-to-end
@@ -128,7 +129,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 ## Suggested next sprint (M1 wire-up)
 
-1. Reconnect **S-03 → S-06 → S-07 → S-08 → S-09** to live APIs (keep pixel UI).
+1. Reconnect **S-03 → S-06 → S-07 → S-08 → S-09** to live APIs (keep pixel UI). S-06/S-07/S-09 wired; S-03 and S-08 next.
 2. Ship production **widget** (S-18…S-21) against ingest API + masking.
 3. Finish **F6** email (Resend) + in-app banner.
 4. Harden **MCP** install path for Cursor / Claude Code on Bear Budget.
