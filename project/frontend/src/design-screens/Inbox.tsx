@@ -7,6 +7,7 @@ import { API_URL, api, clearProjectSelection, logout } from "@/lib/api";
 
 type TicketType = "bug" | "idea" | "question" | "";
 type TicketStatus = "open" | "in_progress" | "fixed" | "wont_fix" | "duplicate" | "";
+type TicketPlatform = "web" | "android" | "ios" | "flutter" | "";
 
 type Ticket = {
   id: string;
@@ -43,6 +44,14 @@ const STATUS_OPTIONS: { id: TicketStatus; label: string }[] = [
   { id: "fixed", label: "Fixed" },
   { id: "wont_fix", label: "Won't fix" },
   { id: "duplicate", label: "Duplicate" },
+];
+
+const PLATFORM_OPTIONS: { id: TicketPlatform; label: string }[] = [
+  { id: "", label: "All" },
+  { id: "web", label: "Web" },
+  { id: "android", label: "Android" },
+  { id: "ios", label: "iOS" },
+  { id: "flutter", label: "Flutter" },
 ];
 
 const TYPE_STYLE: Record<string, { bg: string; text: string; label: string }> = {
@@ -111,6 +120,7 @@ export function Inbox() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [typeFilter, setTypeFilter] = useState<TicketType>("");
   const [statusFilter, setStatusFilter] = useState<TicketStatus>("");
+  const [platformFilter, setPlatformFilter] = useState<TicketPlatform>("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -163,7 +173,10 @@ export function Inbox() {
     let cancelled = false;
     setLoading(true);
 
-    const qs = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
+    const params = new URLSearchParams();
+    if (statusFilter) params.set("status", statusFilter);
+    if (platformFilter) params.set("platform", platformFilter);
+    const qs = params.toString() ? `?${params.toString()}` : "";
 
     api<{ tickets: Ticket[] }>(`/api/projects/${projectId}/tickets${qs}`)
       .then((res) => {
@@ -190,7 +203,7 @@ export function Inbox() {
     return () => {
       cancelled = true;
     };
-  }, [statusFilter]);
+  }, [statusFilter, platformFilter, router]);
 
   const filtered = useMemo(() => {
     let list = tickets;
@@ -261,6 +274,7 @@ export function Inbox() {
       }
       setStatusFilter("open");
       setTypeFilter("");
+      setPlatformFilter("");
       const projectId = localStorage.getItem("closeloop_project");
       if (projectId) {
         const list = await api<{ tickets: Ticket[] }>(
@@ -422,6 +436,7 @@ export function Inbox() {
           <div className="h-5 w-px bg-[#1717171F]" />
 
           <StatusDropdown value={statusFilter} onChange={setStatusFilter} />
+          <PlatformDropdown value={platformFilter} onChange={setPlatformFilter} />
         </div>
 
         {error && (
@@ -526,16 +541,22 @@ export function Inbox() {
   );
 }
 
-function StatusDropdown({
+function FilterDropdown<T extends string>({
+  labelPrefix,
+  ariaLabel,
   value,
+  options,
   onChange,
 }: {
-  value: TicketStatus;
-  onChange: (next: TicketStatus) => void;
+  labelPrefix: string;
+  ariaLabel: string;
+  value: T;
+  options: { id: T; label: string }[];
+  onChange: (next: T) => void;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const label = STATUS_OPTIONS.find((s) => s.id === value)?.label ?? "All";
+  const label = options.find((s) => s.id === value)?.label ?? "All";
 
   useEffect(() => {
     if (!open) return;
@@ -567,7 +588,7 @@ function StatusDropdown({
         onClick={() => setOpen((prev) => !prev)}
         className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-[#1717171F] bg-white px-2 font-ds-ui text-xs font-medium text-[#171717]"
       >
-        Status: {label}
+        {labelPrefix}: {label}
         <svg viewBox="0 0 12 12" className="h-3 w-3 text-[#737373]" aria-hidden>
           <path d="M3 4.5L6 7.5L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
         </svg>
@@ -576,10 +597,10 @@ function StatusDropdown({
       {open && (
         <ul
           role="listbox"
-          aria-label="Status"
+          aria-label={ariaLabel}
           className="absolute top-[calc(100%+4px)] left-0 z-20 min-w-[140px] overflow-hidden rounded-[10px] border border-[#17171714] bg-white py-1 shadow-[0_8px_24px_#17171714]"
         >
-          {STATUS_OPTIONS.map((option) => {
+          {options.map((option) => {
             const selected = option.id === value;
             return (
               <li key={option.id || "all"} role="option" aria-selected={selected}>
@@ -604,6 +625,42 @@ function StatusDropdown({
         </ul>
       )}
     </div>
+  );
+}
+
+function StatusDropdown({
+  value,
+  onChange,
+}: {
+  value: TicketStatus;
+  onChange: (next: TicketStatus) => void;
+}) {
+  return (
+    <FilterDropdown
+      labelPrefix="Status"
+      ariaLabel="Status"
+      value={value}
+      options={STATUS_OPTIONS}
+      onChange={onChange}
+    />
+  );
+}
+
+function PlatformDropdown({
+  value,
+  onChange,
+}: {
+  value: TicketPlatform;
+  onChange: (next: TicketPlatform) => void;
+}) {
+  return (
+    <FilterDropdown
+      labelPrefix="Platform"
+      ariaLabel="Platform"
+      value={value}
+      options={PLATFORM_OPTIONS}
+      onChange={onChange}
+    />
   );
 }
 

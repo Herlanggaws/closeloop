@@ -72,7 +72,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F4** Wire inbox to API (list, type/status filters, empty, test report) — detail still design
 - [x] **F4** Wire report detail (S-07) + mark fixed (S-09) to API
 - [x] **F4** Wire merge duplicates (S-08) — pick parent + POST merge; activity event
-- [ ] **F4** Platform filter on inbox list (backend still ignores `platform` query)
+- [x] **F4** Platform filter on inbox list (`?platform=` + Platform dropdown)
 - [ ] **F4** Sentry / PostHog deep links when integration present
 - [x] **F5** Wire Connect MCP (S-05) — token, Cursor/Claude install copy, test connection
 - [x] **F5** Free-plan read-only MCP (create scopes + write tools gated; UI badge)

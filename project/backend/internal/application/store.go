@@ -622,7 +622,14 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 		args = append(args, typ)
 		i++
 	}
-	_ = platform
+	if platform != "" {
+		q += fmt.Sprintf(` AND EXISTS (
+			SELECT 1 FROM reports r
+			WHERE r.ticket_id = tickets.id AND r.platform=$%d
+		)`, i)
+		args = append(args, platform)
+		i++
+	}
 	q += " ORDER BY created_at DESC LIMIT 100"
 	rows, err := s.DB.QueryContext(ctx, q, args...)
 	if err != nil {
