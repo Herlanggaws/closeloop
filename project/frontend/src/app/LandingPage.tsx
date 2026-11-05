@@ -1,4 +1,6 @@
 /* Auto-converted from closeloop.pen S-01 Landing Page for pixel-perfect review */
+import { WaitlistForm } from "@/components/WaitlistForm";
+
 export function LandingPageDesign() {
   return (
     <>
@@ -139,58 +141,7 @@ export function LandingPageDesign() {
           ready for Cursor or Claude Code over MCP. When the fix ships, the person who reported it
           hears back.
         </div>
-        <div
-          data-pencil-name="Waitlist Form"
-          className="box-border w-fit h-fit shrink-0 [box-shadow:0px_2px_6px_#0C0A0914] flex flex-row gap-[8px] p-[6px] justify-start items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[12px]"
-        >
-          <div
-            data-pencil-name="Email Input"
-            className="box-border w-[300px] shrink-0 h-[40px] flex flex-row gap-[8px] p-[0px_10px] justify-start items-center"
-          >
-            <svg
-              data-pencil-name="Icon"
-              data-icon-name="mail"
-              data-icon-set="lucide"
-              viewBox="0 0 13.99993896484375 14"
-              preserveAspectRatio="xMidYMid meet"
-              xmlns="http://www.w3.org/2000/svg"
-              className="box-border w-[16px] shrink-0 h-[16px]"
-            >
-              <path
-                d="M2.05762 1.77734q-0.28027 0.04102-0.53321 0.16748-0.34863 0.19824-0.58789 0.50586-0.23584 0.30762-0.32129 0.70069-0.01367 0.10938-0.02734 0.66992l0 3.17871 0 3.17871q0.01367 0.56055 0.02734 0.66992 0.11279 0.5332 0.50245 0.90577 0.39307 0.36914 0.92627 0.46826 0.16748 0.02734 4.95605 0.02734 4.78857 0 4.95605-0.02734 0.5332-0.09912 0.92286-0.46826 0.39307-0.37256 0.50586-0.90577 0.01367-0.10938 0.02734-0.66992l0-3.17871 0-3.17871q-0.01367-0.56055-0.02734-0.66992-0.12647-0.54688-0.53321-0.92285-0.40674-0.37939-0.95019-0.46485-0.1709-0.01367-4.93897-0.01367-4.76465 0-4.90478 0.02734z m9.81298 1.17579q0.09912 0.04443 0.18116 0.12304 0.08545 0.0752 0.12646 0.16065 0.04443 0.08203 0.05127 0.12988 0.00684 0.04785 0.00684 0.18799l0 0.21191-2.46436 1.58252q-2.46436 1.56543-2.53613 1.60303-0.06836 0.03418-0.16748 0.03418l-0.02734 0.01367q-0.0957 0.01367-0.2085-0.04102-0.15381-0.07178-0.65967-0.37939l-4.40918-2.81299 0-0.21191q0-0.14014 0.00684-0.18799 0.00684-0.04785 0.04101-0.12305 0.0376-0.07861 0.12647-0.16064 0.09229-0.08545 0.16748-0.1128 0.07861-0.03076 0.70752-0.04443l4.18701 0 4.18701 0q0.61523 0 0.68359 0.02735z m-5.63964 5.02783q0.22217 0.10938 0.46142 0.15381 0.09912 0.02734 0.30762 0.02734 0.2085 0 0.30762-0.02734 0.30762-0.05811 0.54687-0.19825 0.14014-0.08203 2.26612-1.42529l2.12939-1.36035-0.01367 5.50293-0.04102 0.09912q-0.11279 0.2085-0.3247 0.29395l-0.09571 0.02734-9.5498 0-0.09571-0.02734q-0.21191-0.08545-0.3247-0.29395l-0.04102-0.09912-0.01367-5.50293 2.17041 1.37402q2.17041 1.38428 2.31055 1.45606z"
-                fill="#A3A3A3"
-               />
-            </svg>
-            <div
-              data-pencil-name="Placeholder"
-              className="text-[14px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
-            >
-              you@yourapp.com
-            </div>
-          </div>
-          <a href="/signup" data-pencil-name="Submit" className="cursor-pointer no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-fit shrink-0 h-[40px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#171717] rounded-[6px]">
-            <div
-              data-pencil-name="Label"
-              className="text-[14px]/[normal] box-border text-[#FFFFFF] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
-            >
-              Join the waitlist
-            </div>
-            <svg
-              data-pencil-name="Icon"
-              data-icon-name="arrow-right"
-              data-icon-set="lucide"
-              viewBox="0 0 13.99993896484375 14"
-              preserveAspectRatio="xMidYMid meet"
-              xmlns="http://www.w3.org/2000/svg"
-              className="box-border w-[16px] shrink-0 h-[16px]"
-            >
-              <path
-                d="M6.90088 2.35156q-0.18115 0.02734-0.32129 0.16748-0.11279 0.11279-0.14697 0.28028-0.03418 0.16748 0.02051 0.32129 0.02734 0.08545 0.25976 0.3247 0.23242 0.23584 1.36377 1.37061 1.58252 1.58252 1.58252 1.59619 0 0.01367-3.45557 0.01367l-3.44531 0-0.08545 0.04102q-0.22217 0.11279-0.30078 0.33838-0.0752 0.22217 0.00684 0.43408 0.05811 0.0957 0.14013 0.18115 0.08545 0.08203 0.16748 0.11963 0.08545 0.03418 0.53321 0.03418l3.01123 0q3.42822 0 3.42822 0.01367 0 0.01367-1.58252 1.59619-1.13135 1.13477-1.36377 1.37402-0.23242 0.23584-0.25976 0.3213-0.05469 0.15381-0.02051 0.32128 0.03418 0.16748 0.14697 0.28028 0.18115 0.18115 0.42041 0.18115l0.04102 0q0.11279 0 0.19824-0.05469 0.14014-0.09912 0.51611-0.46484l1.68164-1.67822q2.1123-2.10205 2.15332-2.18409 0.07178-0.12646 0.07178-0.28027 0-0.15381-0.07178-0.28027-0.04102-0.08203-2.1499-2.18067-2.10547-2.10205-2.17725-2.13623-0.06836-0.0376-0.23584-0.06494-0.04102 0-0.12646 0.01367z"
-                fill="#FFFFFF"
-               />
-            </svg>
-          </a>
-        </div>
+        <WaitlistForm variant="hero" />
         <div
           data-pencil-name="Meta"
           className="box-border w-fit h-fit shrink-0 flex flex-row gap-[20px] justify-start items-center"
@@ -4340,61 +4291,7 @@ export function LandingPageDesign() {
           >
             Join the waitlist. The first 50 builders get Indie free for 3 months.
           </div>
-          <div
-            data-pencil-name="Waitlist Form"
-            className="box-border w-fit h-fit shrink-0 flex flex-row gap-[8px] p-[6px] justify-start items-center bg-[#262626] [outline:1px_solid_#FFFFFF1A] [outline-offset:-0.5px] rounded-[12px]"
-          >
-            <div
-              data-pencil-name="Email Input"
-              className="box-border w-[300px] shrink-0 h-[40px] flex flex-row gap-[8px] p-[0px_10px] justify-start items-center"
-            >
-              <svg
-                data-pencil-name="Icon"
-                data-icon-name="mail"
-                data-icon-set="lucide"
-                viewBox="0 0 13.99993896484375 14"
-                preserveAspectRatio="xMidYMid meet"
-                xmlns="http://www.w3.org/2000/svg"
-                className="box-border w-[16px] shrink-0 h-[16px]"
-              >
-                <path
-                  d="M2.05762 1.77734q-0.28027 0.04102-0.53321 0.16748-0.34863 0.19824-0.58789 0.50586-0.23584 0.30762-0.32129 0.70069-0.01367 0.10938-0.02734 0.66992l0 3.17871 0 3.17871q0.01367 0.56055 0.02734 0.66992 0.11279 0.5332 0.50245 0.90577 0.39307 0.36914 0.92627 0.46826 0.16748 0.02734 4.95605 0.02734 4.78857 0 4.95605-0.02734 0.5332-0.09912 0.92286-0.46826 0.39307-0.37256 0.50586-0.90577 0.01367-0.10938 0.02734-0.66992l0-3.17871 0-3.17871q-0.01367-0.56055-0.02734-0.66992-0.12647-0.54688-0.53321-0.92285-0.40674-0.37939-0.95019-0.46485-0.1709-0.01367-4.93897-0.01367-4.76465 0-4.90478 0.02734z m9.81298 1.17579q0.09912 0.04443 0.18116 0.12304 0.08545 0.0752 0.12646 0.16065 0.04443 0.08203 0.05127 0.12988 0.00684 0.04785 0.00684 0.18799l0 0.21191-2.46436 1.58252q-2.46436 1.56543-2.53613 1.60303-0.06836 0.03418-0.16748 0.03418l-0.02734 0.01367q-0.0957 0.01367-0.2085-0.04102-0.15381-0.07178-0.65967-0.37939l-4.40918-2.81299 0-0.21191q0-0.14014 0.00684-0.18799 0.00684-0.04785 0.04101-0.12305 0.0376-0.07861 0.12647-0.16064 0.09229-0.08545 0.16748-0.1128 0.07861-0.03076 0.70752-0.04443l4.18701 0 4.18701 0q0.61523 0 0.68359 0.02735z m-5.63964 5.02783q0.22217 0.10938 0.46142 0.15381 0.09912 0.02734 0.30762 0.02734 0.2085 0 0.30762-0.02734 0.30762-0.05811 0.54687-0.19825 0.14014-0.08203 2.26612-1.42529l2.12939-1.36035-0.01367 5.50293-0.04102 0.09912q-0.11279 0.2085-0.3247 0.29395l-0.09571 0.02734-9.5498 0-0.09571-0.02734q-0.21191-0.08545-0.3247-0.29395l-0.04102-0.09912-0.01367-5.50293 2.17041 1.37402q2.17041 1.38428 2.31055 1.45606z"
-                  fill="#FFFFFFB3"
-                 />
-              </svg>
-              <div
-                data-pencil-name="P"
-                className="text-[14px]/[normal] box-border text-[#FFFFFFB3] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                you@yourapp.com
-              </div>
-            </div>
-            <div
-              data-pencil-name="Submit"
-              className="box-border w-fit shrink-0 h-[40px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] rounded-[6px]"
-            >
-              <div
-                data-pencil-name="Label"
-                className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
-              >
-                Join the waitlist
-              </div>
-              <svg
-                data-pencil-name="Icon"
-                data-icon-name="arrow-right"
-                data-icon-set="lucide"
-                viewBox="0 0 13.99993896484375 14"
-                preserveAspectRatio="xMidYMid meet"
-                xmlns="http://www.w3.org/2000/svg"
-                className="box-border w-[16px] shrink-0 h-[16px]"
-              >
-                <path
-                  d="M6.90088 2.35156q-0.18115 0.02734-0.32129 0.16748-0.11279 0.11279-0.14697 0.28028-0.03418 0.16748 0.02051 0.32129 0.02734 0.08545 0.25976 0.3247 0.23242 0.23584 1.36377 1.37061 1.58252 1.58252 1.58252 1.59619 0 0.01367-3.45557 0.01367l-3.44531 0-0.08545 0.04102q-0.22217 0.11279-0.30078 0.33838-0.0752 0.22217 0.00684 0.43408 0.05811 0.0957 0.14013 0.18115 0.08545 0.08203 0.16748 0.11963 0.08545 0.03418 0.53321 0.03418l3.01123 0q3.42822 0 3.42822 0.01367 0 0.01367-1.58252 1.59619-1.13135 1.13477-1.36377 1.37402-0.23242 0.23584-0.25976 0.3213-0.05469 0.15381-0.02051 0.32128 0.03418 0.16748 0.14697 0.28028 0.18115 0.18115 0.42041 0.18115l0.04102 0q0.11279 0 0.19824-0.05469 0.14014-0.09912 0.51611-0.46484l1.68164-1.67822q2.1123-2.10205 2.15332-2.18409 0.07178-0.12646 0.07178-0.28027 0-0.15381-0.07178-0.28027-0.04102-0.08203-2.1499-2.18067-2.10547-2.10205-2.17725-2.13623-0.06836-0.0376-0.23584-0.06494-0.04102 0-0.12646 0.01367z"
-                  fill="#171717"
-                 />
-              </svg>
-            </div>
-          </div>
+          <WaitlistForm variant="footer" />
         </div>
       </div>
       <div

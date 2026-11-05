@@ -56,7 +56,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 ### Todo — by PRD feature
 
 #### M0 · Validasi
-- [ ] Landing waitlist capture (email → store / ESP), not only signup CTA
+- [x] Landing waitlist capture (email → Postgres store-only; ESP later), hero + footer forms
 - [ ] Interview 5–10 builders; log “mau coba minggu ini”
 - [ ] Final name + domain
 - [ ] Pick Lemon Squeezy vs Paddle (billing still manual `plan` for now)
@@ -124,7 +124,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 | Milestone | Focus | Status |
 | --- | --- | --- |
-| M0 | Landing + waitlist + interviews | Design landing done; waitlist/interviews todo |
+| M0 | Landing + waitlist + interviews | Waitlist store-only shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Backend core WIP; UI design done; wire + widget polish next |
 | M2 | F3 F7 mobile | Todo |
 | M3 | F8 F9 F11 | Design only |

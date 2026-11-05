@@ -1045,6 +1045,20 @@ func (s *Store) UserCanAccessProject(ctx context.Context, userID, projectID stri
 	return ok, err
 }
 
+func (s *Store) AddWaitlist(ctx context.Context, email, source string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" || !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		return ErrInvalidInput
+	}
+	if source == "" {
+		source = "landing"
+	}
+	_, err := s.DB.ExecContext(ctx, `
+		INSERT INTO waitlist(email, source) VALUES ($1, $2)
+		ON CONFLICT (email) DO NOTHING`, email, source)
+	return err
+}
+
 func nullStr(s string) any {
 	if s == "" {
 		return nil

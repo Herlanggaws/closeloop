@@ -35,6 +35,7 @@ func (s *Server) Router() *gin.Engine {
 
 	api := r.Group("/api")
 	{
+		api.POST("/waitlist", s.joinWaitlist)
 		api.POST("/auth/register", s.register)
 		api.POST("/auth/login", s.login)
 		api.POST("/auth/refresh", s.refresh)
@@ -159,6 +160,22 @@ func (s *Server) issueSession(c *gin.Context, user application.User) {
 		SameSite: http.SameSiteLaxMode,
 	})
 	c.JSON(200, gin.H{"access_token": access, "user": gin.H{"id": user.ID, "email": user.Email, "name": user.Name}})
+}
+
+func (s *Server) joinWaitlist(c *gin.Context) {
+	var body struct {
+		Email  string `json:"email"`
+		Source string `json:"source"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	if err := s.Store.AddWaitlist(c.Request.Context(), body.Email, body.Source); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"ok": true})
 }
 
 func (s *Server) register(c *gin.Context) {
