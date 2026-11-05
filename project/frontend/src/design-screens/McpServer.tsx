@@ -14,17 +14,10 @@ import {
 type ProjectInfo = { id: string; name: string };
 type MeResponse = { user: { email: string }; org: { name: string; plan: string } };
 
-type McpClientSighting = {
-  key: string;
-  name: string;
-  last_seen_at: string;
-};
-
 type McpTokenRow = {
   id: string;
   prefix: string;
   scopes: string[];
-  clients?: McpClientSighting[];
   last_used_at: string | null;
   created_at: string;
 };
@@ -203,43 +196,6 @@ export function McpServer() {
     return used[0]?.last_used_at || null;
   }, [tokens]);
 
-  const clientSightings = useMemo(() => {
-    const byKey = new Map<string, McpClientSighting>();
-    for (const token of tokens) {
-      for (const client of token.clients || []) {
-        const prev = byKey.get(client.key);
-        if (
-          !prev ||
-          new Date(client.last_seen_at).getTime() > new Date(prev.last_seen_at).getTime()
-        ) {
-          byKey.set(client.key, client);
-        }
-      }
-    }
-    return byKey;
-  }, [tokens]);
-
-  const clientStatuses = useMemo(
-    () =>
-      INSTALL_CLIENTS.map((client) => {
-        const sighting = clientSightings.get(client.id);
-        return {
-          ...client,
-          connected: Boolean(sighting),
-          lastSeenAt: sighting?.last_seen_at || null,
-        };
-      }),
-    [clientSightings],
-  );
-
-  const extraClients = useMemo(
-    () =>
-      [...clientSightings.values()].filter(
-        (c) => c.key !== "cursor" && c.key !== "claude",
-      ),
-    [clientSightings],
-  );
-
   const anyWrite = tokens.some((t) => t.scopes.includes("write"));
   const projectName = project?.name || "Project";
   const plan = me?.org.plan || "Indie";
@@ -410,7 +366,7 @@ export function McpServer() {
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
+                  <div>
                     <div className="flex items-center gap-2">
                       <span
                         className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${
@@ -434,60 +390,6 @@ export function McpServer() {
                     </p>
                   </div>
                 </div>
-
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {clientStatuses.map((client) => (
-                    <div
-                      key={client.id}
-                      className="flex items-center justify-between gap-3 rounded-[10px] border border-[#17171714] bg-white px-3 py-2.5"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
-                              client.connected
-                                ? "bg-[#16A34A] text-white"
-                                : "bg-[#F5F5F5] text-[#A3A3A3]"
-                            }`}
-                          >
-                            {client.connected ? "✓" : "·"}
-                          </span>
-                          <span className="font-ds-ui text-[13px] font-semibold text-[#171717]">
-                            {client.label}
-                          </span>
-                        </div>
-                        <p className="mt-1 font-ds-ui text-[12px] text-[#737373]">
-                          {client.connected
-                            ? `Last seen ${relativeTime(client.lastSeenAt || "")}`
-                            : "Not connected yet"}
-                        </p>
-                      </div>
-                      {!client.connected && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setClientTab(client.id);
-                            document
-                              .getElementById("mcp-install-clients")
-                              ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                          }}
-                          className="h-8 shrink-0 cursor-pointer rounded-md border border-[#1717171F] bg-white px-3 font-ds-ui text-[12px] font-medium text-[#171717]"
-                        >
-                          Install
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {extraClients.length > 0 && (
-                  <p className="mt-3 font-ds-ui text-[12px] text-[#737373]">
-                    Also seen:{" "}
-                    {extraClients
-                      .map((c) => `${c.name} (${relativeTime(c.last_seen_at)})`)
-                      .join(" · ")}
-                  </p>
-                )}
               </section>
 
               {freshToken && (
@@ -633,7 +535,6 @@ export function McpServer() {
                 <div className="mt-4 mb-2 flex flex-wrap gap-1.5 rounded-[10px] bg-[#F5F5F5] p-1">
                   {INSTALL_CLIENTS.map((tab) => {
                     const active = clientTab === tab.id;
-                    const status = clientStatuses.find((c) => c.id === tab.id);
                     return (
                       <button
                         key={tab.id}
@@ -646,7 +547,6 @@ export function McpServer() {
                         }`}
                       >
                         {tab.label}
-                        {status?.connected ? " · connected" : ""}
                       </button>
                     );
                   })}

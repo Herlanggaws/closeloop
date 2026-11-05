@@ -34,7 +34,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-04 Install widget | `/app/onboarding/install` | **Wired** wizard public key + snippet + demo + first-report poll |
 | S-04b Install status | `/app/install` | **Wired** app-shell status, snippet, first-report, demo link |
 | S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** wizard token + scopes + Cursor/Claude copy + test connection |
-| S-05b MCP status | `/app/mcp` | **Wired** app-shell status, connected clients (Cursor/Claude), multi-install, tokens |
+| S-05b MCP status | `/app/mcp` | **Wired** app-shell status, multi-client install, token list, revoke, generate |
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |
 | S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Linked/Sentry/Auto PR stubs |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
@@ -65,7 +65,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
 - [x] **F1** Log out (revoke refresh + clear session)
 - [ ] **F1** Multi-project UI + plan limits
-- [x] **F1** MCP token list / revoke / generate UI (`/app/mcp`) + connected-client status
+- [x] **F1** MCP token list / revoke / generate UI (`/app/mcp`)
 - [ ] **F1** Team invite + roles (US-05) — API + S-14
 - [ ] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
 - [ ] **F2** Sensitive selectors from project settings applied before capture
