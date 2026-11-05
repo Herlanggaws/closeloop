@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bear Budget Web · Closeloop demo</title>
+    <meta
+      http-equiv="refresh"
+      content="0;url=http://localhost:3000/demo.html"
+    />
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 40px;
+        color: #171717;
+      }
+      a { color: #171717; }
+      code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>Closeloop demo host</h1>
+    <p>
+      The live demo is served by the Next frontend so the widget bundle
+      (<code>/w.js</code>) is on the same origin.
+    </p>
+    <p>
+      Open
+      <a id="link" href="http://localhost:3000/demo.html">http://localhost:3000/demo.html?key=pk_…</a>
+      after creating a project in Closeloop.
+    </p>
+    <script>
+      const params = location.search;
+      const href = "http://localhost:3000/demo.html" + params;
+      document.getElementById("link").href = href;
+      if (params) location.replace(href);
+    </script>
+  </body>
+</html>

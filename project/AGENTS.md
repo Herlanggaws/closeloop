@@ -9,4 +9,5 @@
 - Error shape: `{ "error": { "code": "...", "message": "..." } }`.
 - Run both: `pnpm dev` from `project/` (orchestrates scripts).
 - Backend only: `bash scripts/dev-backend.sh`
-- Frontend only: `bash scripts/dev-frontend.sh`
+- Frontend only: `bash scripts/dev-frontend.sh` (builds + watches widget → `frontend/public/w.js`)
+- Widget demo host: `http://localhost:3000/demo.html?key=pk_…` (see `demo/README.md`)

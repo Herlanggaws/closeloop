@@ -30,8 +30,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 | Screen | Route | Wire to |
 | --- | --- | --- |
-| S-03 Create project | `/app/onboarding` | Live create-project form + platforms |
-| S-04 Install widget | `/app/install` | Real public key + snippet + first-report wait |
+| S-03 Create project | `/app/onboarding` | **Wired** name + platforms → POST /api/projects → install |
+| S-04 Install widget | `/app/install` | **Wired** public key + snippet + demo host + first-report poll |
 | S-05 Connect MCP | `/app/mcp` | Create token + Cursor/Claude config copy |
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |
 | S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Linked/Sentry/Auto PR stubs |
@@ -60,6 +60,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 #### M1 · Inti web (F1, F2, F4, F5, F6) — priority
 - [ ] **F1** Google OAuth
+- [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
 - [ ] **F1** Multi-project UI + plan limits
 - [ ] **F1** MCP token rotate / revoke UI
 - [ ] **F1** Team invite + roles (US-05) — API + S-14
@@ -130,7 +131,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 ## Suggested next sprint (M1 wire-up)
 
-1. Reconnect **S-03 → S-06 → S-07 → S-08 → S-09** to live APIs (keep pixel UI). S-06/S-07/S-08/S-09 wired; S-03 next.
+1. Reconnect **S-03 → S-06 → S-07 → S-08 → S-09** to live APIs (keep pixel UI). S-03…S-09 wired; **S-05 Connect MCP** next. Demo host: `/demo.html?key=…`.
 2. Ship production **widget** (S-18…S-21) against ingest API + masking.
 3. Finish **F6** email (Resend) + in-app banner.
 4. Harden **MCP** install path for Cursor / Claude Code on Bear Budget.

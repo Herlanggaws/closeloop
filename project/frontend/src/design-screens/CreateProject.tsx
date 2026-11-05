@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
 import { api } from "@/lib/api";
 
@@ -19,6 +19,15 @@ export function CreateProject() {
   const [selected, setSelected] = useState<string[]>(["web"]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("closeloop_project")) {
+      router.replace("/app/install");
+      return;
+    }
+    setReady(true);
+  }, [router]);
 
   function togglePlatform(id: string) {
     setSelected((prev) =>
@@ -47,6 +56,14 @@ export function CreateProject() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!ready) {
+    return (
+      <div className="box-border flex min-h-screen w-full items-center justify-center bg-[#F7F7F7]">
+        <p className="font-ds-ui text-sm text-[#737373]">Loading…</p>
+      </div>
+    );
   }
 
   return (

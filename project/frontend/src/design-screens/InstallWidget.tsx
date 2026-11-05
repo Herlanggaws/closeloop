@@ -6,6 +6,7 @@ import { CloseloopLogo } from "@/components/CloseloopLogo";
 import { API_URL, api } from "@/lib/api";
 
 const PLATFORM_ORDER = ["web", "android", "ios", "flutter", "react-native"] as const;
+const POLL_MS = 3000;
 
 const PLATFORM_LABELS: Record<string, string> = {
   web: "Web",
@@ -26,6 +27,10 @@ const PLATFORM_SUBTITLES: Record<string, string> = {
 type ProjectResponse = {
   public_key: string;
   project: { platforms?: string[] };
+};
+
+type TicketsResponse = {
+  tickets: { id: string }[];
 };
 
 function normalizePlatforms(raw: string[] | null | undefined): string[] {
@@ -100,6 +105,9 @@ export function InstallWidget() {
   const [platforms, setPlatforms] = useState<string[]>(["web"]);
   const [activePlatform, setActivePlatform] = useState("web");
   const [copied, setCopied] = useState(false);
+  const [projectId, setProjectId] = useState("");
+  const [firstReportReceived, setFirstReportReceived] = useState(false);
+  const [waiting, setWaiting] = useState(true);
 
   useEffect(() => {
     const cachedKey = localStorage.getItem("closeloop_public_key");
@@ -108,13 +116,14 @@ export function InstallWidget() {
     setPlatforms(cachedPlatforms);
     setActivePlatform(pickDefaultPlatform(cachedPlatforms));
 
-    const projectId = localStorage.getItem("closeloop_project");
-    if (!projectId) {
+    const id = localStorage.getItem("closeloop_project");
+    if (!id) {
       if (!cachedKey) router.replace("/app/onboarding");
       return;
     }
+    setProjectId(id);
 
-    api<ProjectResponse>(`/api/projects/${projectId}`)
+    api<ProjectResponse>(`/api/projects/${id}`)
       .then((res) => {
         setPublicKey(res.public_key);
         localStorage.setItem("closeloop_public_key", res.public_key);
@@ -130,6 +139,34 @@ export function InstallWidget() {
       });
   }, [router]);
 
+  useEffect(() => {
+    if (!projectId || firstReportReceived) return;
+
+    let cancelled = false;
+
+    async function checkTickets() {
+      try {
+        const data = await api<TicketsResponse>(`/api/projects/${projectId}/tickets`);
+        if (cancelled) return;
+        if ((data.tickets || []).length > 0) {
+          setFirstReportReceived(true);
+          setWaiting(false);
+        } else {
+          setWaiting(true);
+        }
+      } catch {
+        if (!cancelled) setWaiting(true);
+      }
+    }
+
+    checkTickets();
+    const timer = window.setInterval(checkTickets, POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [projectId, firstReportReceived]);
+
   const snippet = useMemo(
     () => buildSnippet(activePlatform, publicKey),
     [activePlatform, publicKey],
@@ -139,6 +176,7 @@ export function InstallWidget() {
   const title = webOnly ? "Install the widget" : "Install Closeloop";
   const subtitle = PLATFORM_SUBTITLES[activePlatform] ?? PLATFORM_SUBTITLES.web;
   const showTabs = platforms.length > 1;
+  const demoHref = `/demo.html?key=${encodeURIComponent(publicKey)}`;
 
   async function copySnippet() {
     await navigator.clipboard.writeText(snippet);
@@ -222,10 +260,10 @@ export function InstallWidget() {
 
             {activePlatform === "web" && (
               <div className="rounded-[10px] border border-[#17171714] bg-[#FAFAFA] p-4 text-sm text-[#737373]">
-                Demo page:{" "}
+                Open the demo app to send a real report:{" "}
                 <a
                   className="font-medium text-[#171717] underline"
-                  href={`/demo.html?key=${encodeURIComponent(publicKey)}`}
+                  href={demoHref}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -233,9 +271,50 @@ export function InstallWidget() {
                 </a>
               </div>
             )}
+
+            <div
+              className={`flex items-start gap-3 rounded-[10px] border p-4 ${
+                firstReportReceived
+                  ? "border-[#16A34A33] bg-[#F0FDF4]"
+                  : "border-[#17171714] bg-[#FAFAFA]"
+              }`}
+            >
+              <span
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${
+                  firstReportReceived
+                    ? "bg-[#16A34A] text-white"
+                    : "bg-white text-[#A3A3A3] outline outline-1 outline-[#1717171F]"
+                }`}
+              >
+                {firstReportReceived ? "✓" : "·"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-ds-ui text-[13px] font-medium text-[#171717]">
+                  {firstReportReceived ? "First report received" : "Waiting for first report"}
+                </p>
+                <p className="mt-0.5 font-ds-ui text-[12px] text-[#737373]">
+                  {firstReportReceived
+                    ? "Your widget is connected. Continue to connect an agent, or open the inbox."
+                    : waiting
+                      ? "Install the snippet or open the demo app, then send a test report from the floating Report button."
+                      : "Checking for reports…"}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center justify-end border-t border-[#17171714] bg-[#FAFAFA] px-8 py-4">
+          <div className="flex items-center justify-between gap-3 border-t border-[#17171714] bg-[#FAFAFA] px-8 py-4">
+            {firstReportReceived ? (
+              <button
+                type="button"
+                onClick={() => router.push("/app/inbox")}
+                className="cursor-pointer text-[13px] font-medium text-[#737373] hover:text-[#171717]"
+              >
+                Open inbox
+              </button>
+            ) : (
+              <span className="text-xs text-[#A3A3A3]">You can continue without a report</span>
+            )}
             <button
               type="button"
               onClick={() => router.push("/app/mcp")}

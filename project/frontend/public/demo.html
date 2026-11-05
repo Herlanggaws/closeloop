@@ -2,26 +2,227 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Closeloop widget demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bear Budget Web · Closeloop demo</title>
     <style>
-      body { font-family: Inter, system-ui, sans-serif; margin: 40px; color: #171717; }
-      .balance { font-size: 32px; font-weight: 700; }
+      :root {
+        --ink: #171717;
+        --muted: #737373;
+        --line: #17171714;
+        --bg: #f7f7f7;
+        --card: #ffffff;
+        --green: #16a34a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "DM Sans", "Segoe UI", system-ui, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(ellipse 80% 50% at 10% -10%, #dbeafe88, transparent),
+          radial-gradient(ellipse 60% 40% at 100% 0%, #fef3c788, transparent),
+          var(--bg);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 24px;
+        background: var(--card);
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+      }
+      .mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--ink);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+      }
+      .pill {
+        font-size: 12px;
+        color: var(--muted);
+        background: #f5f5f5;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 10px;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 40px 20px 96px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        letter-spacing: -0.6px;
+        font-weight: 600;
+      }
+      .lede {
+        margin: 0 0 28px;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 4px 4px #1717170a;
+        overflow: hidden;
+      }
+      .balance {
+        padding: 28px 24px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .amount {
+        font-size: 36px;
+        font-weight: 700;
+        letter-spacing: -1px;
+        font-variant-numeric: tabular-nums;
+      }
+      .hint {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .rows { padding: 8px 0; }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 24px;
+      }
+      .row + .row { border-top: 1px solid var(--line); }
+      .row-title { font-size: 14px; font-weight: 500; }
+      .row-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+      .row-amt { font-size: 14px; font-variant-numeric: tabular-nums; }
+      .neg { color: #da314a; }
+      .pos { color: var(--green); }
+      .howto {
+        margin-top: 20px;
+        padding: 16px 18px;
+        border-radius: 12px;
+        background: #eff6ff;
+        border: 1px solid #266df033;
+        color: #1e3a8a;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .howto strong { color: var(--ink); }
+      .status {
+        margin-top: 16px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .status.err { color: #da314a; }
     </style>
   </head>
   <body>
-    <h1>Demo app</h1>
-    <p class="balance" data-closeloop-mask>Rp 12.450.000</p>
-    <p>Click <strong>Report</strong> in the corner to send feedback.</p>
+    <header>
+      <div class="brand">
+        <span class="mark">🐻</span>
+        <span>Bear Budget Web</span>
+      </div>
+      <span class="pill">Closeloop demo</span>
+    </header>
+
+    <main>
+      <h1>This month</h1>
+      <p class="lede">
+        Mini host app for dogfooding Closeloop. Click <strong>Report</strong> in the corner to send
+        feedback with a screenshot — the balance below is masked before capture.
+      </p>
+
+      <section class="card">
+        <div class="balance">
+          <div class="label">Available balance</div>
+          <div class="amount" data-closeloop-mask>Rp 12.450.000</div>
+          <div class="hint">Marked with <code>data-closeloop-mask</code> so it blurs in screenshots.</div>
+        </div>
+        <div class="rows">
+          <div class="row">
+            <div>
+              <div class="row-title">Groceries · Alfamart</div>
+              <div class="row-meta">Today · Food</div>
+            </div>
+            <div class="row-amt neg">−Rp 86.500</div>
+          </div>
+          <div class="row">
+            <div>
+              <div class="row-title">Salary · ACME</div>
+              <div class="row-meta">Yesterday · Income</div>
+            </div>
+            <div class="row-amt pos">+Rp 8.200.000</div>
+          </div>
+          <div class="row">
+            <div>
+              <div class="row-title">Coffee · Kopi Kenangan</div>
+              <div class="row-meta">Mon · Food</div>
+            </div>
+            <div class="row-amt neg">−Rp 28.000</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="howto">
+        <strong>Try it:</strong> use the floating Report button → pick Bug / Idea / Question → send.
+        Then return to Closeloop Install — it should show “First report received”, and the ticket
+        appears in your inbox.
+      </div>
+      <p class="status" id="status">Loading Closeloop widget…</p>
+    </main>
+
     <script>
-      const key = new URLSearchParams(location.search).get("key") || "pk_replace_me";
-      const s = document.createElement("script");
-      s.src = "/w.js";
-      s.dataset.key = key;
-      s.dataset.api = "http://localhost:8080";
-      s.dataset.userId = "demo-user";
-      s.dataset.email = "demo-user@example.com";
-      s.dataset.appVersion = "0.1.0";
-      document.body.appendChild(s);
+      (function () {
+        const params = new URLSearchParams(location.search);
+        const key = params.get("key") || "";
+        const api = params.get("api") || "http://localhost:8080";
+        const widgetSrc = params.get("widget") || "/w.js";
+        const status = document.getElementById("status");
+
+        if (!key || key === "pk_replace_me") {
+          status.className = "status err";
+          status.textContent =
+            "Missing public key. Open this page from Install as /demo.html?key=pk_…";
+          return;
+        }
+
+        const s = document.createElement("script");
+        s.src = widgetSrc;
+        s.async = true;
+        s.dataset.key = key;
+        s.dataset.api = api;
+        s.dataset.userId = params.get("user_id") || "demo-user";
+        s.dataset.email = params.get("email") || "demo-user@example.com";
+        s.dataset.appVersion = params.get("app_version") || "0.1.0";
+        s.onload = function () {
+          status.textContent = "Widget loaded · key " + key.slice(0, 10) + "…";
+        };
+        s.onerror = function () {
+          status.className = "status err";
+          status.textContent =
+            "Could not load " + widgetSrc + ". Run frontend dig so /w.js is built.";
+        };
+        document.body.appendChild(s);
+      })();
     </script>
   </body>
 </html>
