@@ -118,19 +118,34 @@ export function McpServer() {
 
     let cancelled = false;
     setLoading(true);
-    Promise.all([
-      api<{ project: ProjectInfo }>(`/api/projects/${projectId}`),
-      api<MeResponse>("/api/me"),
-      api<{ tokens: McpTokenRow[] }>(`/api/projects/${projectId}/mcp-tokens`),
-    ])
-      .then(([projectRes, meRes, tokensRes]) => {
+
+    (async () => {
+      try {
+        const [projectRes, meRes] = await Promise.all([
+          api<{ project: ProjectInfo }>(`/api/projects/${projectId}`),
+          api<MeResponse>("/api/me"),
+        ]);
         if (cancelled) return;
         setProject(projectRes.project);
         setMe(meRes);
-        setTokens(tokensRes.tokens || []);
         setError("");
-      })
-      .catch((err) => {
+
+        try {
+          const tokensRes = await api<{ tokens: McpTokenRow[] }>(
+            `/api/projects/${projectId}/mcp-tokens`,
+          );
+          if (!cancelled) setTokens(tokensRes.tokens || []);
+        } catch (tokenErr) {
+          if (!cancelled) {
+            setTokens([]);
+            setError(
+              tokenErr instanceof Error
+                ? tokenErr.message
+                : "Failed to load MCP tokens",
+            );
+          }
+        }
+      } catch (err) {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : "Failed to load MCP server";
         setError(message);
@@ -138,10 +153,10 @@ export function McpServer() {
           clearProjectSelection();
           router.replace("/app/onboarding");
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
