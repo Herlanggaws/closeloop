@@ -114,12 +114,29 @@ export function ReportDetail() {
       router.push(`/app/tickets/${ticketId}/fixed`);
       return;
     }
+    const previous = data.ticket.status;
     setSavingStatus(true);
     setError("");
     try {
       await api(`/api/tickets/${ticketId}`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
+      });
+      setData((current) => {
+        if (!current) return current;
+        const optimistic = {
+          id: `local-${Date.now()}`,
+          ticket_id: ticketId,
+          actor: me?.user.email ? `user:${me.user.email}` : "user",
+          kind: "status_changed",
+          payload: { from: previous, to: status },
+          created_at: new Date().toISOString(),
+        };
+        return {
+          ...current,
+          ticket: { ...current.ticket, status },
+          events: [...(current.events || []), optimistic],
+        };
       });
       await reloadDetail();
     } catch (err) {

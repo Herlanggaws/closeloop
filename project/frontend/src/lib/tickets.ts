@@ -44,7 +44,7 @@ export type TicketEvent = {
   ticket_id: string;
   actor: string;
   kind: string;
-  payload: Record<string, unknown> | null;
+  payload: Record<string, unknown> | string | null;
   created_at: string;
 };
 
@@ -124,8 +124,21 @@ export function actorLabel(actor: string) {
   return actor;
 }
 
+function asPayload(payload: TicketEvent["payload"]): Record<string, unknown> {
+  if (!payload) return {};
+  if (typeof payload === "string") {
+    try {
+      const parsed = JSON.parse(payload) as unknown;
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return payload;
+}
+
 export function eventDescription(event: TicketEvent) {
-  const payload = event.payload || {};
+  const payload = asPayload(event.payload);
   if (event.kind === "note") {
     const body = typeof payload.body === "string" ? payload.body : "";
     return body ? `added a note: "${body}"` : "added a note";
@@ -133,8 +146,8 @@ export function eventDescription(event: TicketEvent) {
   if (event.kind === "status_changed") {
     const from = typeof payload.from === "string" ? payload.from : "";
     const to = typeof payload.to === "string" ? payload.to : "";
-    const fromLabel = STATUS_META[from]?.label || from;
-    const toLabel = STATUS_META[to]?.label || to;
+    const fromLabel = STATUS_META[from]?.label || from || "?";
+    const toLabel = STATUS_META[to]?.label || to || "?";
     return `changed status ${fromLabel} → ${toLabel}`;
   }
   if (event.kind === "created") return "reported this";
