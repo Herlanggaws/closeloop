@@ -19,7 +19,7 @@ type ProjectInfo = {
 };
 
 type MeResponse = {
-  user: { email: string };
+  user: { email: string; name?: string; avatar_url?: string };
   org: { name: string; plan: string };
 };
 
@@ -159,14 +159,18 @@ export function ProjectSettings() {
 
         {email && (
           <div className="mt-auto flex items-center gap-2.5 px-1.5 py-1">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#171717]">
-              <span className="font-ds-sans text-[11px] font-medium text-white">
-                {initials(email)}
-              </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#171717] overflow-hidden shrink-0">
+              {me?.user?.avatar_url ? (
+                <img src={me.user.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="font-ds-sans text-[11px] font-medium text-white">
+                  {initials(email)}
+                </span>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
-                {displayName(email)}
+                {me?.user?.name || displayName(email)}
               </div>
               <button
                 type="button"

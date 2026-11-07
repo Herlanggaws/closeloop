@@ -31,6 +31,7 @@ type User struct {
 	Email        string         `json:"email"`
 	PasswordHash sql.NullString `json:"-"`
 	Name         string         `json:"name"`
+	AvatarURL    string         `json:"avatar_url"`
 }
 
 type Org struct {
@@ -123,9 +124,9 @@ func (s *Store) Register(ctx context.Context, email, password, name string) (Use
 
 	var user User
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO users(email, password_hash, name) VALUES ($1,$2,$3)
-		RETURNING id, email, password_hash, name`, email, hash, name).
-		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name)
+		INSERT INTO users(email, password_hash, name, avatar_url) VALUES ($1,$2,$3,'')
+		RETURNING id, email, password_hash, name, avatar_url`, email, hash, name).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") {
 			return User{}, Org{}, ErrConflict
@@ -149,10 +150,101 @@ func (s *Store) Register(ctx context.Context, email, password, name string) (Use
 	return user, org, nil
 }
 
+func (s *Store) UpsertGoogleUser(ctx context.Context, email, name, googleSub, avatarURL string) (User, Org, bool, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	googleSub = strings.TrimSpace(googleSub)
+	avatarURL = strings.TrimSpace(avatarURL)
+	if email == "" || googleSub == "" {
+		return User{}, Org{}, false, ErrInvalidInput
+	}
+	if name == "" {
+		name = strings.Split(email, "@")[0]
+	}
+
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return User{}, Org{}, false, err
+	}
+	defer tx.Rollback()
+
+	var user User
+	// 1. Existing user linked by google_sub
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, email, password_hash, name, avatar_url
+		FROM users
+		WHERE google_sub = $1`, googleSub).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
+	if err == nil {
+		if avatarURL != "" && user.AvatarURL != avatarURL {
+			_, _ = tx.ExecContext(ctx, `UPDATE users SET avatar_url = $1 WHERE id = $2`, avatarURL, user.ID)
+			user.AvatarURL = avatarURL
+		}
+		if err := tx.Commit(); err != nil {
+			return User{}, Org{}, false, err
+		}
+		return user, Org{}, false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return User{}, Org{}, false, err
+	}
+
+	// 2. Existing user by email — link google_sub and optionally update avatar
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, email, password_hash, name, avatar_url
+		FROM users
+		WHERE email = $1`, email).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
+	if err == nil {
+		if avatarURL != "" && user.AvatarURL != avatarURL {
+			_, err = tx.ExecContext(ctx, `UPDATE users SET google_sub = $1, avatar_url = $2 WHERE id = $3`, googleSub, avatarURL, user.ID)
+			user.AvatarURL = avatarURL
+		} else {
+			_, err = tx.ExecContext(ctx, `UPDATE users SET google_sub = $1 WHERE id = $2`, googleSub, user.ID)
+		}
+		if err != nil {
+			return User{}, Org{}, false, err
+		}
+		if err := tx.Commit(); err != nil {
+			return User{}, Org{}, false, err
+		}
+		return user, Org{}, false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return User{}, Org{}, false, err
+	}
+
+	// 3. New user registration
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO users(email, google_sub, name, avatar_url) VALUES ($1,$2,$3,$4)
+		RETURNING id, email, password_hash, name, avatar_url`, email, googleSub, name, avatarURL).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
+	if err != nil {
+		return User{}, Org{}, false, err
+	}
+
+	var org Org
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO organizations(name, plan) VALUES ($1,'indie')
+		RETURNING id, name, plan`, name+"'s org").
+		Scan(&org.ID, &org.Name, &org.Plan)
+	if err != nil {
+		return User{}, Org{}, false, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `INSERT INTO memberships(org_id, user_id, role) VALUES ($1,$2,'owner')`, org.ID, user.ID); err != nil {
+		return User{}, Org{}, false, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return User{}, Org{}, false, err
+	}
+	return user, org, true, nil
+}
+
 func (s *Store) Login(ctx context.Context, email, password string) (User, error) {
 	var user User
-	err := s.DB.QueryRowContext(ctx, `SELECT id, email, password_hash, name FROM users WHERE email=$1`, strings.ToLower(email)).
-		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name)
+	err := s.DB.QueryRowContext(ctx, `SELECT id, email, password_hash, name, avatar_url FROM users WHERE email=$1`, strings.ToLower(email)).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrUnauthorized
 	}
@@ -165,6 +257,16 @@ func (s *Store) Login(ctx context.Context, email, password string) (User, error)
 	return user, nil
 }
 
+func (s *Store) UserByID(ctx context.Context, id string) (User, error) {
+	var user User
+	err := s.DB.QueryRowContext(ctx, `SELECT id, email, password_hash, name, avatar_url FROM users WHERE id=$1`, id).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	return user, err
+}
+
 func (s *Store) SaveRefresh(ctx context.Context, userID, raw string, expires time.Time) error {
 	_, err := s.DB.ExecContext(ctx, `
 		INSERT INTO refresh_tokens(user_id, token_hash, expires_at) VALUES ($1,$2,$3)`,
@@ -175,11 +277,11 @@ func (s *Store) SaveRefresh(ctx context.Context, userID, raw string, expires tim
 func (s *Store) UserByRefresh(ctx context.Context, raw string) (User, error) {
 	var user User
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT u.id, u.email, u.password_hash, u.name
+		SELECT u.id, u.email, u.password_hash, u.name, u.avatar_url
 		FROM refresh_tokens rt
 		JOIN users u ON u.id = rt.user_id
 		WHERE rt.token_hash=$1 AND rt.revoked_at IS NULL AND rt.expires_at > now()`, auth.SHA256(raw)).
-		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name)
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrUnauthorized
 	}
