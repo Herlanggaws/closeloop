@@ -3,8 +3,11 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -38,6 +41,10 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/waitlist", s.joinWaitlist)
 		api.POST("/auth/register", s.register)
 		api.POST("/auth/login", s.login)
+		api.GET("/auth/google", s.googleLogin)
+		api.GET("/auth/google/callback", s.googleCallback)
+		api.GET("/auth/google/config", s.googleConfig)
+		api.POST("/auth/google/one-tap", s.googleOneTap)
 		api.POST("/auth/refresh", s.refresh)
 		api.POST("/auth/logout", s.logout)
 		api.GET("/me", s.authRequired(), s.me)
@@ -159,7 +166,7 @@ func (s *Server) issueSession(c *gin.Context, user application.User) {
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 	})
-	c.JSON(200, gin.H{"access_token": access, "user": gin.H{"id": user.ID, "email": user.Email, "name": user.Name}})
+	c.JSON(200, gin.H{"access_token": access, "user": gin.H{"id": user.ID, "email": user.Email, "name": user.Name, "avatar_url": user.AvatarURL}})
 }
 
 func (s *Server) joinWaitlist(c *gin.Context) {
@@ -213,6 +220,291 @@ func (s *Server) login(c *gin.Context) {
 	s.issueSession(c, user)
 }
 
+func (s *Server) googleLogin(c *gin.Context) {
+	if s.Cfg.GoogleClientID == "" || s.Cfg.GoogleClientSecret == "" {
+		redirectErr := fmt.Sprintf("%s/login?error=%s", s.Cfg.WebURL, url.QueryEscape("Google OAuth is not configured on server"))
+		c.Redirect(http.StatusTemporaryRedirect, redirectErr)
+		return
+	}
+	state, err := auth.RandomToken(16)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		Path:     "/",
+		MaxAge:   300,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	redirectURI := s.Cfg.APIURL + "/api/auth/google/callback"
+	u, _ := url.Parse("https://accounts.google.com/o/oauth2/v2/auth")
+	q := u.Query()
+	q.Set("client_id", s.Cfg.GoogleClientID)
+	q.Set("redirect_uri", redirectURI)
+	q.Set("response_type", "code")
+	q.Set("scope", "openid email profile")
+	q.Set("state", state)
+	q.Set("prompt", "select_account")
+	u.RawQuery = q.Encode()
+
+	c.Redirect(http.StatusTemporaryRedirect, u.String())
+}
+
+func (s *Server) googleCallback(c *gin.Context) {
+	fail := func(reason string) {
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s/login?error=%s", s.Cfg.WebURL, url.QueryEscape(reason)))
+	}
+
+	if s.Cfg.GoogleClientID == "" || s.Cfg.GoogleClientSecret == "" {
+		fail("Google OAuth is not configured on server")
+		return
+	}
+
+	if errParam := c.Query("error"); errParam != "" {
+		fail(fmt.Sprintf("Google sign in cancelled: %s", errParam))
+		return
+	}
+
+	state := c.Query("state")
+	cookieState, err := c.Cookie("oauth_state")
+	if err != nil || state == "" || state != cookieState {
+		fail("Invalid or expired OAuth state")
+		return
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	code := c.Query("code")
+	if code == "" {
+		fail("Missing authorization code")
+		return
+	}
+
+	redirectURI := s.Cfg.APIURL + "/api/auth/google/callback"
+	tokenURL := "https://oauth2.googleapis.com/token"
+	form := url.Values{
+		"code":          {code},
+		"client_id":     {s.Cfg.GoogleClientID},
+		"client_secret": {s.Cfg.GoogleClientSecret},
+		"redirect_uri":  {redirectURI},
+		"grant_type":    {"authorization_code"},
+	}
+
+	resp, err := http.PostForm(tokenURL, form)
+	if err != nil {
+		slog.Error("google token exchange failed", "err", err)
+		fail("Failed to exchange code with Google")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var tokenErr map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&tokenErr)
+		slog.Error("google token status error", "status", resp.StatusCode, "body", tokenErr)
+		fail("Google rejected authorization code")
+		return
+	}
+
+	var tokenRes struct {
+		AccessToken string `json:"access_token"`
+		IDToken     string `json:"id_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenRes); err != nil {
+		fail("Failed to parse Google token response")
+		return
+	}
+
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, "https://www.googleapis.com/oauth2/v3/userinfo", nil)
+	if err != nil {
+		fail("Failed to create userinfo request")
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+tokenRes.AccessToken)
+
+	userinfoResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fail("Failed to fetch userinfo from Google")
+		return
+	}
+	defer userinfoResp.Body.Close()
+
+	if userinfoResp.StatusCode != http.StatusOK {
+		fail("Google userinfo returned error")
+		return
+	}
+
+	var gUser struct {
+		Sub           string `json:"sub"`
+		Email         string `json:"email"`
+		EmailVerified bool   `json:"email_verified"`
+		Name          string `json:"name"`
+		Picture       string `json:"picture"`
+	}
+	if err := json.NewDecoder(userinfoResp.Body).Decode(&gUser); err != nil {
+		fail("Failed to parse Google userinfo")
+		return
+	}
+	if gUser.Email == "" || gUser.Sub == "" {
+		fail("Google account missing email or identifier")
+		return
+	}
+
+	user, _, isNew, err := s.Store.UpsertGoogleUser(c.Request.Context(), gUser.Email, gUser.Name, gUser.Sub, gUser.Picture)
+	if err != nil {
+		slog.Error("upsert google user failed", "err", err)
+		fail("Database error saving user")
+		return
+	}
+
+	access, err := auth.IssueAccess(s.Cfg.JWTSecret, user.ID, user.Email, 15*time.Minute)
+	if err != nil {
+		fail("Failed to issue access token")
+		return
+	}
+	refresh, err := auth.RandomToken(32)
+	if err != nil {
+		fail("Failed to generate refresh token")
+		return
+	}
+	if err := s.Store.SaveRefresh(c.Request.Context(), user.ID, refresh, time.Now().Add(30*24*time.Hour)); err != nil {
+		fail("Failed to save refresh token")
+		return
+	}
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		Path:     "/",
+		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	isNewParam := "0"
+	if isNew {
+		isNewParam = "1"
+	}
+	targetURL := fmt.Sprintf("%s/auth/callback?access_token=%s&new=%s", s.Cfg.WebURL, url.QueryEscape(access), isNewParam)
+	c.Redirect(http.StatusTemporaryRedirect, targetURL)
+}
+
+func (s *Server) googleConfig(c *gin.Context) {
+	c.JSON(200, gin.H{"client_id": s.Cfg.GoogleClientID})
+}
+
+func (s *Server) googleOneTap(c *gin.Context) {
+	if s.Cfg.GoogleClientID == "" {
+		writeErr(c, 503, "NOT_CONFIGURED", "Google OAuth is not configured on server")
+		return
+	}
+
+	var body struct {
+		Credential string `json:"credential"`
+	}
+	if err := c.BindJSON(&body); err != nil || body.Credential == "" {
+		writeErr(c, 400, "INVALID_INPUT", "missing credential")
+		return
+	}
+
+	tokenInfoURL := "https://oauth2.googleapis.com/tokeninfo?id_token=" + url.QueryEscape(body.Credential)
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, tokenInfoURL, nil)
+	if err != nil {
+		writeErr(c, 500, "INTERNAL", "failed to create verification request")
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		slog.Error("google tokeninfo request failed", "err", err)
+		writeErr(c, 502, "UPSTREAM_ERROR", "failed to verify token with Google")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		writeErr(c, 401, "UNAUTHORIZED", "invalid Google credential")
+		return
+	}
+
+	var claims struct {
+		Aud           string `json:"aud"`
+		Sub           string `json:"sub"`
+		Email         string `json:"email"`
+		EmailVerified string `json:"email_verified"`
+		Name          string `json:"name"`
+		Picture       string `json:"picture"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&claims); err != nil {
+		writeErr(c, 500, "INTERNAL", "failed to parse Google token claims")
+		return
+	}
+
+	if claims.Aud != s.Cfg.GoogleClientID {
+		writeErr(c, 401, "UNAUTHORIZED", "token audience mismatch")
+		return
+	}
+	if claims.Sub == "" || claims.Email == "" {
+		writeErr(c, 400, "INVALID_INPUT", "missing subject or email in token")
+		return
+	}
+
+	user, _, isNew, err := s.Store.UpsertGoogleUser(c.Request.Context(), claims.Email, claims.Name, claims.Sub, claims.Picture)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+
+	access, err := auth.IssueAccess(s.Cfg.JWTSecret, user.ID, user.Email, 15*time.Minute)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	refresh, err := auth.RandomToken(32)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if err := s.Store.SaveRefresh(c.Request.Context(), user.ID, refresh, time.Now().Add(30*24*time.Hour)); err != nil {
+		mapErr(c, err)
+		return
+	}
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		Path:     "/",
+		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	c.JSON(200, gin.H{
+		"access_token": access,
+		"user": gin.H{
+			"id":         user.ID,
+			"email":      user.Email,
+			"name":       user.Name,
+			"avatar_url": user.AvatarURL,
+		},
+		"is_new": isNew,
+	})
+}
+
 func (s *Server) refresh(c *gin.Context) {
 	raw, err := c.Cookie("refresh_token")
 	if err != nil || raw == "" {
@@ -244,13 +536,23 @@ func (s *Server) logout(c *gin.Context) {
 
 func (s *Server) me(c *gin.Context) {
 	userID := c.GetString("userID")
+	user, err := s.Store.UserByID(c.Request.Context(), userID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
 	org, role, err := s.Store.PrimaryOrg(c.Request.Context(), userID)
 	if err != nil {
 		mapErr(c, err)
 		return
 	}
 	c.JSON(200, gin.H{
-		"user": gin.H{"id": userID, "email": c.GetString("email")},
+		"user": gin.H{
+			"id":         userID,
+			"email":      user.Email,
+			"name":       user.Name,
+			"avatar_url": user.AvatarURL,
+		},
 		"org":  gin.H{"id": org.ID, "name": org.Name, "plan": org.Plan},
 		"role": role,
 	})

@@ -15,7 +15,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | DES | Design system foundations | Tokens + `/design-system` review page |
 | DES | S-01…S-27 pixel screens | Exported from pen → Next routes under `/app/*`, `/board/*`, `/preview/*` |
 | DES | Landing (S-01) | Pixel match, waitlist CTAs → signup |
-| F1 | Email register / login (S-02) | JWT session; Google button UI only |
+| F1 | Email register / login (S-02) | JWT session; Google OAuth live |
 | F1 | Create project API | `POST /api/projects`, public key issued |
 | F1 | MCP token create | Shown once; hashed storage |
 | F2 | Ingest API | `POST /v1/ingest/reports`, upload, complete, identify, updates |
@@ -62,7 +62,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] Pick Lemon Squeezy vs Paddle (billing still manual `plan` for now)
 
 #### M1 · Inti web (F1, F2, F4, F5, F6) — priority
-- [ ] **F1** Google OAuth
+- [x] **F1** Google OAuth
 - [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
 - [x] **F1** Log out (revoke refresh + clear session)
 - [ ] **F1** Multi-project UI + plan limits
