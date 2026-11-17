@@ -2,9 +2,21 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { api, logout } from "@/lib/api";
+import {
+  avatarTone,
+  drainInviteDraft,
+  isLikelyEmail,
+  mergeInviteEmails,
+} from "@/lib/inviteEmails";
 import { displayName, initials } from "@/lib/tickets";
 import {
   formatUsage,
@@ -36,14 +48,28 @@ export function Team() {
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [usage, setUsage] = useState<OrgUsage | null>(null);
-  const [emails, setEmails] = useState("");
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+  const [inviteDraft, setInviteDraft] = useState("");
   const [role, setRole] = useState<"member" | "viewer">("member");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const inviteInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = (me?.role || "") === "owner";
+
+  function commitInviteDraft(mode: "delimiter" | "all") {
+    const { completed, remainder } = drainInviteDraft(inviteDraft, mode);
+    if (completed.length > 0) {
+      setInviteEmails((prev) => mergeInviteEmails(prev, completed));
+    }
+    setInviteDraft(remainder);
+  }
+
+  function removeInviteEmail(email: string) {
+    setInviteEmails((prev) => prev.filter((item) => item !== email));
+  }
 
   async function reload() {
     const projectId = localStorage.getItem("closeloop_project");
@@ -109,10 +135,8 @@ export function Team() {
 
   async function sendInvites() {
     if (!isOwner) return;
-    const list = emails
-      .split(/[\s,;]+/)
-      .map((e) => e.trim())
-      .filter(Boolean);
+    const { completed } = drainInviteDraft(inviteDraft, "all");
+    const list = mergeInviteEmails(inviteEmails, completed);
     if (list.length === 0) {
       setError("Enter at least one email");
       return;
@@ -125,13 +149,31 @@ export function Team() {
         method: "POST",
         body: JSON.stringify({ emails: list, role }),
       });
-      setEmails("");
+      setInviteEmails([]);
+      setInviteDraft("");
       setNotice(`Invite sent to ${list.length} address${list.length === 1 ? "" : "es"}`);
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send invites");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function onInviteKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter" || event.key === "Tab" || event.key === ",") {
+      event.preventDefault();
+      commitInviteDraft("all");
+      return;
+    }
+    if (event.key === "Backspace" && !inviteDraft && inviteEmails.length > 0) {
+      event.preventDefault();
+      setInviteEmails((prev) => prev.slice(0, -1));
+      return;
+    }
+    if (event.key === " " && isLikelyEmail(inviteDraft)) {
+      event.preventDefault();
+      commitInviteDraft("all");
     }
   }
 
@@ -286,13 +328,90 @@ export function Team() {
                     </div>
                   ) : (
                     <div className="mt-4 flex flex-col gap-3">
-                      <textarea
-                        value={emails}
-                        onChange={(e) => setEmails(e.target.value)}
-                        rows={2}
-                        placeholder="teammate@company.com, other@company.com"
-                        className="w-full rounded-md border border-[#1717171F] px-3 py-2 font-ds-ui text-[13px] outline-none focus:border-[#171717]"
-                      />
+                      <div
+                        role="group"
+                        aria-label="Invite emails"
+                        onClick={() => inviteInputRef.current?.focus()}
+                        className="flex min-h-[44px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-md border border-[#1717171F] bg-white px-2 py-1.5 focus-within:border-[#171717]"
+                      >
+                        {inviteEmails.map((email) => (
+                          <span
+                            key={email}
+                            className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#D4D4D4] bg-[#F5F5F5] py-0.5 pl-0.5 pr-1.5"
+                          >
+                            <span
+                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium text-white"
+                              style={{ backgroundColor: avatarTone(email) }}
+                              aria-hidden
+                            >
+                              {email.slice(0, 1).toUpperCase()}
+                            </span>
+                            <span className="truncate font-ds-ui text-[12px] text-[#171717]">
+                              {email}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label={`Remove ${email}`}
+                              disabled={saving}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeInviteEmail(email);
+                              }}
+                              className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full text-[#737373] hover:bg-[#17171714] hover:text-[#171717]"
+                            >
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+                                <path
+                                  d="M2.5 2.5l5 5M7.5 2.5l-5 5"
+                                  stroke="currentColor"
+                                  strokeWidth="1.4"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            </button>
+                          </span>
+                        ))}
+                        <input
+                          ref={inviteInputRef}
+                          value={inviteDraft}
+                          disabled={saving}
+                          spellCheck={false}
+                          autoComplete="off"
+                          autoCorrect="off"
+                          placeholder={
+                            inviteEmails.length === 0
+                              ? "teammate@company.com, other@company.com"
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            if (/[,;]/.test(next)) {
+                              const { completed, remainder } = drainInviteDraft(next, "delimiter");
+                              if (completed.length > 0) {
+                                setInviteEmails((prev) => mergeInviteEmails(prev, completed));
+                              }
+                              setInviteDraft(remainder);
+                              return;
+                            }
+                            setInviteDraft(next);
+                          }}
+                          onKeyDown={onInviteKeyDown}
+                          onBlur={() => commitInviteDraft("all")}
+                          onPaste={(e) => {
+                            const text = e.clipboardData.getData("text");
+                            if (!text || !/[,;\s]/.test(text)) return;
+                            e.preventDefault();
+                            const { completed } = drainInviteDraft(
+                              `${inviteDraft}${text}`,
+                              "all",
+                            );
+                            if (completed.length > 0) {
+                              setInviteEmails((prev) => mergeInviteEmails(prev, completed));
+                            }
+                            setInviteDraft("");
+                          }}
+                          className="min-w-[140px] flex-1 border-0 bg-transparent px-1 py-1 font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3]"
+                        />
+                      </div>
                       <div className="flex flex-wrap items-center gap-3">
                         <select
                           value={role}
@@ -304,7 +423,7 @@ export function Team() {
                         </select>
                         <button
                           type="button"
-                          disabled={saving}
+                          disabled={saving || (inviteEmails.length === 0 && !inviteDraft.trim())}
                           onClick={() => void sendInvites()}
                           className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
                         >
