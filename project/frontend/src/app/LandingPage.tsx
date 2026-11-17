@@ -68,14 +68,6 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           data-pencil-name="Actions"
           className="box-border w-fit shrink-0 h-fit flex flex-row gap-[8px] justify-start items-center"
         >
-          <a href="/login" data-pencil-name="Log in" className="cursor-pointer no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-fit shrink-0 h-[36px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
-            <div
-              data-pencil-name="Label"
-              className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
-            >
-              Log in
-            </div>
-          </a>
           <button type="button" onClick={openWaitlist} data-pencil-name="Join waitlist" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-fit shrink-0 h-[36px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#171717] rounded-[6px]">
             <div
               data-pencil-name="Label"
