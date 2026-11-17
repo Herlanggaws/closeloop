@@ -54,7 +54,8 @@ export function Team() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [inviteNotice, setInviteNotice] = useState("");
   const inviteInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = (me?.role || "") === "owner";
@@ -138,12 +139,12 @@ export function Team() {
     const { completed } = drainInviteDraft(inviteDraft, "all");
     const list = mergeInviteEmails(inviteEmails, completed);
     if (list.length === 0) {
-      setError("Enter at least one email");
+      setInviteError("Enter at least one email");
       return;
     }
     setSaving(true);
-    setError("");
-    setNotice("");
+    setInviteError("");
+    setInviteNotice("");
     try {
       await api("/api/org/invites", {
         method: "POST",
@@ -151,10 +152,10 @@ export function Team() {
       });
       setInviteEmails([]);
       setInviteDraft("");
-      setNotice(`Invite sent to ${list.length} address${list.length === 1 ? "" : "es"}`);
+      setInviteNotice(`Invite sent to ${list.length} address${list.length === 1 ? "" : "es"}`);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send invites");
+      setInviteError(err instanceof Error ? err.message : "Could not send invites");
     } finally {
       setSaving(false);
     }
@@ -179,13 +180,13 @@ export function Team() {
 
   async function resend(id: string) {
     setSaving(true);
-    setError("");
+    setInviteError("");
     try {
       await api(`/api/org/invites/${id}/resend`, { method: "POST" });
-      setNotice("Invite resent");
+      setInviteNotice("Invite resent");
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not resend");
+      setInviteError(err instanceof Error ? err.message : "Could not resend");
     } finally {
       setSaving(false);
     }
@@ -306,7 +307,6 @@ export function Team() {
           ) : (
             <>
               {error && <p className="text-sm text-[#DA314A]">{error}</p>}
-              {notice && <p className="text-sm text-[#16A34A]">{notice}</p>}
 
               {isOwner && (
                 <section className="rounded-2xl border border-[#17171714] bg-white p-6">
@@ -332,7 +332,9 @@ export function Team() {
                         role="group"
                         aria-label="Invite emails"
                         onClick={() => inviteInputRef.current?.focus()}
-                        className="flex min-h-[44px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-md border border-[#1717171F] bg-white px-2 py-1.5 focus-within:border-[#171717]"
+                        className={`flex min-h-[44px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-md border bg-white px-2 py-1.5 focus-within:border-[#171717] ${
+                          inviteError ? "border-[#DA314A]" : "border-[#1717171F]"
+                        }`}
                       >
                         {inviteEmails.map((email) => (
                           <span
@@ -383,6 +385,7 @@ export function Team() {
                               : ""
                           }
                           onChange={(e) => {
+                            if (inviteError) setInviteError("");
                             const next = e.target.value;
                             if (/[,;]/.test(next)) {
                               const { completed, remainder } = drainInviteDraft(next, "delimiter");
@@ -412,6 +415,22 @@ export function Team() {
                           className="min-w-[140px] flex-1 border-0 bg-transparent px-1 py-1 font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3]"
                         />
                       </div>
+                      {inviteError && (
+                        <div className="-mt-1 flex flex-col gap-1">
+                          <p className="font-ds-ui text-[13px] text-[#DA314A]">{inviteError}</p>
+                          {/seat limit/i.test(inviteError) && (
+                            <Link
+                              href="/app/settings/billing"
+                              className="font-ds-ui text-[13px] text-[#2563eb]"
+                            >
+                              Upgrade on Billing →
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                      {inviteNotice && !inviteError && (
+                        <p className="-mt-1 font-ds-ui text-[13px] text-[#16A34A]">{inviteNotice}</p>
+                      )}
                       <div className="flex flex-wrap items-center gap-3">
                         <select
                           value={role}
