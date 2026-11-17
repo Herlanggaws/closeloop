@@ -48,11 +48,18 @@ export type TicketEvent = {
   created_at: string;
 };
 
+export type IntegrationConfig = {
+  id?: string;
+  provider: string;
+  config: Record<string, unknown> | string;
+};
+
 export type TicketDetailResponse = {
   ticket: TicketDetail;
   reports: TicketReport[];
   attachments: TicketAttachment[];
   events: TicketEvent[];
+  integrations?: IntegrationConfig[];
   reporters: { total: number; with_email: number };
 };
 
@@ -204,6 +211,64 @@ export function screenshotUrl(attachments: TicketAttachment[]) {
 
 export function primaryReport(reports: TicketReport[]) {
   return reports[0];
+}
+
+function integrationConfigMap(
+  raw: IntegrationConfig["config"] | undefined,
+): Record<string, string> {
+  let obj: Record<string, unknown> = {};
+  if (typeof raw === "string") {
+    try {
+      obj = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      obj = {};
+    }
+  } else if (raw && typeof raw === "object") {
+    obj = raw;
+  }
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  }
+  return out;
+}
+
+function contextString(ctx: Record<string, unknown> | null | undefined, key: string) {
+  const value = ctx?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+export function buildSentryUrl(
+  report: TicketReport | undefined,
+  integrations: IntegrationConfig[] | undefined,
+): string | null {
+  const eventId = contextString(report?.context, "sentry_event_id");
+  if (!eventId) return null;
+  const cfg = integrationConfigMap(
+    integrations?.find((i) => i.provider === "sentry")?.config,
+  );
+  const org = cfg.org || cfg.organization;
+  if (!org) return null;
+  const project = cfg.project;
+  const base = project
+    ? `https://${org}.sentry.io/projects/${encodeURIComponent(project)}/`
+    : `https://${org}.sentry.io/issues/`;
+  return `${base}?query=${encodeURIComponent(eventId)}`;
+}
+
+export function buildPosthogUrl(
+  report: TicketReport | undefined,
+  integrations: IntegrationConfig[] | undefined,
+): string | null {
+  const sessionId = contextString(report?.context, "posthog_session_id");
+  if (!sessionId) return null;
+  const cfg = integrationConfigMap(
+    integrations?.find((i) => i.provider === "posthog")?.config,
+  );
+  const host = (cfg.host || "").replace(/\/$/, "");
+  const projectId = cfg.project_id || cfg.project;
+  if (!host || !projectId) return null;
+  return `${host}/project/${encodeURIComponent(projectId)}/replay/${encodeURIComponent(sessionId)}`;
 }
 
 export function reporterLine(report: TicketReport | undefined, createdAt: string) {

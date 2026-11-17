@@ -10,6 +10,8 @@ import {
   STATUS_OPTIONS,
   TYPE_STYLE,
   actorLabel,
+  buildPosthogUrl,
+  buildSentryUrl,
   contextEntries,
   displayName,
   eventDescription,
@@ -164,6 +166,10 @@ export function ReportDetail() {
   const contextRows = contextEntries(report);
   const reporterTotal = data?.reporters?.total ?? ticket?.report_count ?? 0;
   const events = [...(data?.events || [])].reverse();
+  const sentryUrl = data ? buildSentryUrl(report, data.integrations) : null;
+  const posthogUrl = data ? buildPosthogUrl(report, data.integrations) : null;
+  const hasSentryConfig = !!data?.integrations?.some((i) => i.provider === "sentry");
+  const hasPosthogConfig = !!data?.integrations?.some((i) => i.provider === "posthog");
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -406,8 +412,38 @@ export function ReportDetail() {
 
               <div className="flex flex-col gap-2.5">
                 <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Linked</div>
-                <StubCard title="Sentry" subtitle="Connect in Integrations" />
-                <StubCard title="Session before report" subtitle="PostHog · coming soon" />
+                {sentryUrl ? (
+                  <LinkCard
+                    title="Sentry event"
+                    subtitle="Open related error"
+                    href={sentryUrl}
+                  />
+                ) : (
+                  <StubCard
+                    title="Sentry"
+                    subtitle={
+                      hasSentryConfig
+                        ? "No sentry_event_id on this report"
+                        : "Connect in Integrations"
+                    }
+                  />
+                )}
+                {posthogUrl ? (
+                  <LinkCard
+                    title="PostHog session"
+                    subtitle="Open session replay"
+                    href={posthogUrl}
+                  />
+                ) : (
+                  <StubCard
+                    title="Session before report"
+                    subtitle={
+                      hasPosthogConfig
+                        ? "No posthog_session_id on this report"
+                        : "Connect in Integrations"
+                    }
+                  />
+                )}
                 <StubCard title="No pull request yet" subtitle="Auto PR · 1 credit per run" />
               </div>
 
@@ -527,6 +563,27 @@ function StubCard({ title, subtitle }: { title: string; subtitle: string }) {
         <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">{subtitle}</div>
       </div>
     </div>
+  );
+}
+
+function LinkCard({ title, subtitle, href }: { title: string; subtitle: string; href: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-2.5 rounded-[10px] border border-[#17171714] bg-white p-3 hover:border-[#17171733]"
+    >
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#EFF6FF] font-ds-ui text-[10px] text-[#266DF0]">
+        ↗
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-ds-ui text-[12.5px] font-medium text-[#171717]">
+          {title}
+        </div>
+        <div className="truncate font-ds-ui text-[11px] text-[#737373]">{subtitle}</div>
+      </div>
+    </a>
   );
 }
 

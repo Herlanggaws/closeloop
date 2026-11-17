@@ -1332,6 +1332,98 @@ func (s *Store) UserCanAccessProject(ctx context.Context, userID, projectID stri
 	return ok, err
 }
 
+type Integration struct {
+	ID        string          `json:"id"`
+	ProjectID string          `json:"project_id"`
+	Provider  string          `json:"provider"`
+	Config    json.RawMessage `json:"config"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
+
+func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integration, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id, project_id, provider, config, updated_at
+		FROM integrations WHERE project_id=$1 ORDER BY provider`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Integration
+	for rows.Next() {
+		var item Integration
+		if err := rows.Scan(&item.ID, &item.ProjectID, &item.Provider, &item.Config, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if len(item.Config) == 0 {
+			item.Config = json.RawMessage(`{}`)
+		}
+		out = append(out, item)
+	}
+	if out == nil {
+		out = []Integration{}
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if provider != "sentry" && provider != "posthog" {
+		return Integration{}, ErrInvalidInput
+	}
+	if config == nil {
+		config = map[string]any{}
+	}
+	cleaned := map[string]any{}
+	for k, v := range config {
+		if s, ok := v.(string); ok {
+			s = strings.TrimSpace(s)
+			if s == "" {
+				continue
+			}
+			cleaned[k] = s
+			continue
+		}
+		if v != nil {
+			cleaned[k] = v
+		}
+	}
+	body, err := json.Marshal(cleaned)
+	if err != nil {
+		return Integration{}, err
+	}
+
+	var item Integration
+	err = s.DB.QueryRowContext(ctx, `
+		INSERT INTO integrations(project_id, provider, config, updated_at)
+		VALUES ($1,$2,$3::jsonb, now())
+		ON CONFLICT (project_id, provider) DO UPDATE
+		SET config = EXCLUDED.config, updated_at = now()
+		RETURNING id, project_id, provider, config, updated_at`,
+		projectID, provider, body).
+		Scan(&item.ID, &item.ProjectID, &item.Provider, &item.Config, &item.UpdatedAt)
+	if err != nil {
+		return Integration{}, err
+	}
+	if len(item.Config) == 0 {
+		item.Config = json.RawMessage(`{}`)
+	}
+	return item, nil
+}
+
+func (s *Store) DeleteIntegration(ctx context.Context, projectID, provider string) error {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	res, err := s.DB.ExecContext(ctx, `
+		DELETE FROM integrations WHERE project_id=$1 AND provider=$2`, projectID, provider)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 type UsageCounter struct {
 	Used  int `json:"used"`
 	Limit int `json:"limit"` // 0 = unlimited

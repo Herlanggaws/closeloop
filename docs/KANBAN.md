@@ -36,18 +36,18 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** wizard token + scopes + Cursor/Claude copy + test connection |
 | S-05b MCP status | `/app/mcp` | **Wired** app-shell status, multi-client install, token list, revoke, generate |
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |
-| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Linked/Sentry/Auto PR stubs |
+| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Sentry/PostHog deep links when configured; Auto PR stub |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed (notify enqueue); channel toggles visual |
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | Publish flags, roadmap columns |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
-| S-13 Integrations | `/app/settings/integrations` | OAuth connects (F8/F10) |
+| S-13 Integrations | `/app/settings/integrations` | **Partial** Sentry/PostHog config (deep links); Slack/GitHub/Linear/Jira OAuth later (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | Invite + roles (US-05) |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |
-| S-18…S-20 Widget UX | `/preview/widget/*` | Ship in real widget bundle |
+| S-18…S-20 Widget UX | `/preview/widget/*` + `@closeloop/widget` | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet env |
 | S-21 Fixed banner | `/preview/widget/fixed` + `@closeloop/widget` | **Wired** ingest updates → S-21 banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` | Needs F3 SDK |
 | S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed mail HTML shipped (Go renderer + preview); S-27 vote still design |
@@ -68,13 +68,13 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F1** Multi-project UI + plan limits
 - [x] **F1** MCP token list / revoke / generate UI (`/app/mcp`)
 - [ ] **F1** Team invite + roles (US-05) — API + S-14
-- [ ] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
+- [x] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
 - [x] **F2** Sensitive selectors from project settings applied before capture
 - [x] **F4** Wire inbox to API (list, type/status filters, empty, test report) — detail still design
 - [x] **F4** Wire report detail (S-07) + mark fixed (S-09) to API
 - [x] **F4** Wire merge duplicates (S-08) — pick parent + POST merge; activity event
 - [x] **F4** Platform filter on inbox list (`?platform=` + Platform dropdown)
-- [ ] **F4** Sentry / PostHog deep links when integration present
+- [x] **F4** Sentry / PostHog deep links when integration present
 - [x] **F5** Wire Connect MCP (S-05) — token, Cursor/Claude install copy, test connection
 - [x] **F5** Free-plan read-only MCP (create scopes + write tools gated; UI badge)
 - [x] **F6** Resend email on fixed (S-23 template)
@@ -125,7 +125,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | Milestone | Focus | Status |
 | --- | --- | --- |
 | M0 | Landing + waitlist + interviews | Waitlist store-only shipped; interviews todo |
-| M1 | F1 F2 F4 F5 F6 | Core wired (multi-project + soft-block); widget CDN + team + dogfood left |
+| M1 | F1 F2 F4 F5 F6 | Widget S-18…S-20 + deep links shipped; team invite + dogfood left |
 | M2 | F3 F7 mobile | Todo |
 | M3 | F8 F9 F11 | Design only |
 | M4 | F10 F12 | Design only |
@@ -135,12 +135,13 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 ## Suggested next sprint (M1 wire-up)
 
-1. Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired (demo host `/demo.html?key=…`). Next: production **widget** polish (S-18…S-20).
-2. Ship production **widget** (S-18…S-20) against ingest API + confirm UX (masking selectors already live).
+1. ~~Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired.~~
+2. ~~Ship production **widget** (S-18…S-20) + CDN-ready snippets.~~
 3. ~~Finish **F6** email (Resend) + in-app banner.~~
 4. Dogfood Closeloop on Bear Budget (MCP status page shipped).
 5. Start **M0** waitlist + 5 builder interviews in parallel.
 6. ~~**Report test automation** Phase A–B~~ — `pnpm test:reports` green; see [AI Report Testing Plan](./AI%20Report%20Testing%20Plan.md). Next: Phase C Playwright + CI.
+7. **F1** Team invite + roles (US-05 / S-14).
 
 ---
 

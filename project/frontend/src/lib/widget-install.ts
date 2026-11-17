@@ -39,9 +39,16 @@ export function pickDefaultPlatform(platforms: string[]): string {
   return platforms[0] ?? "web";
 }
 
+export function widgetScriptBase(): string {
+  const fromEnv = (process.env.NEXT_PUBLIC_WIDGET_CDN_URL || "").replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  if (typeof window !== "undefined") return window.location.origin;
+  return "http://localhost:3000";
+}
+
 export function buildSnippet(platform: string, publicKey: string): string {
   const key = publicKey || "pk_…";
-  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const origin = widgetScriptBase();
 
   switch (platform) {
     case "android":

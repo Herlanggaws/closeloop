@@ -143,7 +143,7 @@ func (h *reportHarness) truncate() {
 	if _, err := h.db.Exec(`
 		TRUNCATE TABLE
 			jobs, notifications, ticket_events, attachments, reports, tickets,
-			reporters, mcp_tokens, project_keys, projects, memberships,
+			reporters, mcp_tokens, integrations, project_keys, projects, memberships,
 			refresh_tokens, waitlist, users, organizations
 		RESTART IDENTITY CASCADE`); err != nil {
 		h.t.Fatalf("truncate: %v", err)

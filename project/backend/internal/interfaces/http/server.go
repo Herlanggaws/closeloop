@@ -58,6 +58,9 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/projects/:id/mcp-tokens", s.authRequired(), s.createMCPToken)
 		api.DELETE("/projects/:id/mcp-tokens/:tokenId", s.authRequired(), s.deleteMCPToken)
 		api.GET("/projects/:id/tickets", s.authRequired(), s.listTickets)
+		api.GET("/projects/:id/integrations", s.authRequired(), s.listIntegrations)
+		api.PUT("/projects/:id/integrations/:provider", s.authRequired(), s.putIntegration)
+		api.DELETE("/projects/:id/integrations/:provider", s.authRequired(), s.deleteIntegration)
 		api.GET("/tickets/:id", s.authRequired(), s.getTicket)
 		api.PATCH("/tickets/:id", s.authRequired(), s.patchTicket)
 		api.POST("/tickets/:id/notes", s.authRequired(), s.addNote)
@@ -787,6 +790,51 @@ func (s *Server) listTickets(c *gin.Context) {
 	c.JSON(200, gin.H{"tickets": list})
 }
 
+func (s *Server) listIntegrations(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	list, err := s.Store.ListIntegrations(c.Request.Context(), id)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"integrations": list})
+}
+
+func (s *Server) putIntegration(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	var body struct {
+		Config map[string]any `json:"config"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	item, err := s.Store.UpsertIntegration(c.Request.Context(), id, c.Param("provider"), body.Config)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"integration": item})
+}
+
+func (s *Server) deleteIntegration(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	if err := s.Store.DeleteIntegration(c.Request.Context(), id, c.Param("provider")); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.Status(204)
+}
+
 func (s *Server) getTicket(c *gin.Context) {
 	t, err := s.Store.GetTicket(c.Request.Context(), c.Param("id"))
 	if err != nil {
@@ -800,6 +848,7 @@ func (s *Server) getTicket(c *gin.Context) {
 	events, _ := s.Store.ListTicketEvents(c.Request.Context(), t.ID)
 	atts, _ := s.Store.TicketAttachments(c.Request.Context(), t.ID)
 	reporterTotal, reporterEmail, _ := s.Store.TicketReporterStats(c.Request.Context(), t.ID)
+	integrations, _ := s.Store.ListIntegrations(c.Request.Context(), t.ProjectID)
 	attOut := make([]gin.H, 0, len(atts))
 	for _, a := range atts {
 		item := gin.H{"id": a.ID, "report_id": a.ReportID, "kind": a.Kind, "uploaded": a.Uploaded}
@@ -816,11 +865,15 @@ func (s *Server) getTicket(c *gin.Context) {
 	if reports == nil {
 		reports = []application.Report{}
 	}
+	if integrations == nil {
+		integrations = []application.Integration{}
+	}
 	c.JSON(200, gin.H{
-		"ticket":      t,
-		"reports":     reports,
-		"attachments": attOut,
-		"events":      events,
+		"ticket":        t,
+		"reports":       reports,
+		"attachments":   attOut,
+		"events":        events,
+		"integrations":  integrations,
 		"reporters": gin.H{
 			"total":      reporterTotal,
 			"with_email": reporterEmail,

@@ -1,18 +1,14 @@
-# Report test run — 2026-11-17
+# Report test run — 2026-11-17T024328Z
 
-Branch: dev
+Branch: dev @ 3420e17
 Result: PASS
-Duration: ~7s
+Duration: 6s
 
 ## Summary
 
-- Passed: R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-GOLDEN-SC2
+- Suite: `go test` report L0/L1/L2 (+ existing package tests)
 - Database: `closeloop_test`
-- Command: `cd project && pnpm test:reports`
-
-## Fixes this run
-
-- `GetTicket`: duplicate (merged) tickets with no reports stay readable (no false `PLAN_REQUIRED`)
+- Command: `pnpm test:reports` / `bash scripts/test-reports.sh`
 
 ## Next human action
 

@@ -1,6 +1,14 @@
 import { render } from "preact";
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { domToPng } from "modern-screenshot";
+import {
+  compositeAnnotatedPng,
+  drawStrokes,
+  moveStroke,
+  startStroke,
+  type AnnotateTool,
+  type Stroke,
+} from "./annotate";
 
 type State = "launcher" | "form" | "sent" | "banner";
 
@@ -97,10 +105,41 @@ function dataURLtoBlob(dataUrl: string) {
   return new Blob([arr], { type: mime });
 }
 
-async function submitReport(cfg: Config, payload: { type: string; message: string; email: string }) {
-  const projectSelectors = await fetchProjectSelectors(cfg);
-  const selectors = uniqueSelectors(cfg.selectors, projectSelectors);
-  const screenshot = await maskAndShot(selectors);
+function harvestContextIds() {
+  const context: Record<string, unknown> = {
+    url: location.href,
+    userAgent: navigator.userAgent,
+    viewport: { w: innerWidth, h: innerHeight },
+  };
+
+  try {
+    const sentry = (window as any).Sentry;
+    const last =
+      sentry?.lastEventId?.() ||
+      sentry?.getCurrentHub?.()?.lastEventId?.() ||
+      sentry?.getClient?.()?.getOptions?.()?.lastEventId;
+    if (typeof last === "string" && last) context.sentry_event_id = last;
+  } catch {
+    // optional host integration
+  }
+
+  try {
+    const posthog = (window as any).posthog;
+    const session =
+      posthog?.get_session_id?.() ||
+      posthog?.sessionManager?.checkAndGetSessionAndWindowId?.()?.sessionId;
+    if (typeof session === "string" && session) context.posthog_session_id = session;
+  } catch {
+    // optional host integration
+  }
+
+  return context;
+}
+
+async function submitReport(
+  cfg: Config,
+  payload: { type: string; message: string; email: string; screenshot: string },
+) {
   const res = await fetch(`${cfg.api}/v1/ingest/reports`, {
     method: "POST",
     headers: {
@@ -114,11 +153,7 @@ async function submitReport(cfg: Config, payload: { type: string; message: strin
       email: payload.email || cfg.email,
       user_id: cfg.userId,
       app_version: cfg.appVersion,
-      context: {
-        url: location.href,
-        userAgent: navigator.userAgent,
-        viewport: { w: innerWidth, h: innerHeight },
-      },
+      context: harvestContextIds(),
     }),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -126,14 +161,14 @@ async function submitReport(cfg: Config, payload: { type: string; message: strin
   if (data.upload_url) {
     await fetch(data.upload_url, {
       method: "PUT",
-      body: dataURLtoBlob(screenshot),
+      body: dataURLtoBlob(payload.screenshot),
     });
   }
   await fetch(`${cfg.api}/v1/ingest/reports/${data.report_id}/complete`, {
     method: "POST",
     headers: { "X-Closeloop-Key": cfg.key },
   });
-  return data;
+  return data as { ticket_id: string; report_id: string };
 }
 
 async function fetchUpdates(cfg: Config): Promise<BannerUpdate | null> {
@@ -161,8 +196,17 @@ function Widget({ cfg }: { cfg: Config }) {
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState(cfg.email || "");
   const [busy, setBusy] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [banner, setBanner] = useState<BannerUpdate | null>(null);
   const [error, setError] = useState("");
+  const [shot, setShot] = useState<string>("");
+  const [tool, setTool] = useState<AnnotateTool>("pen");
+  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [draft, setDraft] = useState<Stroke | null>(null);
+  const [sentTicketId, setSentTicketId] = useState("");
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const drawing = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,12 +230,48 @@ function Widget({ cfg }: { cfg: Config }) {
     const onIdentify = () => {
       void loadConfigAndUpdates();
     };
+    const onShow = () => {
+      setSentTicketId("");
+      setError("");
+      setShot("");
+      setStrokes([]);
+      setDraft(null);
+      setState("form");
+    };
     document.addEventListener("closeloop:identify", onIdentify);
+    document.addEventListener("closeloop:show", onShow);
     return () => {
       cancelled = true;
       document.removeEventListener("closeloop:identify", onIdentify);
+      document.removeEventListener("closeloop:show", onShow);
     };
   }, [cfg]);
+
+  useEffect(() => {
+    if (state !== "form" || shot || capturing) return;
+    void captureShot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const wrap = previewRef.current;
+    if (!canvas || !wrap || !shot) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const width = wrap.clientWidth || 360;
+      const height = Math.max(160, Math.round((width * img.naturalHeight) / Math.max(img.naturalWidth, 1)));
+      canvas.width = width;
+      canvas.height = height;
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      drawStrokes(ctx, strokes, draft);
+    };
+    img.src = shot;
+  }, [shot, strokes, draft]);
 
   const host = useMemo(() => {
     const root = document.createElement("div");
@@ -202,12 +282,99 @@ function Widget({ cfg }: { cfg: Config }) {
 
   useEffect(() => () => host.remove(), [host]);
 
+  async function captureShot() {
+    setCapturing(true);
+    setError("");
+    try {
+      const projectSelectors = await fetchProjectSelectors(cfg);
+      const selectors = uniqueSelectors(cfg.selectors, projectSelectors);
+      cfg.selectors = selectors;
+      const next = await maskAndShot(selectors);
+      setShot(next);
+      setStrokes([]);
+      setDraft(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Screenshot failed");
+    } finally {
+      setCapturing(false);
+    }
+  }
+
+  function openForm() {
+    setError("");
+    setSentTicketId("");
+    setShot("");
+    setStrokes([]);
+    setDraft(null);
+    setState("form");
+  }
+
+  function pointerPos(e: PointerEvent, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * canvas.width,
+      y: ((e.clientY - rect.top) / rect.height) * canvas.height,
+    };
+  }
+
+  function onPointerDown(e: PointerEvent) {
+    if (tool === "undo") return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    drawing.current = true;
+    canvas.setPointerCapture(e.pointerId);
+    const { x, y } = pointerPos(e, canvas);
+    setDraft(startStroke(tool, x, y));
+  }
+
+  function onPointerMove(e: PointerEvent) {
+    if (!drawing.current || !draft) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const { x, y } = pointerPos(e, canvas);
+    setDraft(moveStroke(draft, x, y));
+  }
+
+  function onPointerUp() {
+    if (!drawing.current) return;
+    drawing.current = false;
+    if (draft) {
+      setStrokes((prev) => [...prev, draft]);
+      setDraft(null);
+    }
+  }
+
+  function undoStroke() {
+    setStrokes((prev) => prev.slice(0, -1));
+    setDraft(null);
+  }
+
   async function send() {
+    if (!shot) {
+      setError("Screenshot missing — tap Retake");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      await submitReport(cfg, { type, message, email });
+      const canvas = canvasRef.current;
+      const annotated = await compositeAnnotatedPng(
+        shot,
+        strokes,
+        canvas?.width || 360,
+        canvas?.height || 200,
+      );
+      const data = await submitReport(cfg, {
+        type,
+        message,
+        email,
+        screenshot: annotated,
+      });
+      setSentTicketId(data.ticket_id || "");
       setState("sent");
+      setMessage("");
+      setShot("");
+      setStrokes([]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -218,16 +385,58 @@ function Widget({ cfg }: { cfg: Config }) {
   const css = `
     :host { all: initial; }
     * { box-sizing: border-box; font-family: Inter, Geist, system-ui, sans-serif; }
-    .btn { background:#171717; color:#fff; border:0; border-radius:999px; padding:10px 14px; cursor:pointer; font-size:13px; }
-    .fab { position:fixed; right:20px; bottom:20px; z-index:2147483000; }
-    .panel { position:fixed; right:20px; bottom:76px; width:340px; background:#fff; border:1px solid #1717171f; border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.12); padding:16px; z-index:2147483000; }
-    .title { font-size:15px; font-weight:600; color:#171717; margin:0 0 12px; }
-    .row { display:flex; gap:6px; margin-bottom:10px; }
-    .chip { border:1px solid #1717171f; background:#fafafa; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer; }
+    .btn { background:#171717; color:#fff; border:0; border-radius:8px; padding:10px 14px; cursor:pointer; font-size:13px; font-weight:500; }
+    .btn:disabled { opacity:.5; cursor:default; }
+    .fab {
+      position:fixed; right:20px; bottom:20px; z-index:2147483000;
+      display:inline-flex; align-items:center; gap:8px;
+      background:#171717; color:#fff; border:0; border-radius:999px;
+      padding:11px 16px; cursor:pointer; font-size:13px; font-weight:500;
+      box-shadow:0 8px 24px rgba(0,0,0,.18);
+    }
+    .scrim {
+      position:fixed; inset:0; background:rgba(23,23,23,.28); z-index:2147482990;
+    }
+    .panel {
+      position:fixed; right:20px; bottom:76px; width:min(400px, calc(100vw - 24px));
+      max-height:calc(100vh - 100px); overflow:auto;
+      background:#fff; border:1px solid #1717171f; border-radius:16px;
+      box-shadow:0 12px 40px rgba(0,0,0,.14); padding:16px; z-index:2147483000;
+    }
+    .title { font-size:15px; font-weight:600; color:#171717; margin:0 0 4px; }
+    .sub { color:#737373; font-size:12px; margin:0 0 12px; }
+    .row { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }
+    .chip { border:1px solid #1717171f; background:#fafafa; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer; text-transform:capitalize; }
     .chip.on { background:#171717; color:#fff; }
+    .shot-head { display:flex; justify-content:space-between; align-items:center; margin:4px 0 8px; }
+    .shot-label { font-size:12px; font-weight:600; color:#171717; }
+    .link { background:none; border:0; color:#2563eb; font-size:12px; font-weight:500; cursor:pointer; padding:0; }
+    .preview {
+      position:relative; width:100%; border-radius:12px; overflow:hidden;
+      border:1px solid #17171714; background:#f5f5f5; min-height:160px;
+    }
+    .preview canvas { display:block; width:100%; height:auto; cursor:crosshair; touch-action:none; }
+    .preview .empty { padding:28px 12px; text-align:center; color:#a3a3a3; font-size:12px; }
+    .dock {
+      position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+      display:flex; gap:4px; padding:4px; background:#171717; border-radius:999px;
+    }
+    .dock button {
+      width:32px; height:32px; border:0; border-radius:999px; background:transparent;
+      color:#fff; cursor:pointer; display:grid; place-items:center;
+    }
+    .dock button.on { background:#404040; }
+    .note { color:#a3a3a3; font-size:11px; margin:8px 0 10px; }
     textarea, input { width:100%; border:1px solid #1717171f; border-radius:10px; padding:10px; font-size:13px; margin-bottom:10px; }
     .muted { color:#737373; font-size:12px; }
     .err { color:#da314a; font-size:12px; margin-bottom:8px; }
+    .pill {
+      display:inline-flex; align-items:center; gap:6px;
+      margin:10px 0 14px; padding:6px 10px; border-radius:999px;
+      background:#f5f5f5; border:1px solid #17171714;
+      font-size:12px; font-weight:500; color:#171717;
+    }
+    .powered { margin-top:12px; text-align:center; color:#a3a3a3; font-size:11px; }
     .banner {
       position:fixed; left:50%; top:24px; transform:translateX(-50%);
       display:flex; align-items:center; gap:14px;
@@ -260,40 +469,109 @@ function Widget({ cfg }: { cfg: Config }) {
     <>
       <style>{css}</style>
       {state === "launcher" && (
-        <button class="btn fab" onClick={() => setState("form")}>
-          Report
+        <button class="fab" type="button" onClick={openForm}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Report a problem
         </button>
       )}
       {state === "form" && (
-        <div class="panel">
-          <p class="title">Send feedback</p>
-          <div class="row">
-            {(["bug", "idea", "question"] as const).map((t) => (
-              <button class={`chip ${type === t ? "on" : ""}`} onClick={() => setType(t)}>
-                {t}
+        <>
+          <div class="scrim" onClick={() => setState("launcher")} />
+          <div class="panel">
+            <p class="title">Send feedback</p>
+            <p class="sub">Screenshot is attached automatically. Annotate before you send.</p>
+            <div class="row">
+              {(["bug", "idea", "question"] as const).map((t) => (
+                <button type="button" class={`chip ${type === t ? "on" : ""}`} onClick={() => setType(t)}>
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <div class="shot-head">
+              <span class="shot-label">Screenshot</span>
+              <button type="button" class="link" disabled={capturing || busy} onClick={() => void captureShot()}>
+                {capturing ? "Capturing…" : "Retake"}
               </button>
-            ))}
+            </div>
+            <div class="preview" ref={previewRef}>
+              {!shot && <div class="empty">{capturing ? "Capturing page…" : "No screenshot yet"}</div>}
+              {shot && (
+                <>
+                  <canvas
+                    ref={canvasRef}
+                    onPointerDown={(e) => onPointerDown(e as unknown as PointerEvent)}
+                    onPointerMove={(e) => onPointerMove(e as unknown as PointerEvent)}
+                    onPointerUp={onPointerUp}
+                    onPointerCancel={onPointerUp}
+                  />
+                  <div class="dock" role="toolbar" aria-label="Annotate">
+                    <button type="button" class={tool === "pen" ? "on" : ""} title="Draw" onClick={() => setTool("pen")}>
+                      ✎
+                    </button>
+                    <button type="button" class={tool === "rect" ? "on" : ""} title="Box" onClick={() => setTool("rect")}>
+                      ▢
+                    </button>
+                    <button type="button" class={tool === "mask" ? "on" : ""} title="Mask" onClick={() => setTool("mask")}>
+                      ▮
+                    </button>
+                    <button type="button" title="Undo" onClick={undoStroke}>
+                      ↶
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            <p class="note">Sensitive selectors are blurred before capture. Use mask for anything left.</p>
+
+            <textarea
+              rows={3}
+              placeholder="What happened?"
+              value={message}
+              onInput={(e) => setMessage((e.target as HTMLTextAreaElement).value)}
+            />
+            <input
+              placeholder="Email (optional)"
+              value={email}
+              onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
+            />
+            {error && <div class="err">{error}</div>}
+            <div class="row">
+              <button class="btn" disabled={busy || capturing || !message || !shot} onClick={() => void send()}>
+                {busy ? "Sending…" : "Send report"}
+              </button>
+              <button
+                type="button"
+                class="chip"
+                onClick={() => {
+                  setState("launcher");
+                  setDraft(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            <div class="powered">Powered by Saidloop</div>
           </div>
-          <textarea rows={4} placeholder="What happened?" value={message} onInput={(e) => setMessage((e.target as HTMLTextAreaElement).value)} />
-          <input placeholder="Email (optional)" value={email} onInput={(e) => setEmail((e.target as HTMLInputElement).value)} />
-          {error && <div class="err">{error}</div>}
-          <div class="row">
-            <button class="btn" disabled={busy || !message} onClick={send}>
-              {busy ? "Sending…" : "Send"}
-            </button>
-            <button class="chip" onClick={() => setState("launcher")}>
-              Cancel
-            </button>
-          </div>
-        </div>
+        </>
       )}
       {state === "sent" && (
         <div class="panel">
           <p class="title">Report sent</p>
-          <p class="muted">Thanks — we attached a screenshot and context.</p>
-          <button class="btn" style={{ marginTop: 12 }} onClick={() => setState("launcher")}>
+          <p class="muted">Thanks — we attached a screenshot and context for your team.</p>
+          {sentTicketId && <div class="pill">Report #{shortId(sentTicketId)}</div>}
+          <button
+            class="btn"
+            onClick={() => {
+              setState("launcher");
+              setSentTicketId("");
+            }}
+          >
             Done
           </button>
+          <div class="powered">Powered by Saidloop</div>
         </div>
       )}
       {state === "banner" && banner && (
