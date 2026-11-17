@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { GoogleTagManager } from "@next/third-parties/google";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { ClearStaleSW } from "@/components/ClearStaleSW";
 import {
+  GTM_ID,
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_TAGLINE,
@@ -57,6 +59,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <GoogleTagManager gtmId={GTM_ID} />
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}>
         <ClearStaleSW />
         {children}

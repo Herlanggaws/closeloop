@@ -3,11 +3,15 @@ import { describe, it } from "node:test";
 import robots from "../app/robots.ts";
 import sitemap from "../app/sitemap.ts";
 import { LANDING_FAQ_ITEMS } from "./landing-faq.ts";
-import { MARKETING_PATHS, SITE_URL } from "./site.ts";
+import { GTM_ID, MARKETING_PATHS, SITE_URL } from "./site.ts";
 
 describe("site SEO helpers", () => {
   it("uses the public saidloop.com origin", () => {
     assert.equal(SITE_URL, "https://saidloop.com");
+  });
+
+  it("exposes the Google Tag Manager container id", () => {
+    assert.match(GTM_ID, /^GTM-[A-Z0-9]+$/);
   });
 
   it("lists core marketing paths for the sitemap", () => {
