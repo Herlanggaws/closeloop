@@ -82,8 +82,8 @@ export function WaitlistForm({ variant = "hero", source }: Props) {
         id={isFooter ? undefined : "waitlist"}
         className={
           isFooter
-            ? "box-border flex h-fit w-fit shrink-0 flex-row items-center gap-2 rounded-[12px] bg-[#262626] p-3 outline outline-1 outline-offset-[-0.5px] outline-[#FFFFFF1A]"
-            : "box-border flex h-fit w-fit shrink-0 flex-row items-center gap-2 rounded-[12px] bg-white p-3 shadow-[0px_2px_6px_#0C0A0914] outline outline-1 outline-offset-[-0.5px] outline-[#1717171F]"
+            ? "box-border flex h-fit w-full max-w-[440px] shrink-0 flex-row items-center gap-2 rounded-[12px] bg-[#262626] p-3 outline outline-1 outline-offset-[-0.5px] outline-[#FFFFFF1A]"
+            : "box-border flex h-fit w-full max-w-[440px] shrink-0 flex-row items-center gap-2 rounded-[12px] bg-white p-3 shadow-[0px_2px_6px_#0C0A0914] outline outline-1 outline-offset-[-0.5px] outline-[#1717171F]"
         }
       >
         <p
@@ -100,17 +100,20 @@ export function WaitlistForm({ variant = "hero", source }: Props) {
   }
 
   return (
-    <div id={isFooter ? undefined : "waitlist"} className="relative flex w-fit flex-col items-start gap-2">
+    <div
+      id={isFooter ? undefined : "waitlist"}
+      className="relative flex w-full max-w-[440px] flex-col items-stretch gap-2 sm:w-fit sm:max-w-none sm:items-start"
+    >
       <form
         onSubmit={onSubmit}
         data-pencil-name="Waitlist Form"
         className={
           isFooter
-            ? "box-border flex h-fit w-fit shrink-0 flex-row items-center gap-2 rounded-[12px] bg-[#262626] p-1.5 outline outline-1 outline-offset-[-0.5px] outline-[#FFFFFF1A]"
-            : "box-border flex h-fit w-fit shrink-0 flex-row items-center gap-2 rounded-[12px] bg-white p-1.5 shadow-[0px_2px_6px_#0C0A0914] outline outline-1 outline-offset-[-0.5px] outline-[#1717171F]"
+            ? "box-border flex h-fit w-full shrink-0 flex-col gap-2 rounded-[12px] bg-[#262626] p-1.5 outline outline-1 outline-offset-[-0.5px] outline-[#FFFFFF1A] sm:w-fit sm:flex-row sm:items-center"
+            : "box-border flex h-fit w-full shrink-0 flex-col gap-2 rounded-[12px] bg-white p-1.5 shadow-[0px_2px_6px_#0C0A0914] outline outline-1 outline-offset-[-0.5px] outline-[#1717171F] sm:w-fit sm:flex-row sm:items-center"
         }
       >
-        <label className="box-border flex h-10 w-[300px] shrink-0 flex-row items-center gap-2 px-2.5">
+        <label className="box-border flex h-11 w-full min-w-0 shrink-0 flex-row items-center gap-2 px-2.5 sm:h-10 sm:w-[300px]">
           <MailIcon fill={isFooter ? "#FFFFFFB3" : "#A3A3A3"} />
           <input
             type="email"
@@ -122,8 +125,8 @@ export function WaitlistForm({ variant = "hero", source }: Props) {
             disabled={status === "loading"}
             className={
               isFooter
-                ? "w-full border-0 bg-transparent font-ds-ui text-[14px] text-white outline-none placeholder:text-[#FFFFFFB3]"
-                : "w-full border-0 bg-transparent font-ds-ui text-[14px] text-[#171717] outline-none placeholder:text-[#A3A3A3]"
+                ? "w-full min-w-0 border-0 bg-transparent font-ds-ui text-[16px] text-white outline-none placeholder:text-[#FFFFFFB3] sm:text-[14px]"
+                : "w-full min-w-0 border-0 bg-transparent font-ds-ui text-[16px] text-[#171717] outline-none placeholder:text-[#A3A3A3] sm:text-[14px]"
             }
           />
         </label>
@@ -132,8 +135,8 @@ export function WaitlistForm({ variant = "hero", source }: Props) {
           disabled={status === "loading" || !email.trim()}
           className={
             isFooter
-              ? "box-border flex h-10 w-fit shrink-0 cursor-pointer flex-row items-center justify-center gap-2 rounded-[6px] bg-white px-4 shadow-[0px_4px_4px_#1717170A] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
-              : "box-border flex h-10 w-fit shrink-0 cursor-pointer flex-row items-center justify-center gap-2 rounded-[6px] bg-[#171717] px-4 shadow-[0px_4px_4px_#1717170A] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+              ? "box-border flex h-11 w-full shrink-0 cursor-pointer flex-row items-center justify-center gap-2 rounded-[6px] bg-white px-4 shadow-[0px_4px_4px_#1717170A] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:w-fit"
+              : "box-border flex h-11 w-full shrink-0 cursor-pointer flex-row items-center justify-center gap-2 rounded-[6px] bg-[#171717] px-4 shadow-[0px_4px_4px_#1717170A] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:w-fit"
           }
         >
           <span
