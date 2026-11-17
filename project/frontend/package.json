@@ -9,7 +9,7 @@
     "build:widget": "pnpm --filter @closeloop/widget build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "tsx --test src/lib/inviteEmails.test.ts src/lib/site.test.ts",
+    "test:unit": "tsx --test src/lib/inviteEmails.test.ts src/lib/site.test.ts src/components/SaidloopLogo.test.ts",
     "test:e2e": "playwright test e2e/reports.spec.ts",
     "test:e2e:marketing": "playwright test e2e/marketing.spec.ts",
     "test:e2e:ui": "playwright test e2e/reports.spec.ts --ui"
