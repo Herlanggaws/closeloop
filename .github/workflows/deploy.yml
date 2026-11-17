@@ -68,7 +68,8 @@ jobs:
             cd /home/xerv/closeloop
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             git fetch origin main
-            git checkout -B main origin/main
+            git checkout -f -B main origin/main
+            git reset --hard origin/main
             docker compose pull backend frontend
             docker compose up -d --no-build --remove-orphans
             for i in $(seq 1 30); do
