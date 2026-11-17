@@ -251,8 +251,8 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase C — L3 UI + agent UX
 
-- [ ] Playwright scaffold; R-UI-01…05
-- [ ] Cursor skill / AGENTS.md section: “Report test loop” pointing ke dokumen ini
+- [x] Playwright scaffold; R-UI-01…05 (`frontend/e2e/reports.spec.ts`, `pnpm test:reports:ui`)
+- [x] AGENTS.md section: report test loop pointing ke dokumen ini
 - [ ] Optional: Closeloop MCP tool `run_report_tests` yang nge-wrap script + return summary
 
 ### Phase D — Harden

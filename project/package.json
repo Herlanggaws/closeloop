@@ -7,6 +7,8 @@
     "dev:frontend": "bash scripts/dev-frontend.sh",
     "db:migrate": "bash scripts/migrate.sh",
     "db:seed": "bash scripts/seed.sh",
-    "test:reports": "bash scripts/test-reports.sh"
+    "test:reports": "bash scripts/test-reports.sh",
+    "test:reports:ui": "bash scripts/test-reports-ui.sh",
+    "test:reports:all": "bash scripts/test-reports.sh && bash scripts/test-reports-ui.sh"
   }
 }

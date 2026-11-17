@@ -1,14 +1,14 @@
-# Report test run — 2026-11-17T024328Z
+# Report test run — 2026-11-17 Phase C
 
-Branch: dev @ 3420e17
+Branch: dev
 Result: PASS
-Duration: 6s
+Duration: ~7s (UI)
 
 ## Summary
 
-- Suite: `go test` report L0/L1/L2 (+ existing package tests)
-- Database: `closeloop_test`
-- Command: `pnpm test:reports` / `bash scripts/test-reports.sh`
+- Passed UI: R-UI-01…05 (Playwright)
+- Prior API suite: R-ING / R-INB / R-MRG / R-FIX / R-MCP + GOLDEN still via `pnpm test:reports`
+- Commands: `pnpm test:reports:ui` · `pnpm test:reports:all`
 
 ## Next human action
 

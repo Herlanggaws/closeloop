@@ -8,7 +8,9 @@
     "build": "pnpm --filter @closeloop/widget build && next build",
     "build:widget": "pnpm --filter @closeloop/widget build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:e2e": "playwright test e2e/reports.spec.ts",
+    "test:e2e:ui": "playwright test e2e/reports.spec.ts --ui"
   },
   "dependencies": {
     "next": "15.5.28",
@@ -17,6 +19,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

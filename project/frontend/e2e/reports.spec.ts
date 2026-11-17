@@ -1,0 +1,154 @@
+import { test, expect } from "@playwright/test";
+import {
+  API_URL,
+  applySession,
+  gotoInbox,
+  ingestReport,
+  seedSession,
+} from "./helpers";
+
+test.describe("Report UI smoke (R-UI)", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test("R-UI-01 Demo widget → inbox", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const message = `Demo bug ${Date.now()}`;
+
+    await page.goto(
+      `/demo.html?key=${encodeURIComponent(session.publicKey)}&api=${encodeURIComponent(API_URL)}&user_id=rina&email=rina@example.com`,
+    );
+    await expect(page.getByText(/Widget loaded/i)).toBeVisible();
+
+    await page.getByRole("button", { name: "Report" }).click();
+    await expect(page.getByText("Send feedback", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: /^bug$/i }).click();
+    await page.getByPlaceholder("What happened?").fill(message);
+    // Send stays disabled until message + auto-screenshot are ready.
+    const sendBtn = page.getByRole("button", { name: "Send report" });
+    await expect(sendBtn).toBeEnabled({ timeout: 30_000 });
+    await sendBtn.click();
+    await expect(page.getByText("Report sent", { exact: true })).toBeVisible({ timeout: 20_000 });
+
+    await gotoInbox(page, session);
+    await expect(page.getByText(message)).toBeVisible();
+    await expect(page.getByText("Bug", { exact: true }).first()).toBeVisible();
+  });
+
+  test("R-UI-02 Filters type Bug + status Open", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const openBug = `Open bug ${Date.now()}`;
+    const idea = `Idea ${Date.now()}`;
+    const { ticket_id: fixedId } = await ingestReport(request, session.publicKey, `Fixed bug ${Date.now()}`);
+    await ingestReport(request, session.publicKey, openBug);
+    await ingestReport(request, session.publicKey, idea, { type: "idea" });
+
+    await request.patch(`${API_URL}/api/tickets/${fixedId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { status: "fixed", note: "already fixed" },
+    });
+
+    await gotoInbox(page, session);
+    await page.getByRole("button", { name: /^Bugs\b/ }).click();
+    await page.getByRole("button", { name: /^Status:/ }).click();
+    await page.getByRole("listbox", { name: "Status" }).getByRole("button", { name: "Open", exact: true }).click();
+
+    await expect(page.getByText(openBug)).toBeVisible();
+    await expect(page.getByText(idea)).toHaveCount(0);
+    await expect(page.getByText(`Fixed bug`)).toHaveCount(0);
+  });
+
+  test("R-UI-03 Merge flow", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const a = `Merge A ${Date.now()}`;
+    const b = `Merge B ${Date.now()}`;
+    const { ticket_id: idA } = await ingestReport(request, session.publicKey, a);
+    const { ticket_id: idB } = await ingestReport(request, session.publicKey, b);
+
+    await gotoInbox(page, session);
+    await expect(page.getByText(a)).toBeVisible();
+    await expect(page.getByText(b)).toBeVisible();
+
+    await page.getByRole("button", { name: "Select", exact: true }).first().click();
+    await page.getByRole("button", { name: "Select", exact: true }).click();
+    await page.getByRole("button", { name: /^Merge 2$/ }).click();
+
+    await expect(page.getByRole("heading", { name: /Merge 2 reports/ })).toBeVisible();
+    await page.getByRole("button", { name: /^Merge 2 reports$/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/app/tickets/(${idA}|${idB})`));
+
+    const detail = await request.get(`${API_URL}/api/tickets/${idA}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    const other = await request.get(`${API_URL}/api/tickets/${idB}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    const da = await detail.json();
+    const db = await other.json();
+    const parent = da.ticket.status === "duplicate" ? db : da;
+    const child = da.ticket.status === "duplicate" ? da : db;
+    expect(parent.ticket.status).toBe("open");
+    expect(parent.ticket.report_count).toBeGreaterThanOrEqual(2);
+    expect(child.ticket.status).toBe("duplicate");
+  });
+
+  test("R-UI-04 Mark fixed UI", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const message = `Fix me UI ${Date.now()}`;
+    const { ticket_id } = await ingestReport(request, session.publicKey, message);
+
+    await applySession(page, session);
+    await page.goto(`/app/tickets/${ticket_id}`);
+    await expect(page.getByRole("heading", { name: message })).toBeVisible();
+    await page.getByRole("link", { name: "Mark fixed" }).click();
+
+    await expect(page.getByRole("heading", { name: /Mark .* as fixed/ })).toBeVisible();
+    await page.getByLabel("Release note").fill("Filters now refresh correctly");
+    await page.getByRole("button", { name: "Mark fixed and notify" }).click();
+
+    await expect(page).toHaveURL(/\/app\/inbox/);
+    await page.getByRole("button", { name: /^Status:/ }).click();
+    await page.getByRole("listbox", { name: "Status" }).getByRole("button", { name: "Fixed", exact: true }).click();
+    await expect(page.getByRole("link", { name: new RegExp(message) })).toBeVisible();
+
+    const detail = await request.get(`${API_URL}/api/tickets/${ticket_id}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    const body = await detail.json();
+    expect(body.ticket.status).toBe("fixed");
+    expect(body.ticket.fixed_note).toBe("Filters now refresh correctly");
+  });
+
+  test("R-UI-05 Banner payload after fix", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await request.post(`${API_URL}/v1/ingest/identify`, {
+      headers: { "X-Closeloop-Key": session.publicKey },
+      data: { user_id: "rina", email: "rina@example.com" },
+    });
+    const { ticket_id } = await ingestReport(request, session.publicKey, `Banner ${Date.now()}`);
+
+    await applySession(page, session);
+    await page.goto(`/app/tickets/${ticket_id}/fixed`);
+    await page.getByLabel("Release note").fill("Banner should show for Rina");
+    await page.getByRole("button", { name: "Mark fixed and notify" }).click();
+    await expect(page).toHaveURL(/\/app\/inbox/);
+
+    // Worker may take a couple seconds; poll updates endpoint.
+    let updates: unknown[] = [];
+    for (let i = 0; i < 15; i++) {
+      const res = await request.get(`${API_URL}/v1/ingest/updates?user_id=rina`, {
+        headers: { "X-Closeloop-Key": session.publicKey },
+      });
+      const body = await res.json();
+      updates = body.updates || [];
+      if (updates.length > 0) break;
+      await page.waitForTimeout(500);
+    }
+    expect(updates.length).toBeGreaterThan(0);
+
+    const second = await request.get(`${API_URL}/v1/ingest/updates?user_id=rina`, {
+      headers: { "X-Closeloop-Key": session.publicKey },
+    });
+    const secondBody = await second.json();
+    expect(secondBody.updates || []).toHaveLength(0);
+  });
+});
