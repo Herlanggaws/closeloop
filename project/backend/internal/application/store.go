@@ -1525,18 +1525,22 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 	return org, nil
 }
 
-func (s *Store) AddWaitlist(ctx context.Context, email, source string) error {
+func (s *Store) AddWaitlist(ctx context.Context, email, source string) (inserted bool, err error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" || !strings.Contains(email, "@") || !strings.Contains(email, ".") {
-		return ErrInvalidInput
+		return false, ErrInvalidInput
 	}
 	if source == "" {
 		source = "landing"
 	}
-	_, err := s.DB.ExecContext(ctx, `
+	res, err := s.DB.ExecContext(ctx, `
 		INSERT INTO waitlist(email, source) VALUES ($1, $2)
 		ON CONFLICT (email) DO NOTHING`, email, source)
-	return err
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }
 
 func nullStr(s string) any {

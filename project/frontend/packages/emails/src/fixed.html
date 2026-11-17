@@ -10,7 +10,7 @@
       Source of truth for outbound mail is the Go renderer:
       project/backend/internal/infrastructure/email/fixed.go
       Placeholders: {{project_name}} {{greeting}} {{note}} {{note_label}}
-      {{report_quote}} {{reported_on}} {{ticket_title}} {{initial}}
+      {{report_quote}} {{reported_on}} {{ticket_title}} {{initial}} {{open_url}}
     -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F5F5F5;padding:64px 16px;">
       <tr>
@@ -60,6 +60,9 @@
                     "{{report_quote}}"
                   </p>
                 </div>
+                <p style="margin:20px 0 0;">
+                  <a href="{{open_url}}" style="display:inline-block;padding:12px 20px;background:#171717;color:#FFFFFF;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;line-height:20px;">Open {{project_name}}</a>
+                </p>
               </td>
             </tr>
             <tr>

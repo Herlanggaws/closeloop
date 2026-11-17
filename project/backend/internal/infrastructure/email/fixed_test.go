@@ -39,6 +39,7 @@ func TestRenderFixedHTML(t *testing.T) {
 		ReportedAt:   time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC),
 		AppVersion:   "2.4.2",
 		GreetingName: "Rina",
+		OpenURL:      "https://app.bearbudget.app",
 	})
 	for _, needle := range []string{
 		"Hi Rina, it's fixed.",
@@ -48,6 +49,8 @@ func TestRenderFixedHTML(t *testing.T) {
 		"You reported on Oct 30",
 		"I changed the range to Last 7 days",
 		"Your report about filters is fixed",
+		"Open Bear Budget",
+		"https://app.bearbudget.app",
 	} {
 		if !strings.Contains(html, needle) {
 			t.Fatalf("missing %q in html", needle)

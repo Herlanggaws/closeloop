@@ -50,13 +50,13 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-18…S-20 Widget UX | `/preview/widget/*` + `@closeloop/widget` | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet env |
 | S-21 Fixed banner | `/preview/widget/fixed` + `@closeloop/widget` | **Wired** ingest updates → S-21 banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` | Needs F3 SDK |
-| S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed mail HTML shipped (Go renderer + preview); S-27 vote still design |
+| S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed + waitlist confirmation wired (Go + Resend); S-27 vote verify/released HTML ready (no board wire yet) |
 | S-24…S-26 Public board | `/board`, `/idea`, `/roadmap` | SSR board + votes |
 
 ### Todo — by PRD feature
 
 #### M0 · Validasi
-- [x] Landing waitlist capture (email → Postgres store-only; ESP later), hero + footer forms
+- [x] Landing waitlist capture (email → Postgres + confirmation HTML via Resend/`.mail`), hero + footer forms
 - [ ] Interview 5–10 builders; log “mau coba minggu ini”
 - [x] Final name: Saidloop (domain TBD)
 - [x] MoR: [Polar](https://polar.sh/) (billing still manual `plan` until M5)
@@ -126,7 +126,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 | Milestone | Focus | Status |
 | --- | --- | --- |
-| M0 | Landing + waitlist + interviews | Waitlist store-only shipped; interviews todo |
+| M0 | Landing + waitlist + interviews | Waitlist + confirmation email shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
 | M3 | F8 F9 F11 | Design only |

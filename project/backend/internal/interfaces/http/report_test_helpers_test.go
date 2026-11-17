@@ -18,7 +18,6 @@ import (
 	"github.com/closeloop/api/internal/application"
 	"github.com/closeloop/api/internal/config"
 	"github.com/closeloop/api/internal/infrastructure/db"
-	"github.com/closeloop/api/internal/infrastructure/email"
 	"github.com/closeloop/api/internal/infrastructure/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -117,8 +116,7 @@ func newReportHarness(t *testing.T) *reportHarness {
 	store := &application.Store{DB: sqlDB}
 	files := storage.NewFS(cfg.StorageRoot, cfg.APIURL)
 	mail := &memMailer{}
-	srv := New(cfg, store, files, email.New(cfg.EmailFrom, "", tmpRoot))
-	_ = srv.Mailer
+	srv := New(cfg, store, files, mail)
 
 	h := &reportHarness{
 		t:       t,

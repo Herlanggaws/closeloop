@@ -16,6 +16,7 @@ type FixedMail struct {
 	ReportedAt   time.Time
 	AppVersion   string
 	GreetingName string
+	OpenURL      string
 }
 
 func FixedSubject(ticketTitle string) string {
@@ -76,11 +77,16 @@ func RenderFixedHTML(m FixedMail) string {
           </div>`, reportedLine, quote)
 	}
 
-	initial := "C"
-	if runes := []rune(strings.TrimSpace(m.ProjectName)); len(runes) > 0 {
-		initial = strings.ToUpper(string(runes[0]))
+	initial := html.EscapeString(brandInitial(fallback(m.ProjectName, "C")))
+
+	cta := ""
+	if u := strings.TrimSpace(m.OpenURL); u != "" {
+		label := "Open " + project
+		cta = fmt.Sprintf(`
+              <p style="margin:20px 0 0;">
+                <a href="%s" style="display:inline-block;padding:12px 20px;background:#171717;color:#FFFFFF;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;line-height:20px;">%s</a>
+              </p>`, html.EscapeString(u), label)
 	}
-	initial = html.EscapeString(initial)
 
 	return fmt.Sprintf(`<!doctype html>
 <html lang="en">
@@ -115,6 +121,7 @@ func RenderFixedHTML(m FixedMail) string {
                 <p style="margin:0;font-size:15px;line-height:1.4;color:#171717;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">%s</p>
               </div>
               %s
+              %s
             </td>
           </tr>
           <tr>
@@ -139,6 +146,7 @@ func RenderFixedHTML(m FixedMail) string {
 		noteLabel,
 		note,
 		quoteBlock,
+		cta,
 		project,
 	)
 }

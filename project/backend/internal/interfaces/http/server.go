@@ -23,10 +23,10 @@ type Server struct {
 	Cfg    config.Config
 	Store  *application.Store
 	Files  *storage.FSStore
-	Mailer *email.Mailer
+	Mailer application.MailSender
 }
 
-func New(cfg config.Config, store *application.Store, files *storage.FSStore, mailer *email.Mailer) *Server {
+func New(cfg config.Config, store *application.Store, files *storage.FSStore, mailer application.MailSender) *Server {
 	return &Server{Cfg: cfg, Store: store, Files: files, Mailer: mailer}
 }
 
@@ -194,9 +194,20 @@ func (s *Server) joinWaitlist(c *gin.Context) {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
 		return
 	}
-	if err := s.Store.AddWaitlist(c.Request.Context(), body.Email, body.Source); err != nil {
+	inserted, err := s.Store.AddWaitlist(c.Request.Context(), body.Email, body.Source)
+	if err != nil {
 		mapErr(c, err)
 		return
+	}
+	if inserted && s.Mailer != nil {
+		addr := strings.ToLower(strings.TrimSpace(body.Email))
+		mail := email.WaitlistMail{
+			To:           addr,
+			GreetingName: email.GreetingFromEmail(addr),
+		}
+		if sendErr := s.Mailer.Send(addr, email.WaitlistSubject(), email.RenderWaitlistHTML(mail)); sendErr != nil {
+			slog.Error("waitlist confirmation email", "err", sendErr, "to", addr)
+		}
 	}
 	c.JSON(200, gin.H{"ok": true})
 }
