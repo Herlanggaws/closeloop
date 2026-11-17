@@ -11,8 +11,11 @@ cd "$ROOT"
 [ -f backend/.env ] && set -a && source backend/.env && set +a
 
 USER_NAME="${USER:-$(whoami)}"
-DEFAULT_TEST_DB="${DATABASE_URL%/closeloop*}/closeloop_test?sslmode=disable"
-TEST_DATABASE_URL="${TEST_DATABASE_URL:-${DEFAULT_TEST_DB:-postgres://${USER_NAME}@localhost:5432/closeloop_test?sslmode=disable}}"
+DEFAULT_TEST_DB="postgres://${USER_NAME}@localhost:5432/closeloop_test?sslmode=disable"
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  DEFAULT_TEST_DB="${DATABASE_URL%/closeloop*}/closeloop_test?sslmode=disable"
+fi
+TEST_DATABASE_URL="${TEST_DATABASE_URL:-$DEFAULT_TEST_DB}"
 export TEST_DATABASE_URL
 export JWT_SECRET="${JWT_SECRET:-dev-jwt-secret-change-me-in-production}"
 

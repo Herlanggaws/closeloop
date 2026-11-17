@@ -1,6 +1,7 @@
 package email
 
 import (
+	"html"
 	"strings"
 	"testing"
 )
@@ -21,13 +22,13 @@ func TestVoteReleasedSubject(t *testing.T) {
 }
 
 func TestRenderVoteVerifyHTML(t *testing.T) {
-	html := RenderVoteVerifyHTML(VoteVerifyMail{
+	body := RenderVoteVerifyHTML(VoteVerifyMail{
 		ProjectName: "Bear Budget",
 		IdeaTitle:   "Export budgets to Google Sheets",
 		ConfirmURL:  "https://saidloop.dev/vote/confirm?t=abc",
 	})
 	for _, needle := range []string{
-		"Confirm your vote on Bear Budget's board",
+		html.EscapeString("Confirm your vote on Bear Budget's board"),
 		"Confirm your vote",
 		"Export budgets to Google Sheets",
 		"Confirm my vote",
@@ -35,7 +36,7 @@ func TestRenderVoteVerifyHTML(t *testing.T) {
 		"expires in 24 hours",
 		"Bear Budget",
 	} {
-		if !strings.Contains(html, needle) {
+		if !strings.Contains(body, needle) {
 			t.Fatalf("missing %q in html", needle)
 		}
 	}
