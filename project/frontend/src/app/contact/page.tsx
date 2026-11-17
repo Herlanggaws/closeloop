@@ -1,0 +1,38 @@
+import type { Metadata } from "next";
+import { MarketingShell } from "@/components/MarketingShell";
+import { MarketingPageHeader, MarketingProse } from "@/components/MarketingProse";
+import { CONTACT_EMAIL } from "@/lib/marketing-links";
+
+export const metadata: Metadata = {
+  title: "Contact · Saidloop",
+  description: "Get in touch with Saidloop.",
+};
+
+export default function ContactPage() {
+  return (
+    <MarketingShell>
+      <MarketingPageHeader
+        title="Contact"
+        description="Sales, privacy, support, or anything else — email works best."
+      />
+      <MarketingProse>
+        <p>
+          Write to{" "}
+          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. We usually reply within a few
+          business days.
+        </p>
+        <ul>
+          <li>
+            <strong>Sales / plans</strong> — pricing, Indie early access, Business self-host
+          </li>
+          <li>
+            <strong>Privacy / DPA</strong> — data questions or a countersigned DPA
+          </li>
+          <li>
+            <strong>Support</strong> — install, MCP, or account issues
+          </li>
+        </ul>
+      </MarketingProse>
+    </MarketingShell>
+  );
+}

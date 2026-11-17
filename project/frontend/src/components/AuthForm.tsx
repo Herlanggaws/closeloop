@@ -256,7 +256,15 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       </form>
 
       <p className="font-ds-ui m-0 text-[12px] text-[var(--text-tertiary)]">
-        By continuing you agree to the Terms and Privacy Policy.
+        By continuing you agree to the{" "}
+        <Link href="/terms" className="text-[var(--text-secondary)] underline underline-offset-2">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="text-[var(--text-secondary)] underline underline-offset-2">
+          Privacy Policy
+        </Link>
+        .
       </p>
     </div>
   );
