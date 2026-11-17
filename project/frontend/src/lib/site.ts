@@ -2,6 +2,9 @@ import { PRODUCT_DOMAIN } from "@/lib/marketing-links";
 
 export const SITE_URL = `https://${PRODUCT_DOMAIN}`;
 
+/** Google Tag Manager container. Override with NEXT_PUBLIC_GTM_ID. */
+export const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || "GTM-KZJ4GG9R";
+
 export const SITE_NAME = "Saidloop";
 
 export const SITE_TAGLINE = "Users report it. Your AI fixes it.";
