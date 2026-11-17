@@ -257,9 +257,9 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase D — Harden
 
-- [ ] CI job on PR → `dev` (GitHub Action) yang hanya jalanin report suite
-- [ ] Flake quarantine list di dokumen ini
-- [ ] Coverage gate longgar: semua ID di §4 harus ada nama test `TestR_ING_01` dst.
+- [x] CI job on PR/push → `dev` (`.github/workflows/report-tests.yml`) — Go suite + coverage gate always; Playwright nightly / `workflow_dispatch` / label `run-ui-tests`
+- [x] Flake quarantine list di dokumen ini (§11)
+- [x] Coverage gate longgar: `pnpm test:reports:coverage` / `scripts/check-report-coverage.sh`
 
 ---
 
@@ -299,7 +299,20 @@ Plan dianggap **executed** (bukan hanya didokumentasikan) bila:
 | UI | Playwright belakangan (Phase C); API+MCP dulu |
 | Email di test | File/mail sink, bukan Resend production |
 | Branch | Semua kerja test + fix di `dev` |
+| CI | Go + coverage on every PR/push to `dev`; Playwright nightly / manual / label `run-ui-tests` |
 
 ---
 
-*Update dokumen ini saat case baru ditambah atau ID di-retire. Implementasi mulai dari Phase A.*
+## 11. Flake quarantine
+
+Cases yang sengaja di-skip di CI (harus ada issue/alasan). Kosong = tidak ada quarantine.
+
+| ID | Layer | Reason | Since | Owner |
+| --- | --- | --- | --- | --- |
+| — | — | — | — | — |
+
+Cara quarantine: `t.Skip("quarantine: …")` di Go, atau `test.skip(…)` di Playwright, **plus** baris di tabel ini. Jangan biarkan flake silent.
+
+---
+
+*Update dokumen ini saat case baru ditambah atau ID di-retire.*

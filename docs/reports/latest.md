@@ -1,14 +1,14 @@
-# Report test run — 2026-11-17 Phase C
+# Report test run — 2026-11-17 Phase D
 
 Branch: dev
 Result: PASS
-Duration: ~7s (UI)
+Duration: ~8s (API + coverage)
 
 ## Summary
 
-- Passed UI: R-UI-01…05 (Playwright)
-- Prior API suite: R-ING / R-INB / R-MRG / R-FIX / R-MCP + GOLDEN still via `pnpm test:reports`
-- Commands: `pnpm test:reports:ui` · `pnpm test:reports:all`
+- Coverage gate: OK
+- Go suite: PASS (ING/INB/MRG/FIX/MCP/GOLDEN)
+- CI: `.github/workflows/report-tests.yml` (Go on PR/push; UI nightly / manual / label `run-ui-tests`)
 
 ## Next human action
 

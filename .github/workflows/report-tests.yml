@@ -1,0 +1,181 @@
+name: Report tests
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+  schedule:
+    # Nightly UI smoke (UTC 17:00 ≈ 00:00 WIB)
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+    inputs:
+      run_ui:
+        description: "Also run Playwright R-UI suite"
+        type: boolean
+        default: true
+
+concurrency:
+  group: report-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: Go report suite (L0/L1/L2)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: closeloop_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/closeloop_test?sslmode=disable
+      JWT_SECRET: ci-jwt-secret-report-suite
+    defaults:
+      run:
+        working-directory: project
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: project/backend/go.mod
+          cache-dependency-path: project/backend/go.sum
+
+      - name: Coverage gate (case IDs present)
+        run: bash scripts/check-report-coverage.sh
+
+      - name: Run report API suite
+        run: bash scripts/test-reports.sh
+
+      - name: Upload docs/reports artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-api-latest
+          path: docs/reports/latest.md
+          if-no-files-found: ignore
+
+  ui:
+    name: Playwright report UI (L3)
+    runs-on: ubuntu-latest
+    # PR/push skip UI by default; nightly + manual dispatch (+ label) run it.
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_ui) ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-ui-tests'))
+    needs: api
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: closeloop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/closeloop?sslmode=disable
+      JWT_SECRET: ci-jwt-secret-report-suite
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+      API_URL: http://localhost:8080
+      STORAGE_ROOT: /tmp/closeloop-uploads
+      API_ADDR: ":8080"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: project/backend/go.mod
+          cache-dependency-path: project/backend/go.sum
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: project/frontend/pnpm-lock.yaml
+
+      - name: Install frontend deps
+        working-directory: project/frontend
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Build widget
+        working-directory: project/frontend
+        run: pnpm --filter @closeloop/widget build
+
+      - name: Install Playwright Chromium
+        working-directory: project/frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Migrate database
+        working-directory: project/backend
+        run: |
+          mkdir -p "$STORAGE_ROOT"
+          go run ./cmd/server --mode=migrate
+
+      - name: Start API (api+worker)
+        working-directory: project/backend
+        run: |
+          go run ./cmd/server --mode=all &
+          for i in $(seq 1 60); do
+            if curl -sf --max-time 2 "$NEXT_PUBLIC_API_URL/healthz" >/dev/null; then
+              echo "API ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start" >&2
+          exit 1
+
+      - name: Build Next.js
+        working-directory: project/frontend
+        run: pnpm build
+
+      - name: Start Next.js
+        working-directory: project/frontend
+        run: |
+          pnpm start -- -p 3000 &
+          for i in $(seq 1 90); do
+            if curl -sf --max-time 2 "$PLAYWRIGHT_BASE_URL/" >/dev/null; then
+              echo "Web ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Web failed to start" >&2
+          exit 1
+
+      - name: Run Playwright R-UI
+        working-directory: project/frontend
+        run: pnpm exec playwright test e2e/reports.spec.ts --reporter=line
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            project/frontend/test-results/
+            project/frontend/playwright-report/
+          if-no-files-found: ignore

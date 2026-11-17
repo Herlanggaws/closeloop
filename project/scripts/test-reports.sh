@@ -21,13 +21,16 @@ STAMP="$(date -u +"%Y-%m-%dT%H%M%SZ")"
 SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 START_NS="$(date +%s)"
 
-if ! pg_isready -h localhost -q; then
-  echo "Postgres is not running. Start with: brew services start postgresql@15"
-  exit 1
+if [[ -z "${CI:-}" ]]; then
+  if ! pg_isready -h localhost -q; then
+    echo "Postgres is not running. Start with: brew services start postgresql@15"
+    exit 1
+  fi
+  psql -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='closeloop_test'" | grep -q 1 \
+    || createdb closeloop_test
+else
+  echo "CI mode — using provided TEST_DATABASE_URL (service container)"
 fi
-
-psql -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='closeloop_test'" | grep -q 1 \
-  || createdb closeloop_test
 
 echo "Using TEST_DATABASE_URL=${TEST_DATABASE_URL}"
 echo "Running report suite…"

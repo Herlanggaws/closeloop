@@ -140,7 +140,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 3. ~~Finish **F6** email (Resend) + in-app banner.~~
 4. Dogfood Closeloop on Bear Budget (MCP status page shipped).
 5. Start **M0** waitlist + 5 builder interviews in parallel.
-6. ~~**Report test automation** Phase A–C~~ — `pnpm test:reports` (Go) + `pnpm test:reports:ui` (Playwright R-UI). Next: Phase D CI. See [AI Report Testing Plan](./AI%20Report%20Testing%20Plan.md).
+6. ~~**Report test automation** Phase A–D~~ — local `pnpm test:reports` / `:ui` / `:all`; CI `.github/workflows/report-tests.yml` (Go on PR, UI nightly). See [AI Report Testing Plan](./AI%20Report%20Testing%20Plan.md).
 7. **F1** Team invite + roles (US-05 / S-14).
 
 ---
