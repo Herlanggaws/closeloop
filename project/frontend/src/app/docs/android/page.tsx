@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DocsPlatformPage } from "@/components/DocsPlatformPage";
 
 export const metadata: Metadata = {
-  title: "Android SDK · Saidloop",
+  title: "Android SDK",
   description: "Install the Saidloop Android SDK and start collecting in-app reports.",
 };
 

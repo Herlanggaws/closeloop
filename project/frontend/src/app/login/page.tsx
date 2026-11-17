@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AuthShell } from "@/components/AuthShell";
 
 export const metadata: Metadata = {
-  title: "Log in · Saidloop",
+  title: "Log in",
   description: "Log in to Saidloop to triage reports and close the loop with your agents.",
 };
 

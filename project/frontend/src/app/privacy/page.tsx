@@ -9,7 +9,7 @@ import {
 } from "@/lib/marketing-links";
 
 export const metadata: Metadata = {
-  title: "Privacy · Saidloop",
+  title: "Privacy",
   description: "How Saidloop collects, uses, and protects personal data.",
 };
 

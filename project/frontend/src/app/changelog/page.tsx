@@ -4,8 +4,10 @@ import { MarketingPageHeader } from "@/components/MarketingProse";
 import { CHANGELOG_ENTRIES } from "@/lib/changelog";
 
 export const metadata: Metadata = {
-  title: "Changelog · Saidloop",
-  description: "What shipped in Saidloop.",
+  title: "Changelog",
+  description:
+    "Product updates for Saidloop — landing, docs, widget, MCP, and reporter notify as they ship. Newest first.",
+  alternates: { canonical: "/changelog" },
 };
 
 export default function ChangelogPage() {

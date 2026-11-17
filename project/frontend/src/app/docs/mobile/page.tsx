@@ -5,7 +5,7 @@ import { CodeBlock, MarketingPageHeader, MarketingProse } from "@/components/Mar
 import { docsSnippet } from "@/lib/docs-snippets";
 
 export const metadata: Metadata = {
-  title: "Flutter & React Native · Saidloop",
+  title: "Flutter & React Native",
   description: "Install Saidloop on Flutter and React Native using the native SDKs under the hood.",
 };
 

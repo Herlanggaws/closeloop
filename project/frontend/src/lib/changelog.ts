@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-17",
-    title: "Docs, legal pages, and early-access product loop",
-    body: "Public docs for the web widget and mobile SDKs, plus About, Contact, Privacy, Terms, and DPA — all linked from the landing footer. Waitlist builders can still install the widget, triage in the inbox, and connect Cursor or Claude Code via MCP.",
+    title: "Brand logo, favicon, landing SEO, and docs",
+    body: "Saidloop logo and favicon now match Brand Guidelines — open-loop mark plus Geist wordmark in the UI, with refreshed PNG kit and app icons. Same day: Open Graph/Twitter metadata, robots and sitemap, FAQ structured data, docs for the web widget and mobile SDKs, plus About, Contact, Privacy, Terms, and DPA. MCP examples use saidloop tool names and mcp.saidloop.com.",
   },
   {
     date: "2026-11-10",
