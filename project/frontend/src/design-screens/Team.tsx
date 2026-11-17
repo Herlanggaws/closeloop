@@ -51,16 +51,41 @@ export function Team() {
       router.replace("/app/onboarding");
       return;
     }
-    const [meRes, projectRes, teamRes] = await Promise.all([
+
+    const [meSettled, projectSettled, teamSettled] = await Promise.allSettled([
       api<MeResponse>("/api/me"),
       api<{ project: { name: string } }>(`/api/projects/${projectId}`),
       api<{ members: Member[]; invites: Invite[]; usage: OrgUsage }>("/api/org/members"),
     ]);
-    setMe(meRes);
-    setProjectName(projectRes.project.name || "Project");
-    setMembers(teamRes.members || []);
-    setInvites(teamRes.invites || []);
-    setUsage(teamRes.usage || meRes.usage || null);
+
+    if (meSettled.status === "rejected" && teamSettled.status === "rejected") {
+      const reason = meSettled.reason;
+      throw reason instanceof Error ? reason : new Error("Failed to load team");
+    }
+
+    if (meSettled.status === "fulfilled") {
+      setMe(meSettled.value);
+    }
+    if (projectSettled.status === "fulfilled") {
+      setProjectName(projectSettled.value.project.name || "Project");
+    }
+    if (teamSettled.status === "fulfilled") {
+      setMembers(teamSettled.value.members || []);
+      setInvites(teamSettled.value.invites || []);
+      const meUsage = meSettled.status === "fulfilled" ? meSettled.value.usage : null;
+      setUsage(teamSettled.value.usage || meUsage || null);
+    } else if (meSettled.status === "fulfilled") {
+      setUsage(meSettled.value.usage || null);
+    }
+
+    const firstFailure = [teamSettled, meSettled, projectSettled].find(
+      (r) => r.status === "rejected",
+    );
+    if (firstFailure && firstFailure.status === "rejected") {
+      throw firstFailure.reason instanceof Error
+        ? firstFailure.reason
+        : new Error("Failed to load team");
+    }
   }
 
   useEffect(() => {
