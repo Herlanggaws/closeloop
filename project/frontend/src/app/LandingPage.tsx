@@ -3866,14 +3866,14 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             >
               Security and control for companies.
             </div>
-            <a href="/signup" data-pencil-name="CTA" className="cursor-pointer no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
+            <button type="button" onClick={openWaitlist} data-pencil-name="CTA" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
               <div
                 data-pencil-name="Label"
                 className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
               >
                 Talk to us
               </div>
-            </a>
+            </button>
             <div
               data-pencil-name="Features"
               className="box-border w-[252px] h-[161.5px] shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
