@@ -1,0 +1,36 @@
+---
+description: When shipping product work, update the public /changelog entry source before finishing
+alwaysApply: true
+---
+
+# Update `/changelog` when work ships
+
+User-facing Closeloop/Saidloop work is incomplete until the public changelog is updated.
+
+## Source of truth
+
+- Page: `/changelog` (`project/frontend/src/app/changelog/page.tsx`)
+- Entries: `project/frontend/src/lib/changelog.ts` → `CHANGELOG_ENTRIES`
+- Newest first. Shape: `{ date: "YYYY-MM-DD", title, body }` (ISO date, short title, 1–2 sentence body in English product voice).
+
+## When to update
+
+Before marking a task done (and before commit/push), **prepend** an entry if the change is user-visible:
+
+- New or changed product features (API, MCP, widget, inbox, dashboard, auth, notify)
+- Marketing/docs pages users can open (`/docs`, `/about`, `/contact`, landing, etc.)
+- Notable fixes or behavior changes reporters/builders would notice
+
+Same calendar day → prefer **one** entry that covers the day’s ship (expand title/body) instead of many tiny rows, unless the releases are clearly separate.
+
+## Skip only when
+
+- Cursor rules / agent config only
+- Pure internal refactors, tests, or tooling with no user-visible change
+- Typo/chore that does not change product behavior or public copy users care about
+- Explicit user skip
+
+```text
+❌ Feature/UI/docs ship with no CHANGELOG_ENTRIES update
+✅ Ship + prepend entry in changelog.ts (newest first) → /changelog reflects it
+```
