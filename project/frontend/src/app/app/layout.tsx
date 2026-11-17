@@ -38,12 +38,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         if (cancelled) return;
 
         const projects = res.projects || [];
+        const onOnboarding = pathname?.startsWith("/app/onboarding");
+
         if (projects.length === 0) {
           clearProjectSelection();
           setReady(true);
-          if (!pathname?.startsWith("/app/onboarding")) {
+          if (!onOnboarding) {
             router.replace("/app/onboarding");
           }
+          return;
+        }
+
+        // Allow creating another project without forcing a selection back.
+        if (onOnboarding && pathname === "/app/onboarding") {
+          setReady(true);
           return;
         }
 

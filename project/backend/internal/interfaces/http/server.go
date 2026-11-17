@@ -48,6 +48,7 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/auth/refresh", s.refresh)
 		api.POST("/auth/logout", s.logout)
 		api.GET("/me", s.authRequired(), s.me)
+		api.PATCH("/org/plan", s.authRequired(), s.patchOrgPlan)
 		api.GET("/projects", s.authRequired(), s.listProjects)
 		api.POST("/projects", s.authRequired(), s.createProject)
 		api.GET("/projects/:id", s.authRequired(), s.getProject)
@@ -548,6 +549,11 @@ func (s *Server) me(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	usage, err := s.Store.OrgUsage(c.Request.Context(), org.ID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
 	c.JSON(200, gin.H{
 		"user": gin.H{
 			"id":         userID,
@@ -555,9 +561,40 @@ func (s *Server) me(c *gin.Context) {
 			"name":       user.Name,
 			"avatar_url": user.AvatarURL,
 		},
-		"org":  gin.H{"id": org.ID, "name": org.Name, "plan": org.Plan},
-		"role": role,
+		"org": gin.H{
+			"id":   org.ID,
+			"name": org.Name,
+			"plan": usage.Plan,
+		},
+		"role":  role,
+		"usage": usage,
 	})
+}
+
+func (s *Server) patchOrgPlan(c *gin.Context) {
+	var body struct {
+		Plan string `json:"plan"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	org, role, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	updated, err := s.Store.UpdateOrgPlan(c.Request.Context(), org.ID, body.Plan, role)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	usage, err := s.Store.OrgUsage(c.Request.Context(), updated.ID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"org": updated, "usage": usage})
 }
 
 func (s *Server) listProjects(c *gin.Context) {

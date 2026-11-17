@@ -135,7 +135,7 @@ func (s *Store) Register(ctx context.Context, email, password, name string) (Use
 	}
 	var org Org
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO organizations(name, plan) VALUES ($1,'indie')
+		INSERT INTO organizations(name, plan) VALUES ($1,'free')
 		RETURNING id, name, plan`, name+"'s org").
 		Scan(&org.ID, &org.Name, &org.Plan)
 	if err != nil {
@@ -224,7 +224,7 @@ func (s *Store) UpsertGoogleUser(ctx context.Context, email, name, googleSub, av
 
 	var org Org
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO organizations(name, plan) VALUES ($1,'indie')
+		INSERT INTO organizations(name, plan) VALUES ($1,'free')
 		RETURNING id, name, plan`, name+"'s org").
 		Scan(&org.ID, &org.Name, &org.Plan)
 	if err != nil {
@@ -324,6 +324,22 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 		return Project{}, "", err
 	}
 	defer tx.Rollback()
+
+	var plan string
+	if err := tx.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1 FOR UPDATE`, orgID).Scan(&plan); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Project{}, "", ErrNotFound
+		}
+		return Project{}, "", err
+	}
+	var used int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM projects WHERE org_id=$1 AND deleted_at IS NULL`, orgID).Scan(&used); err != nil {
+		return Project{}, "", err
+	}
+	if LimitsForPlan(plan).ProjectLimitReached(used) {
+		return Project{}, "", ErrPlanRequired
+	}
 
 	var p Project
 	var plats, sels StringArray
@@ -743,6 +759,16 @@ func (s *Store) CreateReport(ctx context.Context, project Project, in CreateRepo
 	}
 	defer tx.Rollback()
 
+	var plan string
+	if err := tx.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1`, project.OrgID).Scan(&plan); err != nil {
+		return "", "", "", "", "", err
+	}
+	used, err := countOrgReportsThisMonthTx(ctx, tx, project.OrgID)
+	if err != nil {
+		return "", "", "", "", "", err
+	}
+	quotaLocked := LimitsForPlan(plan).ReportQuotaExceeded(used)
+
 	ticketID = uuid.NewString()
 	reportID = uuid.NewString()
 	attachmentID = uuid.NewString()
@@ -752,9 +778,9 @@ func (s *Store) CreateReport(ctx context.Context, project Project, in CreateRepo
 		return "", "", "", "", "", err
 	}
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO reports(id, ticket_id, reporter_id, message, platform, context, app_version)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		reportID, ticketID, reporterID, in.Message, in.Platform, ctxBytes, nullStr(in.AppVersion)); err != nil {
+		INSERT INTO reports(id, ticket_id, reporter_id, message, platform, context, app_version, quota_locked)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+		reportID, ticketID, reporterID, in.Message, in.Platform, ctxBytes, nullStr(in.AppVersion), quotaLocked); err != nil {
 		return "", "", "", "", "", err
 	}
 	uploadToken = auth.SHA256(uuid.NewString())[:32]
@@ -773,6 +799,21 @@ func (s *Store) CreateReport(ctx context.Context, project Project, in CreateRepo
 		return "", "", "", "", "", err
 	}
 	return ticketID, reportID, attachmentID, uploadToken, storageKey, nil
+}
+
+// reportReadableSQL is true when a report is unlocked or from a prior calendar month.
+const reportReadableSQL = `(r.quota_locked = false OR r.created_at < date_trunc('month', now()))`
+
+func countOrgReportsThisMonthTx(ctx context.Context, tx *sql.Tx, orgID string) (int, error) {
+	var n int
+	err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM reports r
+		JOIN tickets t ON t.id = r.ticket_id
+		JOIN projects p ON p.id = t.project_id
+		WHERE p.org_id = $1
+		  AND r.created_at >= date_trunc('month', now())`, orgID).Scan(&n)
+	return n, err
 }
 
 func (s *Store) CompleteUpload(ctx context.Context, attachmentID, token string, size int64) error {
@@ -800,7 +841,11 @@ func (s *Store) AttachmentForUpload(ctx context.Context, attachmentID, token str
 
 func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platform string) ([]Ticket, error) {
 	q := `SELECT id, project_id, type, status, title, report_count, fixed_at, fixed_note, created_at, updated_at
-		FROM tickets WHERE project_id=$1`
+		FROM tickets WHERE project_id=$1
+		AND EXISTS (
+			SELECT 1 FROM reports r
+			WHERE r.ticket_id = tickets.id AND ` + reportReadableSQL + `
+		)`
 	args := []any{projectID}
 	i := 2
 	if status != "" {
@@ -816,7 +861,7 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 	if platform != "" {
 		q += fmt.Sprintf(` AND EXISTS (
 			SELECT 1 FROM reports r
-			WHERE r.ticket_id = tickets.id AND r.platform=$%d
+			WHERE r.ticket_id = tickets.id AND r.platform=$%d AND `+reportReadableSQL+`
 		)`, i)
 		args = append(args, platform)
 		i++
@@ -847,7 +892,24 @@ func (s *Store) GetTicket(ctx context.Context, ticketID string) (Ticket, error) 
 	if errors.Is(err, sql.ErrNoRows) {
 		return Ticket{}, ErrNotFound
 	}
-	return t, err
+	if err != nil {
+		return Ticket{}, err
+	}
+	var readable, total int
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE `+reportReadableSQL+`),
+			COUNT(*)
+		FROM reports r
+		WHERE r.ticket_id=$1`, ticketID).Scan(&readable, &total)
+	if err != nil {
+		return Ticket{}, err
+	}
+	// Soft-block only when the ticket still has reports and all are quota-locked.
+	if total > 0 && readable == 0 {
+		return Ticket{}, ErrPlanRequired
+	}
+	return t, nil
 }
 
 func (s *Store) TicketReports(ctx context.Context, ticketID string) ([]Report, error) {
@@ -857,6 +919,7 @@ func (s *Store) TicketReports(ctx context.Context, ticketID string) ([]Report, e
 		FROM reports rep
 		LEFT JOIN reporters r ON r.id = rep.reporter_id
 		WHERE rep.ticket_id=$1
+		  AND (rep.quota_locked = false OR rep.created_at < date_trunc('month', now()))
 		ORDER BY rep.created_at`, ticketID)
 	if err != nil {
 		return nil, err
@@ -1263,6 +1326,99 @@ func (s *Store) UserCanAccessProject(ctx context.Context, userID, projectID stri
 			WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2
 		)`, projectID, userID).Scan(&ok)
 	return ok, err
+}
+
+type UsageCounter struct {
+	Used  int `json:"used"`
+	Limit int `json:"limit"` // 0 = unlimited
+}
+
+type OrgUsage struct {
+	Plan         string       `json:"plan"`
+	Projects     UsageCounter `json:"projects"`
+	Reports      UsageCounter `json:"reports"`
+	PeriodStart  time.Time    `json:"period_start"`
+}
+
+func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
+	var plan string
+	if err := s.DB.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1`, orgID).Scan(&plan); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return OrgUsage{}, ErrNotFound
+		}
+		return OrgUsage{}, err
+	}
+	plan = NormalizePlan(plan)
+	limits := LimitsForPlan(plan)
+
+	var projectsUsed int
+	if err := s.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM projects WHERE org_id=$1 AND deleted_at IS NULL`, orgID).Scan(&projectsUsed); err != nil {
+		return OrgUsage{}, err
+	}
+
+	periodStart := time.Now().UTC()
+	periodStart = time.Date(periodStart.Year(), periodStart.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	var reportsUsed int
+	if err := s.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM reports r
+		JOIN tickets t ON t.id = r.ticket_id
+		JOIN projects p ON p.id = t.project_id
+		WHERE p.org_id = $1
+		  AND r.created_at >= date_trunc('month', now())`, orgID).Scan(&reportsUsed); err != nil {
+		return OrgUsage{}, err
+	}
+
+	return OrgUsage{
+		Plan:        plan,
+		Projects:    UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
+		Reports:     UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
+		PeriodStart: periodStart,
+	}, nil
+}
+
+func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Org, error) {
+	if role != "owner" {
+		return Org{}, ErrForbidden
+	}
+	plan = NormalizePlan(plan)
+	if !ValidPlan(plan) {
+		return Org{}, ErrInvalidInput
+	}
+
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return Org{}, err
+	}
+	defer tx.Rollback()
+
+	var org Org
+	err = tx.QueryRowContext(ctx, `
+		UPDATE organizations SET plan=$2 WHERE id=$1
+		RETURNING id, name, plan`, orgID, plan).
+		Scan(&org.ID, &org.Name, &org.Plan)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Org{}, ErrNotFound
+	}
+	if err != nil {
+		return Org{}, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE reports r
+		SET quota_locked = false
+		FROM tickets t
+		JOIN projects p ON p.id = t.project_id
+		WHERE r.ticket_id = t.id AND p.org_id = $1 AND r.quota_locked = true`, orgID); err != nil {
+		return Org{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return Org{}, err
+	}
+	return org, nil
 }
 
 func (s *Store) AddWaitlist(ctx context.Context, email, source string) error {

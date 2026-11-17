@@ -44,7 +44,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
 | S-13 Integrations | `/app/settings/integrations` | OAuth connects (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | Invite + roles (US-05) |
-| S-15 Billing & credits | `/app/settings/billing` | Manual plan now; Polar MoR later |
+| S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |
 | S-18…S-20 Widget UX | `/preview/widget/*` | Ship in real widget bundle |
@@ -65,7 +65,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F1** Google OAuth
 - [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
 - [x] **F1** Log out (revoke refresh + clear session)
-- [ ] **F1** Multi-project UI + plan limits
+- [x] **F1** Multi-project UI + plan limits
 - [x] **F1** MCP token list / revoke / generate UI (`/app/mcp`)
 - [ ] **F1** Team invite + roles (US-05) — API + S-14
 - [ ] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
@@ -107,7 +107,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 #### M5 · Beta publik
 - [ ] Polar billing (Indie / Studio / Business) + entitlements
 - [ ] Annual pricing, early-access Indie 3 months
-- [ ] Quota soft-block when over plan
+- [x] Quota soft-block when over plan (shipped with M1 F1; Polar checkout still M5)
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
 
 ### Open questions (from PRD)
@@ -125,7 +125,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | Milestone | Focus | Status |
 | --- | --- | --- |
 | M0 | Landing + waitlist + interviews | Waitlist store-only shipped; interviews todo |
-| M1 | F1 F2 F4 F5 F6 | Backend core WIP; UI design done; wire + widget polish next |
+| M1 | F1 F2 F4 F5 F6 | Core wired (multi-project + soft-block); widget CDN + team + dogfood left |
 | M2 | F3 F7 mobile | Todo |
 | M3 | F8 F9 F11 | Design only |
 | M4 | F10 F12 | Design only |

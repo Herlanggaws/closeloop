@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
-import { api, logout } from "@/lib/api";
+import { api, ApiRequestError, logout } from "@/lib/api";
+import {
+  canCreateProject,
+  formatLimit,
+  planLabel,
+  type MeResponse,
+  type OrgUsage,
+} from "@/lib/usage";
 
 const PLATFORMS = [
   { id: "web", label: "Web", hint: "Script tag or npm" },
@@ -15,19 +22,36 @@ const PLATFORMS = [
 
 export function CreateProject() {
   const router = useRouter();
-  const [name, setName] = useState("Bear Budget Web");
+  const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>(["web"]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
+  const [usage, setUsage] = useState<OrgUsage | null>(null);
+  const [atCap, setAtCap] = useState(false);
+  const [hasInbox, setHasInbox] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem("closeloop_project")) {
-      router.replace("/app/install");
-      return;
-    }
-    setReady(true);
-  }, [router]);
+    let cancelled = false;
+    setHasInbox(!!localStorage.getItem("closeloop_project") || false);
+
+    api<MeResponse>("/api/me")
+      .then((me) => {
+        if (cancelled) return;
+        const u = me.usage || null;
+        setUsage(u);
+        setAtCap(!!u && !canCreateProject(u));
+        setHasInbox((u?.projects.used ?? 0) > 0);
+        setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function togglePlatform(id: string) {
     setSelected((prev) =>
@@ -36,6 +60,10 @@ export function CreateProject() {
   }
 
   async function onContinue() {
+    if (atCap) {
+      router.push("/app/settings/billing");
+      return;
+    }
     if (!name.trim() || selected.length === 0) {
       setError("Name and at least one platform are required.");
       return;
@@ -52,11 +80,25 @@ export function CreateProject() {
       localStorage.setItem("closeloop_platforms", JSON.stringify(selected));
       router.push("/app/onboarding/install");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create project");
+      if (err instanceof ApiRequestError && err.code === "PLAN_REQUIRED") {
+        setAtCap(true);
+        setError("Project limit reached for your plan. Upgrade to add another.");
+      } else {
+        setError(err instanceof Error ? err.message : "Could not create project");
+      }
     } finally {
       setLoading(false);
     }
   }
+
+  const plan = usage?.plan || "free";
+  const used = usage?.projects.used ?? 0;
+  const limit = usage?.projects.limit ?? 1;
+  const limitLabel =
+    limit === 0
+      ? `${planLabel(plan)} plan · ${used} projects`
+      : `${planLabel(plan)} plan · ${used} of ${formatLimit(limit)} projects`;
+  const isFirst = used === 0;
 
   if (!ready) {
     return (
@@ -85,13 +127,15 @@ export function CreateProject() {
           >
             Log out
           </button>
-          <button
-            type="button"
-            onClick={() => router.push("/app/inbox")}
-            className="cursor-pointer text-[13px] text-[#737373] hover:text-[#171717]"
-          >
-            Skip setup
-          </button>
+          {hasInbox && (
+            <button
+              type="button"
+              onClick={() => router.push("/app/inbox")}
+              className="cursor-pointer text-[13px] text-[#737373] hover:text-[#171717]"
+            >
+              Back to inbox
+            </button>
+          )}
         </div>
       </header>
 
@@ -100,69 +144,83 @@ export function CreateProject() {
           <div className="flex flex-col gap-6 p-8">
             <div>
               <h1 className="font-ds-sans text-[26px] font-medium tracking-[-0.6px] text-[#171717]">
-                Create your first project
+                {isFirst ? "Create your first project" : "Create another project"}
               </h1>
               <p className="mt-1.5 text-sm text-[#737373]">
                 One project per app. Each gets its own inbox, public key and MCP token.
               </p>
             </div>
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium text-[#171717]">Project name</span>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-10 rounded-md border border-[#1717171F] px-3 text-sm outline-none focus:border-[#171717]"
-                placeholder="My app"
-              />
-            </label>
+            {atCap ? (
+              <div className="rounded-[10px] border border-[#1717171F] bg-[#FAFAFA] p-4">
+                <p className="font-ds-ui text-sm font-medium text-[#171717]">
+                  {planLabel(plan)} plan is at its project limit (
+                  {limit === 0 ? `${used} projects` : `${used} of ${formatLimit(limit)}`}).
+                </p>
+                <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
+                  Upgrade to Indie (3 projects) or Studio (unlimited) to add another app.
+                </p>
+              </div>
+            ) : (
+              <>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium text-[#171717]">Project name</span>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-10 rounded-md border border-[#1717171F] px-3 text-sm outline-none focus:border-[#171717]"
+                    placeholder="My app"
+                  />
+                </label>
 
-            <div>
-              <p className="mb-2.5 text-[13px] font-medium text-[#171717]">Where does your app run?</p>
-              <div className="grid grid-cols-3 gap-2.5">
-                {PLATFORMS.map((p) => {
-                  const on = selected.includes(p.id);
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => togglePlatform(p.id)}
-                      className={`cursor-pointer rounded-[10px] p-3.5 text-left transition ${
-                        on
-                          ? "bg-[#FAFAFA] outline outline-[1.5px] outline-[#171717]"
-                          : "bg-white outline outline-1 outline-[#1717171F] hover:bg-[#FAFAFA]"
-                      }`}
-                    >
-                      <div className="mb-3 flex justify-end">
-                        <span
-                          className={`flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] text-white ${
-                            on ? "bg-[#171717]" : "bg-transparent outline outline-1 outline-[#1717171F]"
+                <div>
+                  <p className="mb-2.5 text-[13px] font-medium text-[#171717]">Where does your app run?</p>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {PLATFORMS.map((p) => {
+                      const on = selected.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => togglePlatform(p.id)}
+                          className={`cursor-pointer rounded-[10px] p-3.5 text-left transition ${
+                            on
+                              ? "bg-[#FAFAFA] outline outline-[1.5px] outline-[#171717]"
+                              : "bg-white outline outline-1 outline-[#1717171F] hover:bg-[#FAFAFA]"
                           }`}
                         >
-                          {on ? "✓" : ""}
-                        </span>
-                      </div>
-                      <div className="text-sm font-semibold text-[#171717]">{p.label}</div>
-                      <div className="text-xs text-[#A3A3A3]">{p.hint}</div>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-2 text-xs text-[#A3A3A3]">You can add more platforms to this project later.</p>
-            </div>
+                          <div className="mb-3 flex justify-end">
+                            <span
+                              className={`flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] text-white ${
+                                on ? "bg-[#171717]" : "bg-transparent outline outline-1 outline-[#1717171F]"
+                              }`}
+                            >
+                              {on ? "✓" : ""}
+                            </span>
+                          </div>
+                          <div className="text-sm font-semibold text-[#171717]">{p.label}</div>
+                          <div className="text-xs text-[#A3A3A3]">{p.hint}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-[#A3A3A3]">You can add more platforms to this project later.</p>
+                </div>
+              </>
+            )}
 
             {error && <p className="text-sm text-[#DA314A]">{error}</p>}
           </div>
 
           <div className="flex items-center justify-between border-t border-[#17171714] bg-[#FAFAFA] px-8 py-4">
-            <span className="text-xs text-[#A3A3A3]">Free plan · 1 of 1 projects</span>
+            <span className="text-xs text-[#A3A3A3]">{limitLabel}</span>
             <button
               type="button"
               disabled={loading}
               onClick={onContinue}
               className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#171717] px-4 text-sm font-medium text-white shadow-[0_4px_4px_#1717170A] disabled:opacity-50"
             >
-              {loading ? "Creating…" : "Continue"}
+              {atCap ? "Upgrade plan" : loading ? "Creating…" : "Continue"}
               <span aria-hidden>→</span>
             </button>
           </div>

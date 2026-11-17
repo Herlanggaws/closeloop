@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { api, clearProjectSelection, logout } from "@/lib/api";
-import {
-  displayName,
-  initials,
-  projectInitial,
-} from "@/lib/tickets";
+import { displayName, initials } from "@/lib/tickets";
+import type { MeResponse } from "@/lib/usage";
 import {
   PLATFORM_LABELS,
   PLATFORM_SUBTITLES,
@@ -21,7 +19,6 @@ import {
 const POLL_MS = 3000;
 
 type ProjectInfo = { id: string; name: string; platforms?: string[] };
-type MeResponse = { user: { email: string; name?: string; avatar_url?: string }; org: { name: string; plan: string } };
 type ProjectResponse = { public_key: string; project: ProjectInfo };
 type TicketsResponse = { tickets: { id: string }[] };
 
@@ -134,7 +131,7 @@ export function InstallStatus() {
   const showTabs = platforms.length > 1;
   const demoHref = `/demo.html?key=${encodeURIComponent(publicKey)}`;
   const projectName = project?.name || "Project";
-  const plan = me?.org.plan || "Indie";
+  const plan = me?.org.plan || "free";
   const email = me?.user.email || "";
   const subtitle = PLATFORM_SUBTITLES[activePlatform] ?? PLATFORM_SUBTITLES.web;
 
@@ -147,21 +144,12 @@ export function InstallStatus() {
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
       <aside className="flex h-screen w-[248px] shrink-0 flex-col gap-0.5 border-r border-[#17171714] bg-[#FAFAFA] p-3">
-        <div className="flex items-center gap-2.5 rounded-md p-1.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#F59E0B]">
-            <span className="font-ds-sans text-[13px] font-semibold text-white">
-              {projectInitial(projectName)}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate font-ds-ui text-[13px] font-semibold text-[#171717]">
-              {projectName}
-            </div>
-            <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">
-              {email ? `${displayName(email).split(" ")[0]} · ${plan}` : plan}
-            </div>
-          </div>
-        </div>
+        <ProjectSwitcher
+          projectName={projectName}
+          plan={plan}
+          email={email}
+          usage={me?.usage}
+        />
 
         <nav className="mt-3 flex flex-1 flex-col gap-0.5 overflow-y-auto">
           <NavItem href="/app/inbox" label="Inbox" />

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { API_URL, api, clearProjectSelection, logout } from "@/lib/api";
+import type { MeResponse } from "@/lib/usage";
 
 type TicketType = "bug" | "idea" | "question" | "";
 type TicketStatus = "open" | "in_progress" | "fixed" | "wont_fix" | "duplicate" | "";
@@ -23,11 +25,6 @@ type Ticket = {
 type ProjectInfo = {
   id: string;
   name: string;
-};
-
-type MeResponse = {
-  user: { email: string; name?: string; avatar_url?: string };
-  org: { name: string; plan: string };
 };
 
 const TYPE_TABS: { id: TicketType; label: string }[] = [
@@ -300,27 +297,18 @@ export function Inbox() {
   }
 
   const projectName = project?.name || "Project";
-  const plan = me?.org.plan || "Indie";
+  const plan = me?.org.plan || "free";
   const email = me?.user.email || "";
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
       <aside className="flex h-screen w-[248px] shrink-0 flex-col gap-0.5 border-r border-[#17171714] bg-[#FAFAFA] p-3">
-        <div className="flex items-center gap-2.5 rounded-md p-1.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#F59E0B]">
-            <span className="font-ds-sans text-[13px] font-semibold text-white">
-              {projectInitial(projectName)}
-            </span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate font-ds-ui text-[13px] font-semibold text-[#171717]">
-              {projectName}
-            </div>
-            <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">
-              {email ? `${displayName(email).split(" ")[0]} · ${plan}` : plan}
-            </div>
-          </div>
-        </div>
+        <ProjectSwitcher
+          projectName={projectName}
+          plan={plan}
+          email={email}
+          usage={me?.usage}
+        />
 
         <label className="mt-2 flex h-8 items-center gap-2 rounded-md border border-[#1717171F] bg-white px-2.5 shadow-[0_1px_2px_#0000000A]">
           <span className="text-[13px] text-[#A3A3A3]">⌕</span>
