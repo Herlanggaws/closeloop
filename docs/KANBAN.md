@@ -51,12 +51,14 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-21 Fixed banner | `/preview/widget/fixed` + `@closeloop/widget` | **Wired** ingest updates → S-21 banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` | Needs F3 SDK |
 | S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed + waitlist confirmation wired (Go + Resend); S-27 vote verify/released HTML ready (no board wire yet) |
+| S-28 Join Waitlist | `/` modal + `/preview/waitlist` | Enter / invalid / joined / already + resend; CTAs open modal (`?join=1`) |
 | S-24…S-26 Public board | `/board`, `/idea`, `/roadmap` | SSR board + votes |
 
 ### Todo — by PRD feature
 
 #### M0 · Validasi
 - [x] Landing waitlist capture (email → Postgres + confirmation HTML via Resend/`.mail`), hero + footer forms
+- [x] S-28 Join Waitlist modal (enter / invalid / joined / already + resend)
 - [ ] Interview 5–10 builders; log “mau coba minggu ini”
 - [x] Final name: Saidloop (domain TBD)
 - [x] MoR: [Polar](https://polar.sh/) (billing still manual `plan` until M5)

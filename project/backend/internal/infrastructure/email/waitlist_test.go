@@ -17,7 +17,7 @@ func TestRenderWaitlistHTML(t *testing.T) {
 		GreetingName: "Rina",
 	})
 	for _, needle := range []string{
-		"You're on the Saidloop waitlist",
+		"You&#39;re on the Saidloop waitlist",
 		"Hi Rina, you're on the list.",
 		"Saidloop",
 		"We'll email you when it's your turn",

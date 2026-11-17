@@ -26,3 +26,5 @@ export { BoardIdeas } from "./BoardIdeas";
 export { BoardDetail } from "./BoardDetail";
 export { BoardRoadmap } from "./BoardRoadmap";
 export { EmailVote } from "./EmailVote";
+export { JoinWaitlist } from "./JoinWaitlist";
+export { EmailWaitlist } from "./EmailWaitlist";

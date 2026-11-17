@@ -1525,22 +1525,57 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 	return org, nil
 }
 
-func (s *Store) AddWaitlist(ctx context.Context, email, source string) (inserted bool, err error) {
+func normalizeWaitlistEmail(email string) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" || !strings.Contains(email, "@") || !strings.Contains(email, ".") {
-		return false, ErrInvalidInput
+		return "", ErrInvalidInput
+	}
+	return email, nil
+}
+
+func (s *Store) AddWaitlist(ctx context.Context, email, source string) (inserted bool, createdAt time.Time, err error) {
+	email, err = normalizeWaitlistEmail(email)
+	if err != nil {
+		return false, time.Time{}, err
 	}
 	if source == "" {
 		source = "landing"
 	}
-	res, err := s.DB.ExecContext(ctx, `
+	err = s.DB.QueryRowContext(ctx, `
 		INSERT INTO waitlist(email, source) VALUES ($1, $2)
-		ON CONFLICT (email) DO NOTHING`, email, source)
-	if err != nil {
-		return false, err
+		ON CONFLICT (email) DO NOTHING
+		RETURNING created_at`, email, source).Scan(&createdAt)
+	if err == nil {
+		return true, createdAt, nil
 	}
-	n, _ := res.RowsAffected()
-	return n > 0, nil
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, time.Time{}, err
+	}
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT created_at FROM waitlist WHERE email = $1`, email).Scan(&createdAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, time.Time{}, ErrNotFound
+		}
+		return false, time.Time{}, err
+	}
+	return false, createdAt, nil
+}
+
+func (s *Store) GetWaitlist(ctx context.Context, email string) (normalized string, createdAt time.Time, err error) {
+	email, err = normalizeWaitlistEmail(email)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT email, created_at FROM waitlist WHERE email = $1`, email).Scan(&normalized, &createdAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", time.Time{}, ErrNotFound
+		}
+		return "", time.Time{}, err
+	}
+	return normalized, createdAt, nil
 }
 
 func nullStr(s string) any {

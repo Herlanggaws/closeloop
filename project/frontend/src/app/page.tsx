@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { LandingPageDesign } from "./LandingPage";
+import { Suspense } from "react";
+import { LandingShell } from "@/components/LandingShell";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
 
 export const metadata: Metadata = {
@@ -13,7 +14,9 @@ export default function LandingPage() {
     <main className="min-h-screen overflow-x-auto bg-[var(--bg-page)]">
       <GoogleOneTap />
       <div className="mx-auto w-[1440px]">
-        <LandingPageDesign />
+        <Suspense fallback={null}>
+          <LandingShell />
+        </Suspense>
       </div>
     </main>
   );

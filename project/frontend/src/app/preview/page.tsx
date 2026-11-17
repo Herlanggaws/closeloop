@@ -97,6 +97,14 @@ const links = [
     "title": "Email · Vote"
   },
   {
+    "href": "/preview/email/waitlist",
+    "title": "Email · Waitlist"
+  },
+  {
+    "href": "/preview/waitlist",
+    "title": "Join Waitlist · S-28a–d"
+  },
+  {
     "href": "/board",
     "title": "Ideas"
   },

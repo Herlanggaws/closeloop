@@ -51,7 +51,7 @@ MCP: list_open_feedback → get_feedback_context → mark_fixed / update_status 
 - Sentry/PostHog deep links, rrweb, Slack/Linear, F10 auto-PR
 - Pixel match vs `closeloop.pen`
 
-**Related (bukan report loop):** waitlist confirmation mail — `W-01` / `W-02` in `waitlist_test.go` (send once on insert; invalid email no send). S-27 vote HTML unit tests in `vote_test.go` (no board wire yet).
+**Related (bukan report loop):** waitlist — `W-01` / `W-02` / `W-03` in `waitlist_test.go` (send once on insert + `inserted`/`created_at`; invalid email no send; resend for existing email). S-27 vote HTML unit tests in `vote_test.go` (no board wire yet).
 
 ---
 

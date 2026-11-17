@@ -1,15 +1,23 @@
 /* Auto-converted from closeloop.pen S-01 Landing Page for pixel-perfect review */
+"use client";
+
 import { SaidloopLogo } from "@/components/SaidloopLogo";
 import { WaitlistForm } from "@/components/WaitlistForm";
 
-export function LandingPageDesign() {
+type Props = {
+  onJoinWaitlist?: () => void;
+};
+
+export function LandingPageDesign({ onJoinWaitlist }: Props) {
+  const openWaitlist = onJoinWaitlist ?? (() => {});
+
   return (
     <>
 <div
       data-pencil-name="S-01 Landing Page"
       className="box-border w-[1440px] h-fit flex flex-col gap-0 justify-start items-start bg-[#F7F7F7]"
     >
-      <a href="/signup" id="announcement" data-pencil-name="Announcement" className="cursor-pointer no-underline transition-opacity duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:opacity-90 block w-full box-border h-[36px] shrink-0 flex flex-row gap-[8px] justify-center items-center bg-[#0A0A0A]">
+      <button type="button" onClick={openWaitlist} id="announcement" data-pencil-name="Announcement" className="cursor-pointer border-0 no-underline transition-opacity duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:opacity-90 block w-full box-border h-[36px] shrink-0 flex flex-row gap-[8px] justify-center items-center bg-[#0A0A0A]">
         <div
           data-pencil-name="Text"
           className="text-[13px]/[normal] box-border text-[#FFFFFF] font-ds-ui font-normal text-left [white-space:nowrap]"
@@ -30,7 +38,7 @@ export function LandingPageDesign() {
             fill="#FFFFFF"
            />
         </svg>
-      </a>
+      </button>
       <div
         id="nav" data-pencil-name="Nav"
         className="box-border w-[1440px] h-[67.5px] shrink-0 flex flex-row gap-0 p-[0px_80px] justify-between items-center bg-[#FFFFFF] [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:0px_0px_-0.5px_0px]"
@@ -68,14 +76,14 @@ export function LandingPageDesign() {
               Log in
             </div>
           </a>
-          <a href="/signup" data-pencil-name="Join waitlist" className="cursor-pointer no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-fit shrink-0 h-[36px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#171717] rounded-[6px]">
+          <button type="button" onClick={openWaitlist} data-pencil-name="Join waitlist" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-fit shrink-0 h-[36px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#171717] rounded-[6px]">
             <div
               data-pencil-name="Label"
               className="text-[14px]/[normal] box-border text-[#FFFFFF] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
             >
               Join the waitlist
             </div>
-          </a>
+          </button>
         </div>
       </div>
       <div
@@ -3274,14 +3282,14 @@ export function LandingPageDesign() {
             >
               Try the loop on one app.
             </div>
-            <a href="/signup" data-pencil-name="CTA" className="cursor-pointer no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
+            <button type="button" onClick={openWaitlist} data-pencil-name="CTA" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
               <div
                 data-pencil-name="Label"
                 className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
               >
                 Start free
               </div>
-            </a>
+            </button>
             <div
               data-pencil-name="Features"
               className="box-border w-[252px] h-[161.5px] shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
@@ -3462,14 +3470,14 @@ export function LandingPageDesign() {
             >
               For solo builders shipping with AI.
             </div>
-            <a href="/signup" data-pencil-name="CTA" className="cursor-pointer no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] rounded-[6px]">
+            <button type="button" onClick={openWaitlist} data-pencil-name="CTA" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] rounded-[6px]">
               <div
                 data-pencil-name="Label"
                 className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
               >
                 Join the waitlist
               </div>
-            </a>
+            </button>
             <div
               data-pencil-name="Features"
               className="box-border w-[252px] h-[191.5px] shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#FFFFFF1A] [margin:-0.5px_0px_0px_0px]"
@@ -3664,14 +3672,14 @@ export function LandingPageDesign() {
             >
               For small teams running client apps.
             </div>
-            <a href="/signup" data-pencil-name="CTA" className="cursor-pointer no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
+            <button type="button" onClick={openWaitlist} data-pencil-name="CTA" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
               <div
                 data-pencil-name="Label"
                 className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
               >
                 Join the waitlist
               </div>
-            </a>
+            </button>
             <div
               data-pencil-name="Features"
               className="box-border w-[252px] h-[191.5px] shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"

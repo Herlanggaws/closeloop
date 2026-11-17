@@ -39,6 +39,7 @@ func (s *Server) Router() *gin.Engine {
 	api := r.Group("/api")
 	{
 		api.POST("/waitlist", s.joinWaitlist)
+		api.POST("/waitlist/resend", s.resendWaitlist)
 		api.POST("/auth/register", s.register)
 		api.POST("/auth/login", s.login)
 		api.GET("/auth/google", s.googleLogin)
@@ -185,6 +186,19 @@ func (s *Server) issueSession(c *gin.Context, user application.User) {
 	c.JSON(200, gin.H{"access_token": access, "user": gin.H{"id": user.ID, "email": user.Email, "name": user.Name, "avatar_url": user.AvatarURL}})
 }
 
+func (s *Server) sendWaitlistConfirmation(addr string) {
+	if s.Mailer == nil {
+		return
+	}
+	mail := email.WaitlistMail{
+		To:           addr,
+		GreetingName: email.GreetingFromEmail(addr),
+	}
+	if sendErr := s.Mailer.Send(addr, email.WaitlistSubject(), email.RenderWaitlistHTML(mail)); sendErr != nil {
+		slog.Error("waitlist confirmation email", "err", sendErr, "to", addr)
+	}
+}
+
 func (s *Server) joinWaitlist(c *gin.Context) {
 	var body struct {
 		Email  string `json:"email"`
@@ -194,22 +208,38 @@ func (s *Server) joinWaitlist(c *gin.Context) {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
 		return
 	}
-	inserted, err := s.Store.AddWaitlist(c.Request.Context(), body.Email, body.Source)
+	inserted, createdAt, err := s.Store.AddWaitlist(c.Request.Context(), body.Email, body.Source)
 	if err != nil {
 		mapErr(c, err)
 		return
 	}
-	if inserted && s.Mailer != nil {
-		addr := strings.ToLower(strings.TrimSpace(body.Email))
-		mail := email.WaitlistMail{
-			To:           addr,
-			GreetingName: email.GreetingFromEmail(addr),
-		}
-		if sendErr := s.Mailer.Send(addr, email.WaitlistSubject(), email.RenderWaitlistHTML(mail)); sendErr != nil {
-			slog.Error("waitlist confirmation email", "err", sendErr, "to", addr)
-		}
+	addr := strings.ToLower(strings.TrimSpace(body.Email))
+	if inserted {
+		s.sendWaitlistConfirmation(addr)
 	}
-	c.JSON(200, gin.H{"ok": true})
+	c.JSON(200, gin.H{
+		"ok":         true,
+		"inserted":   inserted,
+		"email":      addr,
+		"created_at": createdAt.UTC().Format(time.RFC3339),
+	})
+}
+
+func (s *Server) resendWaitlist(c *gin.Context) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	addr, _, err := s.Store.GetWaitlist(c.Request.Context(), body.Email)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	s.sendWaitlistConfirmation(addr)
+	c.JSON(200, gin.H{"ok": true, "email": addr})
 }
 
 func (s *Server) register(c *gin.Context) {
