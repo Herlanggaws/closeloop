@@ -33,21 +33,28 @@ func RunWorker(ctx context.Context, store *Store, mail MailSender, files Project
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			jobs, err := store.ClaimJobs(ctx, 5)
-			if err != nil {
-				slog.Error("claim jobs", "err", err)
-				continue
-			}
-			for _, job := range jobs {
-				err := handleJob(ctx, store, mail, job.Kind, job.Payload)
-				if finErr := store.FinishJob(ctx, job.ID, err); finErr != nil {
-					slog.Error("finish job", "err", finErr)
-				}
+			if _, err := ProcessJobsOnce(ctx, store, mail, 5); err != nil {
+				slog.Error("process jobs", "err", err)
 			}
 		case <-purgeTicker.C:
 			purgeDeletedProjects(ctx, store, files)
 		}
 	}
+}
+
+// ProcessJobsOnce claims up to limit pending jobs and runs them. Used by the worker and tests.
+func ProcessJobsOnce(ctx context.Context, store *Store, mail MailSender, limit int) (int, error) {
+	jobs, err := store.ClaimJobs(ctx, limit)
+	if err != nil {
+		return 0, err
+	}
+	for _, job := range jobs {
+		err := handleJob(ctx, store, mail, job.Kind, job.Payload)
+		if finErr := store.FinishJob(ctx, job.ID, err); finErr != nil {
+			return len(jobs), finErr
+		}
+	}
+	return len(jobs), nil
 }
 
 func purgeDeletedProjects(ctx context.Context, store *Store, files ProjectFileCleaner) {

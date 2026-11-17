@@ -6,6 +6,7 @@
     "dev:backend": "bash scripts/dev-backend.sh",
     "dev:frontend": "bash scripts/dev-frontend.sh",
     "db:migrate": "bash scripts/migrate.sh",
-    "db:seed": "bash scripts/seed.sh"
+    "db:seed": "bash scripts/seed.sh",
+    "test:reports": "bash scripts/test-reports.sh"
   }
 }

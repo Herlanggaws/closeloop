@@ -237,17 +237,17 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase A — Foundation (1 session)
 
-- [ ] `scripts/test-reports.sh` orchestrator (migrate → seed isolasi → go test report tags → exit code)
-- [ ] Shared Go test helper: create user/project/key, HTTP client, cleanup
-- [ ] Port seed pattern dari `scripts/seed.sh` ke test package dengan DB terpisah / truncated tables
-- [ ] Folder `docs/reports/` + `.gitkeep` + template `latest.md`
-- [ ] Tambah npm/pnpm script `test:reports`
+- [x] `scripts/test-reports.sh` orchestrator (migrate → seed isolasi → go test report tags → exit code)
+- [x] Shared Go test helper: create user/project/key, HTTP client, cleanup
+- [x] Port seed pattern dari `scripts/seed.sh` ke test package dengan DB terpisah / truncated tables
+- [x] Folder `docs/reports/` + `.gitkeep` + template `latest.md`
+- [x] Tambah npm/pnpm script `test:reports`
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [ ] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04 sebagai Go tests
-- [ ] Mail sink assert untuk R-FIX-03/04
-- [ ] MCP JSON-RPC client helper
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Mail sink assert untuk R-FIX-03/04
+- [x] MCP JSON-RPC client helper
 
 ### Phase C — L3 UI + agent UX
 
@@ -281,10 +281,11 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 Plan dianggap **executed** (bukan hanya didokumentasikan) bila:
 
-1. `bash scripts/test-reports.sh` exit 0 di mesin lokal dengan Postgres.
-2. Minimal golden path §5 otomatis (API + MCP + notify sink).
-3. Satu run gagal-sengaja (kill switch) membuktikan auto-fix loop menulis `docs/reports/latest.md` dan commit fix.
-4. KANBAN punya checkbox / link ke suite ini di M1 dogfood area.
+1. ~~`bash scripts/test-reports.sh` exit 0 di mesin lokal dengan Postgres.~~
+2. ~~Minimal golden path §5 otomatis (API + MCP + notify sink).~~ (`TestR_GOLDEN_SC2`)
+3. Satu run gagal-sengaja (kill switch) membuktikan auto-fix loop menulis `docs/reports/latest.md` dan commit fix. *(R-FIX-04 covered; full agent auto-fix loop = ongoing)*
+4. ~~KANBAN punya checkbox / link ke suite ini di M1 dogfood area.~~
+5. Cursor rule: `.cursor/rules/feature-automation-tests.mdc` — tiap fitur wajib bawa test.
 
 ---
 

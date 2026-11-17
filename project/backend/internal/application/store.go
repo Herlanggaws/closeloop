@@ -895,6 +895,10 @@ func (s *Store) GetTicket(ctx context.Context, ticketID string) (Ticket, error) 
 	if err != nil {
 		return Ticket{}, err
 	}
+	// Merged-away shells keep status=duplicate with zero reports; always readable.
+	if t.Status == "duplicate" {
+		return t, nil
+	}
 	var readable, total int
 	err = s.DB.QueryRowContext(ctx, `
 		SELECT

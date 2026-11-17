@@ -1,0 +1,23 @@
+---
+description: Every feature task must ship automation tests and keep the report suite green
+alwaysApply: true
+---
+
+# Feature work ships with automation tests
+
+When implementing or changing a **feature** (API, MCP, widget, dashboard wire-up, worker/notify):
+
+1. **Add or update automated tests in the same task** — do not leave “tests later”.
+2. Prefer the existing report suite when the change touches the report loop:
+   - Plan: `docs/AI Report Testing Plan.md`
+   - Run: `cd project && pnpm test:reports` (or `bash scripts/test-reports.sh`)
+   - Case IDs: `R-ING-*`, `R-INB-*`, `R-MRG-*`, `R-FIX-*`, `R-MCP-*` (Go names `TestR_ING_01`, …)
+3. For non-report features: add focused Go `httptest` / unit tests next to the code; name them after the behavior.
+4. **Before finishing**: run the relevant suite; on failure, fix the product or the test (max 2 auto-fix attempts), then re-run.
+5. Update `docs/reports/latest.md` when you run the report suite; link new case IDs in the plan if you add coverage.
+6. Finishing without tests is incomplete unless the change is docs-only, pure design tokens, or an explicit user skip.
+
+```text
+❌ Feature PR with only UI/API code
+✅ Feature + TestR_* (or suite update) + green pnpm test:reports / go test
+```
