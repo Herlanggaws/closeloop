@@ -26,7 +26,7 @@ function buildConfig(token: string) {
   return JSON.stringify(
     {
       mcpServers: {
-        closeloop: {
+        saidloop: {
           url: `${API_URL}/mcp`,
           headers: { Authorization: `Bearer ${token || "cl_mcp_…"}` },
         },

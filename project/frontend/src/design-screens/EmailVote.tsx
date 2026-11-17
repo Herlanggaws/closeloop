@@ -24,7 +24,7 @@ export function EmailVote() {
             data-pencil-name="From"
             className="text-[12px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
           >
-            Bear Budget &lt;updates@closeloop.dev&gt;
+            Bear Budget &lt;updates@saidloop.dev&gt;
           </div>
         </div>
         <div
@@ -98,7 +98,7 @@ export function EmailVote() {
             data-pencil-name="P"
             className="text-[12px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
           >
-            Sent with Closeloop · Unsubscribe
+            Sent with Saidloop · Unsubscribe
           </div>
         </div>
       </div>
@@ -120,7 +120,7 @@ export function EmailVote() {
             data-pencil-name="From"
             className="text-[12px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
           >
-            Bear Budget &lt;updates@closeloop.dev&gt;
+            Bear Budget &lt;updates@saidloop.dev&gt;
           </div>
         </div>
         <div
@@ -228,7 +228,7 @@ export function EmailVote() {
             data-pencil-name="P"
             className="text-[12px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
           >
-            Sent with Closeloop · Unsubscribe
+            Sent with Saidloop · Unsubscribe
           </div>
         </div>
       </div>

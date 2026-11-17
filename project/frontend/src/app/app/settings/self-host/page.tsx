@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SelfHost } from "@/design-screens/SelfHost";
 
 export const metadata: Metadata = {
-  title: "Self-host · Closeloop",
+  title: "Self-host · Saidloop",
 };
 
 export default function Page() {

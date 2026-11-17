@@ -41,7 +41,7 @@ import { DesignFrame } from "@/components/DesignFrame";
 import { ${component} } from "@/design-screens/${component}";
 
 export const metadata: Metadata = {
-  title: "${title} · Closeloop",
+  title: "${title} · Saidloop",
 };
 
 export default function Page() {
@@ -70,7 +70,7 @@ fs.writeFileSync(
   `import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Design screens · Closeloop" };
+export const metadata: Metadata = { title: "Design screens · Saidloop" };
 
 const links = ${JSON.stringify(
     routes.map((r) => ({ href: "/" + r.route.replace(/\[id\]/g, "demo"), title: r.title })),
@@ -81,7 +81,7 @@ const links = ${JSON.stringify(
 export default function PreviewIndex() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="font-ds-sans text-3xl font-medium tracking-tight">Closeloop design screens</h1>
+      <h1 className="font-ds-sans text-3xl font-medium tracking-tight">Saidloop design screens</h1>
       <p className="mt-2 font-ds-ui text-sm text-[var(--text-secondary)]">
         Pixel-perfect exports from closeloop.pen. App routes require login.
       </p>

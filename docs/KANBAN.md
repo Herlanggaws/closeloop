@@ -58,7 +58,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 #### M0 · Validasi
 - [x] Landing waitlist capture (email → Postgres store-only; ESP later), hero + footer forms
 - [ ] Interview 5–10 builders; log “mau coba minggu ini”
-- [ ] Final name + domain
+- [x] Final name: Saidloop (domain TBD)
 - [ ] Pick Lemon Squeezy vs Paddle (billing still manual `plan` for now)
 
 #### M1 · Inti web (F1, F2, F4, F5, F6) — priority
@@ -112,7 +112,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 ### Open questions (from PRD)
 
-- [ ] Nama final dan domain
+- [x] Nama final: Saidloop (domain TBD)
 - [ ] Lemon Squeezy atau Paddle?
 - [ ] Basis repo: fork pola Bear Budget Go vs clean (current: new Closeloop repo)
 - [ ] Siapa 5–10 builder interview?

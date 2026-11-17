@@ -98,7 +98,7 @@ export function InstallWidget() {
   );
 
   const webOnly = platforms.length === 1 && platforms[0] === "web";
-  const title = webOnly ? "Install the widget" : "Install Closeloop";
+  const title = webOnly ? "Install the widget" : "Install Saidloop";
   const subtitle = PLATFORM_SUBTITLES[activePlatform] ?? PLATFORM_SUBTITLES.web;
   const showTabs = platforms.length > 1;
   const demoHref = `/demo.html?key=${encodeURIComponent(publicKey)}`;

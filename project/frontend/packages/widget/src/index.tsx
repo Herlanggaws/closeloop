@@ -349,7 +349,7 @@ if (cfg.key) {
   document.documentElement.appendChild(mount);
   render(<Widget cfg={cfg} />, mount);
 
-  (window as any).Closeloop = {
+  const api = {
     show() {
       document.dispatchEvent(new CustomEvent("closeloop:show"));
     },
@@ -371,4 +371,6 @@ if (cfg.key) {
       document.dispatchEvent(new CustomEvent("closeloop:identify"));
     },
   };
+  (window as any).Saidloop = api;
+  (window as any).Closeloop = api;
 }

@@ -11,7 +11,7 @@ export const PLATFORM_LABELS: Record<string, string> = {
 };
 
 export const PLATFORM_SUBTITLES: Record<string, string> = {
-  web: "Drop this script on your site. Reports land in your Closeloop inbox with screenshot and context.",
+  web: "Drop this script on your site. Reports land in your Saidloop inbox with screenshot and context.",
   android: "Add the Kotlin SDK, then init with your public key. Shake or call show() to open the report sheet.",
   ios: "Add the Swift Package, then start with your public key. Shake or call show() to open the report sheet.",
   flutter: "Add the Flutter package; it forwards to the native Android and iOS SDKs.",
@@ -49,35 +49,35 @@ export function buildSnippet(platform: string, publicKey: string): string {
 implementation("ai.closeloop:sdk:0.1.0")
 
 // Application.onCreate
-Closeloop.init(this, "${key}")
-Closeloop.identify(userId = "user_123", appVersion = "1.0.0")
-// Closeloop.show() // or enable shake`;
+Saidloop.init(this, "${key}")
+Saidloop.identify(userId = "user_123", appVersion = "1.0.0")
+// Saidloop.show() // or enable shake`;
     case "ios":
       return `// Package.swift / Xcode → Add Package
 // https://github.com/closeloop/closeloop-ios
 
-import Closeloop
+import Saidloop
 
-Closeloop.start(key: "${key}")
-Closeloop.identify(userId: "user_123", appVersion: "1.0.0")
-// Closeloop.show() // or enable shake`;
+Saidloop.start(key: "${key}")
+Saidloop.identify(userId: "user_123", appVersion: "1.0.0")
+// Saidloop.show() // or enable shake`;
     case "flutter":
       return `# pubspec.yaml
 dependencies:
   closeloop: ^0.1.0
 
 // main.dart
-await Closeloop.init(key: "${key}");
-Closeloop.identify(userId: "user_123", appVersion: "1.0.0");
-// Closeloop.show();`;
+await Saidloop.init(key: "${key}");
+Saidloop.identify(userId: "user_123", appVersion: "1.0.0");
+// Saidloop.show();`;
     case "react-native":
       return `npm install @closeloop/react-native
 
-import { Closeloop } from "@closeloop/react-native";
+import { Saidloop } from "@closeloop/react-native";
 
-Closeloop.init({ key: "${key}" });
-Closeloop.identify({ userId: "user_123", appVersion: "1.0.0" });
-// Closeloop.show();`;
+Saidloop.init({ key: "${key}" });
+Saidloop.identify({ userId: "user_123", appVersion: "1.0.0" });
+// Saidloop.show();`;
     case "web":
     default:
       return `<script src="${origin}/w.js" data-key="${key}" data-api="${API_URL}" async></script>`;

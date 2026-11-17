@@ -19,8 +19,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Closeloop",
-  description: "Users report it. Your AI fixes it. Closeloop tells them it's done.",
+  title: "Saidloop",
+  description: "Users report it. Your AI fixes it. Saidloop tells them it's done.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

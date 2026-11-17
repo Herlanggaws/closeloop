@@ -3,7 +3,7 @@ import { DesignFrame } from "@/components/DesignFrame";
 import { WidgetLauncher } from "@/design-screens/WidgetLauncher";
 
 export const metadata: Metadata = {
-  title: "Widget launcher · Closeloop",
+  title: "Widget launcher · Saidloop",
 };
 
 export default function Page() {

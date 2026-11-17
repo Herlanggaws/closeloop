@@ -3,7 +3,7 @@ import { DesignFrame } from "@/components/DesignFrame";
 import { BoardDetail } from "@/design-screens/BoardDetail";
 
 export const metadata: Metadata = {
-  title: "Idea detail · Closeloop",
+  title: "Idea detail · Saidloop",
 };
 
 export default function Page() {

@@ -475,7 +475,7 @@ export function InboxEmpty() {
                 data-pencil-name="T"
                 className="text-[13px]/[normal] box-border text-[#171717] font-ds-ui font-semibold text-left [white-space:nowrap]"
               >
-                Get the most out of Closeloop
+                Get the most out of Saidloop
               </div>
               <div
                 data-pencil-name="P"

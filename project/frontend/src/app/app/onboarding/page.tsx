@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CreateProject } from "@/design-screens/CreateProject";
 
 export const metadata: Metadata = {
-  title: "Create project · Closeloop",
+  title: "Create project · Saidloop",
 };
 
 export default function Page() {

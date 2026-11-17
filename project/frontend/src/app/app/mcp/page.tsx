@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { McpServer } from "@/design-screens/McpServer";
 
 export const metadata: Metadata = {
-  title: "MCP server · Closeloop",
+  title: "MCP server · Saidloop",
 };
 
 export default function Page() {

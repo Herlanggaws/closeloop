@@ -3,7 +3,7 @@ import { DesignFrame } from "@/components/DesignFrame";
 import { MobileReport } from "@/design-screens/MobileReport";
 
 export const metadata: Metadata = {
-  title: "Mobile report · Closeloop",
+  title: "Mobile report · Saidloop",
 };
 
 export default function Page() {

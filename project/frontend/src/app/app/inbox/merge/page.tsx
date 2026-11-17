@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { MergeDuplicates } from "@/design-screens/MergeDuplicates";
 
 export const metadata: Metadata = {
-  title: "Merge duplicates · Closeloop",
+  title: "Merge duplicates · Saidloop",
 };
 
 export default function Page() {

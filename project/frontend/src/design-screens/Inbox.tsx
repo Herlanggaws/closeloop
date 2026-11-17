@@ -262,7 +262,7 @@ export function Inbox() {
         },
         body: JSON.stringify({
           type: "bug",
-          message: "Test report from Closeloop inbox",
+          message: "Test report from Saidloop inbox",
           platform: "web",
           app_version: "dev",
           context: { path: "/app/inbox", source: "send_test_report" },
@@ -748,7 +748,7 @@ function EmptyState({
       <div className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-[#17171714] bg-white shadow-[0_4px_4px_#1717170A]">
         <div className="flex items-center justify-between border-b border-[#17171714] bg-[#FAFAFA] px-5 py-3.5">
           <span className="font-ds-ui text-[13px] font-semibold text-[#171717]">
-            Get the most out of Closeloop
+            Get the most out of Saidloop
           </span>
         </div>
         <Link

@@ -1,4 +1,5 @@
 /* Auto-converted from closeloop.pen S-01 Landing Page for pixel-perfect review */
+import { SaidloopLogo } from "@/components/SaidloopLogo";
 import { WaitlistForm } from "@/components/WaitlistForm";
 
 export function LandingPageDesign() {
@@ -34,27 +35,7 @@ export function LandingPageDesign() {
         id="nav" data-pencil-name="Nav"
         className="box-border w-[1440px] h-[67.5px] shrink-0 flex flex-row gap-0 p-[0px_80px] justify-between items-center bg-[#FFFFFF] [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:0px_0px_-0.5px_0px]"
       >
-        <div
-          data-pencil-name="Logo"
-          className="box-border w-fit shrink-0 h-fit flex flex-row gap-[8px] justify-start items-center"
-        >
-          <div data-pencil-name="Mark" className="box-border w-[22px] shrink-0 h-[22px] relative">
-            <div
-              data-pencil-name="Loop"
-              className="box-border w-[22px] h-[22px] absolute left-0 top-0 bg-[#0A0A0A] [clip-path:path('M7.238_0.663_C2.892_2.245_0_6.376_0_11_C0_17.075_4.925_22_11_22_C17.075_22_22_17.075_22_11_C22_7.748_20.561_4.664_18.071_2.574_L14.96_6.281_C16.354_7.452_17.16_9.179_17.16_11_C17.16_14.402_14.402_17.16_11_17.16_C7.598_17.16_4.84_14.402_4.84_11_C4.84_8.41_6.46_6.097_8.893_5.211_L7.238_0.663_Z')] [z-index:0]"
-            ></div>
-            <div
-              data-pencil-name="Dot"
-              className="box-border w-[7px] h-[7px] absolute left-[15px] top-[1px] bg-[#22C55E] rounded-[50%] [z-index:1]"
-            ></div>
-          </div>
-          <div
-            data-pencil-name="Wordmark"
-            className="text-[20px]/[normal] box-border text-[#0A0A0A] font-ds-sans font-semibold tracking-[-0.6px] text-left [white-space:nowrap]"
-          >
-            Closeloop
-          </div>
-        </div>
+        <SaidloopLogo height={22} />
         <div
           data-pencil-name="Links"
           className="box-border w-fit shrink-0 h-fit flex flex-row gap-[32px] justify-start items-start"
@@ -130,7 +111,7 @@ export function LandingPageDesign() {
             data-pencil-name="Line 2"
             className="text-[68px]/[69px] box-border text-[#17171780] font-ds-sans font-medium tracking-[-2.4px] text-left [white-space:nowrap]"
           >
-            Closeloop tells them it's done.
+            Saidloop tells them it's done.
           </div>
         </div>
         <div
@@ -2637,7 +2618,7 @@ export function LandingPageDesign() {
               >
                 claude mcp add closeloop \
                 <br />
-                &nbsp;&nbsp;--transport http https://mcp.closeloop.dev \
+                &nbsp;&nbsp;--transport http https://mcp.saidloop.dev \
                 <br />
                 &nbsp;&nbsp;--header "Authorization: Bearer cl_live_••••••••3f9a"
               </div>
@@ -2879,7 +2860,7 @@ export function LandingPageDesign() {
               data-pencil-name="L2"
               className="text-[44px]/[48px] box-border text-[#17171780] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
             >
-              before and after Closeloop
+              before and after Saidloop
             </div>
           </div>
         </div>
@@ -3030,7 +3011,7 @@ export function LandingPageDesign() {
             </div>
           </div>
           <div
-            data-pencil-name="With Closeloop"
+            data-pencil-name="With Saidloop"
             className="box-border [flex:1_1_0] h-fit [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-[4px] p-[28px] justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px]"
           >
             <div
@@ -3041,7 +3022,7 @@ export function LandingPageDesign() {
                 data-pencil-name="T"
                 className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
               >
-                With Closeloop
+                With Saidloop
               </div>
               <div
                 data-pencil-name="S"
@@ -4229,7 +4210,7 @@ export function LandingPageDesign() {
             </div>
           </div>
           <div
-            data-pencil-name="Can I self-host Closeloop?"
+            data-pencil-name="Can I self-host Saidloop?"
             className="box-border w-[800px] h-[60.5px] shrink-0 flex flex-col gap-0 p-[20px_0px] justify-start items-start [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#1717171F] [margin:0px_0px_-0.5px_0px]"
           >
             <div
@@ -4240,7 +4221,7 @@ export function LandingPageDesign() {
                 data-pencil-name="Question"
                 className="text-[16px]/[normal] box-border [flex:1_1_0] text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left"
               >
-                Can I self-host Closeloop?
+                Can I self-host Saidloop?
               </div>
               <svg
                 data-pencil-name="Chevron"
@@ -4306,27 +4287,7 @@ export function LandingPageDesign() {
             data-pencil-name="Brand"
             className="box-border w-fit shrink-0 h-fit flex flex-col gap-[16px] justify-start items-start"
           >
-            <div
-              data-pencil-name="Logo"
-              className="box-border w-fit h-fit shrink-0 flex flex-row gap-[8px] justify-start items-center"
-            >
-              <div data-pencil-name="Mark" className="box-border w-[22px] shrink-0 h-[22px] relative">
-                <div
-                  data-pencil-name="Loop"
-                  className="box-border w-[22px] h-[22px] absolute left-0 top-0 bg-[#FFFFFF] [clip-path:path('M7.238_0.663_C2.892_2.245_0_6.376_0_11_C0_17.075_4.925_22_11_22_C17.075_22_22_17.075_22_11_C22_7.748_20.561_4.664_18.071_2.574_L14.96_6.281_C16.354_7.452_17.16_9.179_17.16_11_C17.16_14.402_14.402_17.16_11_17.16_C7.598_17.16_4.84_14.402_4.84_11_C4.84_8.41_6.46_6.097_8.893_5.211_L7.238_0.663_Z')] [z-index:0]"
-                ></div>
-                <div
-                  data-pencil-name="Dot"
-                  className="box-border w-[7px] h-[7px] absolute left-[15px] top-[1px] bg-[#22C55E] rounded-[50%] [z-index:1]"
-                ></div>
-              </div>
-              <div
-                data-pencil-name="Wordmark"
-                className="text-[20px]/[normal] box-border text-[#FFFFFF] font-ds-sans font-semibold tracking-[-0.6px] text-left [white-space:nowrap]"
-              >
-                Closeloop
-              </div>
-            </div>
+            <SaidloopLogo height={22} onDark href="/" />
             <div
               data-pencil-name="Tag"
               className="text-[14px]/[normal] box-border text-[#FFFFFFB3] font-ds-ui font-normal text-left [white-space:nowrap]"
@@ -4471,7 +4432,7 @@ export function LandingPageDesign() {
             data-pencil-name="C"
             className="text-[12px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
           >
-            © 2026 Closeloop. Made by a solo builder in Indonesia.
+            © 2026 Saidloop. Made by a solo builder in Indonesia.
           </div>
           <div
             data-pencil-name="S"

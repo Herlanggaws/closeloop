@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { MarkFixed } from "@/design-screens/MarkFixed";
 
 export const metadata: Metadata = {
-  title: "Mark fixed · Closeloop",
+  title: "Mark fixed · Saidloop",
 };
 
 export default function Page() {
