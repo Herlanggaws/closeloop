@@ -860,7 +860,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 &gt; fix the newest bug from users
               </div>
               <div
-                data-pencil-name="closeloop.list_open_feedback()"
+                data-pencil-name="saidloop.list_open_feedback()"
                 className="box-border w-full h-fit shrink-0 flex flex-col gap-[4px] justify-start items-start"
               >
                 <div
@@ -875,7 +875,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     data-pencil-name="Tool"
                     className="text-[12.5px]/[normal] box-border text-[#FFFFFF] font-ds-mono font-medium text-left [white-space:nowrap]"
                   >
-                    closeloop.list_open_feedback()
+                    saidloop.list_open_feedback()
                   </div>
                 </div>
                 <div
@@ -891,7 +891,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 </div>
               </div>
               <div
-                data-pencil-name="closeloop.get_feedback_context(142)"
+                data-pencil-name="saidloop.get_feedback_context(142)"
                 className="box-border w-full h-fit shrink-0 flex flex-col gap-[4px] justify-start items-start"
               >
                 <div
@@ -906,7 +906,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     data-pencil-name="Tool"
                     className="text-[12.5px]/[normal] box-border text-[#FFFFFF] font-ds-mono font-medium text-left [white-space:nowrap]"
                   >
-                    closeloop.get_feedback_context(142)
+                    saidloop.get_feedback_context(142)
                   </div>
                 </div>
                 <div
@@ -957,7 +957,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 </div>
               </div>
               <div
-                data-pencil-name="closeloop.mark_fixed(142)"
+                data-pencil-name="saidloop.mark_fixed(142)"
                 className="box-border w-full h-fit shrink-0 flex flex-col gap-[4px] justify-start items-start"
               >
                 <div
@@ -972,7 +972,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     data-pencil-name="Tool"
                     className="text-[12.5px]/[normal] box-border text-[#FFFFFF] font-ds-mono font-medium text-left [white-space:nowrap]"
                   >
-                    closeloop.mark_fixed(142)
+                    saidloop.mark_fixed(142)
                   </div>
                 </div>
                 <div
@@ -2743,9 +2743,9 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 data-pencil-name="Line"
                 className="text-[13px]/[22px] box-border [flex:1_1_0] text-[#E5E5E5] font-ds-mono font-normal text-left"
               >
-                claude mcp add closeloop \
+                claude mcp add saidloop \
                 <br />
-                &nbsp;&nbsp;--transport http https://mcp.saidloop.dev \
+                &nbsp;&nbsp;--transport http https://mcp.saidloop.com \
                 <br />
                 &nbsp;&nbsp;--header "Authorization: Bearer cl_live_••••••••3f9a"
               </div>
