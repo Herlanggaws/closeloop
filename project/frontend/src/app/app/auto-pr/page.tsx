@@ -1,10 +1,5 @@
-import type { Metadata } from "next";
-import { AutoPR } from "@/design-screens/AutoPR";
-
-export const metadata: Metadata = {
-  title: "Auto PR runs · Saidloop",
-};
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <AutoPR />;
+  redirect("/app/inbox");
 }

@@ -1,15 +1,5 @@
-import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
-import { BoardIdeas } from "@/design-screens/BoardIdeas";
-
-export const metadata: Metadata = {
-  title: "Ideas · Saidloop",
-};
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <BoardIdeas />
-    </DesignFrame>
-  );
+  redirect("/app/inbox");
 }

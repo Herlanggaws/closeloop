@@ -2,15 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
-import { ProjectSwitcher } from "@/components/ProjectSwitcher";
-import { api, logout } from "@/lib/api";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { AppSidebar } from "@/components/AppSidebar";
+import { api } from "@/lib/api";
 import {
   avatarTone,
   drainInviteDraft,
@@ -261,64 +255,16 @@ export function Team() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
-      <aside className="flex h-screen w-[248px] shrink-0 flex-col gap-0.5 border-r border-[#17171714] bg-[#FAFAFA] p-3">
-        <ProjectSwitcher
-          projectName={projectName}
-          plan={plan}
-          email={email}
-          usage={usage || me?.usage}
-        />
-        <nav className="mt-3 flex flex-1 flex-col gap-0.5 overflow-y-auto">
-          <NavItem href="/app/inbox" label="Inbox" />
-          <NavItem href="/app/auto-pr" label="Auto PR runs" />
-          <NavItem href="/app/board" label="Public board" />
-          <SectionLabel>Setup</SectionLabel>
-          <NavItem href="/app/install" label="Install widget" />
-          <NavItem href="/app/mcp" label="MCP server" />
-          <SectionLabel>Settings</SectionLabel>
-          <NavItem href="/app/settings" label="Project" />
-          <NavItem href="/app/settings/integrations" label="Integrations" />
-          <NavItem href="/app/settings/team" label="Team" active />
-          <NavItem href="/app/settings/billing" label="Billing" />
-        </nav>
-        <div className="mt-auto flex flex-col gap-2">
-          {(usage || me?.usage) && (
-            <div className="rounded-[10px] border border-[#17171714] bg-white p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-ds-ui text-[11px] text-[#737373]">Reports this month</span>
-                <span className="font-ds-ui text-[11px] font-medium text-[#171717]">
-                  {formatUsage((usage || me?.usage)!.reports)}
-                </span>
-              </div>
-            </div>
-          )}
-          {email && (
-            <div className="flex items-center gap-2.5 px-1.5 py-1">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#171717]">
-                {me?.user?.avatar_url ? (
-                  <img src={me.user.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="font-ds-sans text-[11px] font-medium text-white">
-                    {initials(email)}
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
-                  {me?.user?.name || displayName(email)}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => logout()}
-                  className="cursor-pointer font-ds-ui text-[11px] text-[#A3A3A3] hover:text-[#171717]"
-                >
-                  Log out
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
+      <AppSidebar
+        projectName={projectName}
+        plan={plan}
+        email={email}
+        usage={usage || me?.usage}
+        userName={me?.user?.name}
+        avatarUrl={me?.user?.avatar_url}
+        active="team"
+        showUsageCard
+      />
 
       <main className="flex min-h-screen min-w-0 flex-1 flex-col overflow-y-auto bg-white">
         <header className="flex shrink-0 items-end justify-between border-b border-[#17171714] px-10 pb-6 pt-7">
@@ -605,36 +551,5 @@ function RoleCard({ title, body }: { title: string; body: string }) {
       <div className="font-ds-sans text-sm font-semibold text-[#171717]">{title}</div>
       <p className="mt-1.5 font-ds-ui text-[12.5px] leading-[18px] text-[#737373]">{body}</p>
     </div>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="mt-3 px-1.5 pb-1 pt-2 font-ds-ui text-[11px] font-medium uppercase tracking-[0.04em] text-[#A3A3A3]">
-      {children}
-    </div>
-  );
-}
-
-function NavItem({
-  href,
-  label,
-  active = false,
-}: {
-  href: string;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex h-8 items-center rounded-md px-2.5 font-ds-ui text-[13px] ${
-        active
-          ? "bg-[#F5F5F5] font-medium text-[#171717]"
-          : "text-[#737373] hover:bg-[#1717170A] hover:text-[#171717]"
-      }`}
-    >
-      {label}
-    </Link>
   );
 }

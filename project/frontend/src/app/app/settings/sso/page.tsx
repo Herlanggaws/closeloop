@@ -1,10 +1,5 @@
-import type { Metadata } from "next";
-import { SSO } from "@/design-screens/SSO";
-
-export const metadata: Metadata = {
-  title: "SSO & audit · Saidloop",
-};
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <SSO />;
+  redirect("/app/inbox");
 }

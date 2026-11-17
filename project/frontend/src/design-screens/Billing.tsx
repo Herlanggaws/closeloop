@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import { ProjectSwitcher } from "@/components/ProjectSwitcher";
-import { api, logout } from "@/lib/api";
-import { displayName, initials } from "@/lib/tickets";
+import { useEffect, useState } from "react";
+import { AppSidebar } from "@/components/AppSidebar";
+import { api } from "@/lib/api";
 import {
   formatUsage,
   planLabel,
@@ -134,62 +132,20 @@ export function Billing() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
-      <aside className="flex h-screen w-[248px] shrink-0 flex-col gap-0.5 border-r border-[#17171714] bg-[#FAFAFA] p-3">
-        <ProjectSwitcher
-          projectName={projectName}
-          plan={plan}
-          email={email}
-          usage={usage || undefined}
-        />
-
-        <nav className="mt-3 flex flex-1 flex-col gap-0.5 overflow-y-auto">
-          <NavItem href="/app/inbox" label="Inbox" />
-          <NavItem href="/app/auto-pr" label="Auto PR runs" />
-          <NavItem href="/app/board" label="Public board" />
-          <SectionLabel>Setup</SectionLabel>
-          <NavItem href="/app/install" label="Install widget" />
-          <NavItem href="/app/mcp" label="MCP server" />
-          <SectionLabel>Settings</SectionLabel>
-          <NavItem href="/app/settings" label="Project" />
-          <NavItem href="/app/settings/integrations" label="Integrations" />
-          <NavItem href="/app/settings/team" label="Team" />
-          <NavItem href="/app/settings/billing" label="Billing" active />
-        </nav>
-
-        {email && (
-          <div className="mt-auto flex flex-col gap-1">
-            <div className="flex items-center gap-2.5 px-1.5 py-1">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#171717]">
-                {me?.user?.avatar_url ? (
-                  <img src={me.user.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="font-ds-sans text-[11px] font-medium text-white">
-                    {initials(email)}
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-ds-ui text-[12px] font-medium text-[#171717]">
-                  {me?.user?.name || displayName(email)}
-                </div>
-                <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">{email}</div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => logout()}
-              className="cursor-pointer rounded-md px-1.5 py-1 text-left font-ds-ui text-[12px] text-[#737373] hover:bg-[#1717170A] hover:text-[#171717]"
-            >
-              Log out
-            </button>
-          </div>
-        )}
-      </aside>
+      <AppSidebar
+        projectName={projectName}
+        plan={plan}
+        email={email}
+        usage={usage || undefined}
+        userName={me?.user?.name}
+        avatarUrl={me?.user?.avatar_url}
+        active="billing"
+      />
 
       <main className="flex min-h-screen flex-1 flex-col overflow-y-auto bg-[#F7F7F7]">
         <header className="flex h-14 shrink-0 items-center border-b border-[#17171714] bg-white px-8">
           <h1 className="font-ds-sans text-[15px] font-semibold tracking-[-0.2px] text-[#171717]">
-            Billing & credits
+            Billing
           </h1>
         </header>
 
@@ -289,18 +245,6 @@ export function Billing() {
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-[#17171714] bg-white p-6">
-                <h2 className="font-ds-sans text-[16px] font-medium tracking-[-0.3px] text-[#171717]">
-                  Auto PR credits
-                </h2>
-                <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                  Credits ledger ships with F10. Limits shown for reference only.
-                </p>
-                <div className="mt-4 flex items-center justify-between rounded-[10px] bg-[#FAFAFA] px-4 py-3">
-                  <span className="font-ds-ui text-[13px] text-[#171717]">Available credits</span>
-                  <span className="font-ds-mono text-[13px] text-[#737373]">0 · coming soon</span>
-                </div>
-              </section>
             </>
           )}
         </div>
@@ -333,36 +277,5 @@ function UsageBar({
         />
       </div>
     </div>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="mt-3 px-1.5 pb-1 pt-2 font-ds-ui text-[11px] font-medium uppercase tracking-[0.04em] text-[#A3A3A3]">
-      {children}
-    </div>
-  );
-}
-
-function NavItem({
-  href,
-  label,
-  active = false,
-}: {
-  href: string;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex h-8 items-center rounded-md px-2.5 font-ds-ui text-[13px] ${
-        active
-          ? "bg-[#171717] font-medium text-white"
-          : "text-[#525252] hover:bg-[#1717170A] hover:text-[#171717]"
-      }`}
-    >
-      {label}
-    </Link>
   );
 }

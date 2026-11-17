@@ -151,6 +151,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-03 | Merge flow | Multi-select → `/app/inbox/merge` → confirm | Parent detail shows merged count |
 | R-UI-04 | Mark fixed UI | Detail → fixed → submit note | Status Fixed; activity updated |
 | R-UI-05 | Banner payload | After fix + identify | `/v1/ingest/updates` non-empty (widget banner assert light) |
+| R-UI-06 | M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | No Auto PR/Public board links; both routes redirect to inbox |
 
 ---
 
@@ -251,7 +252,7 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase C — L3 UI + agent UX
 
-- [x] Playwright scaffold; R-UI-01…05 (`frontend/e2e/reports.spec.ts`, `pnpm test:reports:ui`)
+- [x] Playwright scaffold; R-UI-01…06 (`frontend/e2e/reports.spec.ts`, `pnpm test:reports:ui`)
 - [x] AGENTS.md section: report test loop pointing ke dokumen ini
 - [ ] Optional: Closeloop MCP tool `run_report_tests` yang nge-wrap script + return summary
 

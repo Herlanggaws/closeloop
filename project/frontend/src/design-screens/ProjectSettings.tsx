@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { ProjectSwitcher } from "@/components/ProjectSwitcher";
-import { api, clearProjectSelection, logout } from "@/lib/api";
-import { displayName, initials } from "@/lib/tickets";
+import { AppSidebar } from "@/components/AppSidebar";
+import { api, clearProjectSelection } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 
 type ProjectInfo = {
@@ -264,54 +263,15 @@ export function ProjectSettings() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
-      <aside className="flex h-screen w-[248px] shrink-0 flex-col gap-0.5 border-r border-[#17171714] bg-[#FAFAFA] p-3">
-        <ProjectSwitcher
-          projectName={projectName}
-          plan={plan}
-          email={email}
-          usage={me?.usage}
-        />
-
-        <nav className="mt-3 flex flex-1 flex-col gap-0.5 overflow-y-auto">
-          <NavItem href="/app/inbox" label="Inbox" />
-          <NavItem href="/app/auto-pr" label="Auto PR runs" />
-          <NavItem href="/app/board" label="Public board" />
-          <SectionLabel>Setup</SectionLabel>
-          <NavItem href="/app/install" label="Install widget" />
-          <NavItem href="/app/mcp" label="MCP server" />
-          <SectionLabel>Settings</SectionLabel>
-          <NavItem href="/app/settings" label="Project" active />
-          <NavItem href="/app/settings/integrations" label="Integrations" />
-          <NavItem href="/app/settings/team" label="Team" />
-          <NavItem href="/app/settings/billing" label="Billing" />
-        </nav>
-
-        {email && (
-          <div className="mt-auto flex items-center gap-2.5 px-1.5 py-1">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#171717] overflow-hidden shrink-0">
-              {me?.user?.avatar_url ? (
-                <img src={me.user.avatar_url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="font-ds-sans text-[11px] font-medium text-white">
-                  {initials(email)}
-                </span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
-                {me?.user?.name || displayName(email)}
-              </div>
-              <button
-                type="button"
-                onClick={() => logout()}
-                className="cursor-pointer font-ds-ui text-[11px] text-[#A3A3A3] hover:text-[#171717]"
-              >
-                Log out
-              </button>
-            </div>
-          </div>
-        )}
-      </aside>
+      <AppSidebar
+        projectName={projectName}
+        plan={plan}
+        email={email}
+        usage={me?.usage}
+        userName={me?.user?.name}
+        avatarUrl={me?.user?.avatar_url}
+        active="settings"
+      />
 
       <main className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="flex h-[60px] shrink-0 items-center border-b border-[#17171714] px-6">
@@ -494,26 +454,6 @@ export function ProjectSettings() {
                   checked={false}
                   disabled
                 />
-                <ToggleRow
-                  title="Notify voters on the public board"
-                  description="Coming later — when an idea moves to Released"
-                  checked={false}
-                  disabled
-                />
-              </SettingsSection>
-
-              <SettingsSection
-                title="Public board domain"
-                description="Where visitors see ideas and the roadmap."
-              >
-                <Field label="Custom domain">
-                  <div className="flex h-9 items-center rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5 font-ds-ui text-[13px] text-[#A3A3A3]">
-                    board.yourapp.com
-                  </div>
-                  <p className="mt-1.5 font-ds-ui text-[12px] text-[#A3A3A3]">
-                    Coming with the public board (S-11 / F9).
-                  </p>
-                </Field>
               </SettingsSection>
 
               <SettingsSection
@@ -613,36 +553,5 @@ function ToggleRow({
         <span className="h-3.5 w-3.5 rounded-full bg-white" />
       </button>
     </div>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="mt-3 px-2 pb-1 pt-2 font-ds-ui text-[11px] font-medium uppercase tracking-[0.04em] text-[#A3A3A3]">
-      {children}
-    </div>
-  );
-}
-
-function NavItem({
-  href,
-  label,
-  active = false,
-}: {
-  href: string;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center rounded-md px-2 py-1.5 font-ds-ui text-[13px] no-underline transition ${
-        active
-          ? "bg-white font-semibold text-[#171717] shadow-[0_1px_2px_#17171714]"
-          : "font-medium text-[#737373] hover:bg-white/70 hover:text-[#171717]"
-      }`}
-    >
-      {label}
-    </Link>
   );
 }

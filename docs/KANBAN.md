@@ -62,6 +62,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] MoR: [Polar](https://polar.sh/) (billing still manual `plan` until M5)
 
 #### M1 · Inti web (F1, F2, F4, F5, F6) — priority
+
+> Live app surface: M1 only. Auto PR (`/app/auto-pr`), public board (`/app/board`, `/board*`), SSO, self-host, OAuth integrations, and Auto PR credits are **hidden** (nav stripped + routes redirect to inbox). Design screens remain under `/preview`.
 - [x] **F1** Google OAuth
 - [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
 - [x] **F1** Log out (revoke refresh + clear session)

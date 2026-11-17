@@ -1,10 +1,5 @@
-import type { Metadata } from "next";
-import { PublicBoard } from "@/design-screens/PublicBoard";
-
-export const metadata: Metadata = {
-  title: "Public board · Saidloop",
-};
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <PublicBoard />;
+  redirect("/app/inbox");
 }

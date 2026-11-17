@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ProjectSwitcher } from "@/components/ProjectSwitcher";
-import { API_URL, api, clearProjectSelection, logout } from "@/lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AppSidebar } from "@/components/AppSidebar";
+import { API_URL, api, clearProjectSelection } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 
 type TicketType = "bug" | "idea" | "question" | "";
@@ -91,22 +91,6 @@ function relativeTime(iso: string) {
 
 function projectInitial(name: string) {
   return (name.trim()[0] || "P").toUpperCase();
-}
-
-function displayName(email: string) {
-  const local = email.split("@")[0] || "You";
-  return local
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function initials(email: string) {
-  const name = displayName(email);
-  const parts = name.split(" ").filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
 }
 
 export function Inbox() {
@@ -302,68 +286,27 @@ export function Inbox() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
-      <aside className="flex h-screen w-[248px] shrink-0 flex-col gap-0.5 border-r border-[#17171714] bg-[#FAFAFA] p-3">
-        <ProjectSwitcher
-          projectName={projectName}
-          plan={plan}
-          email={email}
-          usage={me?.usage}
-        />
-
-        <label className="mt-2 flex h-8 items-center gap-2 rounded-md border border-[#1717171F] bg-white px-2.5 shadow-[0_1px_2px_#0000000A]">
-          <span className="text-[13px] text-[#A3A3A3]">⌕</span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search reports"
-            className="min-w-0 flex-1 bg-transparent font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3]"
-          />
-        </label>
-
-        <nav className="mt-1 flex flex-1 flex-col gap-0.5 overflow-y-auto">
-          <NavItem href="/app/inbox" label="Inbox" active count={filtered.length} />
-          <NavItem href="/app/auto-pr" label="Auto PR runs" />
-          <NavItem href="/app/board" label="Public board" />
-
-          <SectionLabel>Setup</SectionLabel>
-          <NavItem href="/app/install" label="Install widget" />
-          <NavItem href="/app/mcp" label="MCP server" />
-
-          <SectionLabel>Settings</SectionLabel>
-          <NavItem href="/app/settings" label="Project" />
-          <NavItem href="/app/settings/integrations" label="Integrations" />
-          <NavItem href="/app/settings/team" label="Team" />
-          <NavItem href="/app/settings/billing" label="Billing" />
-        </nav>
-
-        <div className="mt-auto flex flex-col gap-1">
-          {email && (
-            <div className="flex items-center gap-2.5 px-1.5 py-1">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#171717] overflow-hidden shrink-0">
-                {me?.user?.avatar_url ? (
-                  <img src={me.user.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="font-ds-sans text-[11px] font-medium text-white">
-                    {initials(email)}
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
-                  {me?.user?.name || displayName(email)}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => logout()}
-                  className="cursor-pointer font-ds-ui text-[11px] text-[#A3A3A3] hover:text-[#171717]"
-                >
-                  Log out
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
+      <AppSidebar
+        projectName={projectName}
+        plan={plan}
+        email={email}
+        usage={me?.usage}
+        userName={me?.user?.name}
+        avatarUrl={me?.user?.avatar_url}
+        active="inbox"
+        inboxCount={filtered.length}
+        afterSwitcher={
+          <label className="mt-2 flex h-8 items-center gap-2 rounded-md border border-[#1717171F] bg-white px-2.5 shadow-[0_1px_2px_#0000000A]">
+            <span className="text-[13px] text-[#A3A3A3]">⌕</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search reports"
+              className="min-w-0 flex-1 bg-transparent font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3]"
+            />
+          </label>
+        }
+      />
 
       <main className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-[#17171714] px-6">
@@ -653,44 +596,6 @@ function PlatformDropdown({
       options={PLATFORM_OPTIONS}
       onChange={onChange}
     />
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="px-2 pt-3 pb-1 font-ds-ui text-[11px] text-[#A3A3A3]">{children}</div>
-  );
-}
-
-function NavItem({
-  href,
-  label,
-  active,
-  count,
-}: {
-  href: string;
-  label: string;
-  active?: boolean;
-  count?: number;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-2 rounded-md px-2 py-[7px] no-underline transition-opacity hover:opacity-80 ${
-        active ? "bg-[#F5F5F5]" : "bg-transparent"
-      }`}
-    >
-      <span
-        className={`flex-1 font-ds-ui text-[13px] ${
-          active ? "font-medium text-[#171717]" : "font-normal text-[#737373]"
-        }`}
-      >
-        {label}
-      </span>
-      {typeof count === "number" && (
-        <span className="font-ds-mono text-[11px] text-[#A3A3A3]">{count}</span>
-      )}
-    </Link>
   );
 }
 
