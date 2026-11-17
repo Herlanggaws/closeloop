@@ -19,6 +19,7 @@ var (
 	ErrForbidden      = errors.New("forbidden")
 	ErrConflict       = errors.New("conflict")
 	ErrPlanRequired   = errors.New("plan required")
+	ErrSeatLimit      = errors.New("seat limit reached")
 	ErrInvalidInput   = errors.New("invalid input")
 )
 
@@ -1430,10 +1431,11 @@ type UsageCounter struct {
 }
 
 type OrgUsage struct {
-	Plan         string       `json:"plan"`
-	Projects     UsageCounter `json:"projects"`
-	Reports      UsageCounter `json:"reports"`
-	PeriodStart  time.Time    `json:"period_start"`
+	Plan        string       `json:"plan"`
+	Projects    UsageCounter `json:"projects"`
+	Reports     UsageCounter `json:"reports"`
+	Seats       UsageCounter `json:"seats"`
+	PeriodStart time.Time    `json:"period_start"`
 }
 
 func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
@@ -1467,10 +1469,16 @@ func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
 		return OrgUsage{}, err
 	}
 
+	seatsUsed, err := s.CountOrgSeats(ctx, orgID)
+	if err != nil {
+		return OrgUsage{}, err
+	}
+
 	return OrgUsage{
 		Plan:        plan,
 		Projects:    UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
 		Reports:     UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
+		Seats:       UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},
 		PeriodStart: periodStart,
 	}, nil
 }

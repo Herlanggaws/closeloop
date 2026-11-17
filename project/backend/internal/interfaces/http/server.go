@@ -49,6 +49,14 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/auth/logout", s.logout)
 		api.GET("/me", s.authRequired(), s.me)
 		api.PATCH("/org/plan", s.authRequired(), s.patchOrgPlan)
+		api.GET("/org/members", s.authRequired(), s.listOrgMembers)
+		api.POST("/org/invites", s.authRequired(), s.createOrgInvites)
+		api.POST("/org/invites/:id/resend", s.authRequired(), s.resendOrgInvite)
+		api.DELETE("/org/invites/:id", s.authRequired(), s.revokeOrgInvite)
+		api.PATCH("/org/members/:userId", s.authRequired(), s.patchOrgMember)
+		api.DELETE("/org/members/:userId", s.authRequired(), s.deleteOrgMember)
+		api.GET("/invites/:token", s.peekInvite)
+		api.POST("/invites/:token/accept", s.authRequired(), s.acceptInvite)
 		api.GET("/projects", s.authRequired(), s.listProjects)
 		api.POST("/projects", s.authRequired(), s.createProject)
 		api.GET("/projects/:id", s.authRequired(), s.getProject)
@@ -121,6 +129,8 @@ func mapErr(c *gin.Context, err error) {
 		writeErr(c, 409, "CONFLICT", err.Error())
 	case errors.Is(err, application.ErrPlanRequired):
 		writeErr(c, 402, "PLAN_REQUIRED", "Upgrade required for this action")
+	case errors.Is(err, application.ErrSeatLimit):
+		writeErr(c, 403, "SEAT_LIMIT", "Seat limit reached for your plan")
 	case errors.Is(err, application.ErrInvalidInput):
 		writeErr(c, 400, "INVALID_INPUT", err.Error())
 	default:
@@ -747,7 +757,7 @@ func (s *Server) listMCPTokens(c *gin.Context) {
 
 func (s *Server) createMCPToken(c *gin.Context) {
 	id := c.Param("id")
-	if !s.requireProjectAccess(c, id) {
+	if !s.requireTicketWrite(c, id) {
 		return
 	}
 	org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID"))
@@ -895,7 +905,7 @@ func (s *Server) patchTicket(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	if !s.requireProjectAccess(c, t.ProjectID) {
+	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
 	if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, body.Status, "user:"+c.GetString("email"), body.Note); err != nil {
@@ -922,7 +932,7 @@ func (s *Server) addNote(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	if !s.requireProjectAccess(c, t.ProjectID) {
+	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
 	if err := s.Store.AddNote(c.Request.Context(), t.ID, "user:"+c.GetString("email"), body.Body); err != nil {
@@ -950,7 +960,7 @@ func (s *Server) mergeTickets(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	if !s.requireProjectAccess(c, t.ProjectID) {
+	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
 	actor := "user:" + c.GetString("email")

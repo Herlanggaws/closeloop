@@ -4,6 +4,7 @@ export type OrgUsage = {
   plan: string;
   projects: UsageCounter;
   reports: UsageCounter;
+  seats?: UsageCounter;
   period_start: string;
 };
 

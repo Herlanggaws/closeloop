@@ -43,7 +43,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-11 Manage public board | `/app/board` | Publish flags, roadmap columns |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
 | S-13 Integrations | `/app/settings/integrations` | **Partial** Sentry/PostHog config (deep links); Slack/GitHub/Linear/Jira OAuth later (F8/F10) |
-| S-14 Team & roles | `/app/settings/team` | Invite + roles (US-05) |
+| S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |
@@ -67,7 +67,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F1** Log out (revoke refresh + clear session)
 - [x] **F1** Multi-project UI + plan limits
 - [x] **F1** MCP token list / revoke / generate UI (`/app/mcp`)
-- [ ] **F1** Team invite + roles (US-05) — API + S-14
+- [x] **F1** Team invite + roles (US-05) — API + S-14
 - [x] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
 - [x] **F2** Sensitive selectors from project settings applied before capture
 - [x] **F4** Wire inbox to API (list, type/status filters, empty, test report) — detail still design
@@ -125,7 +125,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | Milestone | Focus | Status |
 | --- | --- | --- |
 | M0 | Landing + waitlist + interviews | Waitlist store-only shipped; interviews todo |
-| M1 | F1 F2 F4 F5 F6 | Widget S-18…S-20 + deep links shipped; team invite + dogfood left |
+| M1 | F1 F2 F4 F5 F6 | Core M1 web done; dogfood Bear Budget left |
 | M2 | F3 F7 mobile | Todo |
 | M3 | F8 F9 F11 | Design only |
 | M4 | F10 F12 | Design only |
@@ -141,7 +141,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 4. Dogfood Closeloop on Bear Budget (MCP status page shipped).
 5. Start **M0** waitlist + 5 builder interviews in parallel.
 6. ~~**Report test automation** Phase A–D~~ — local `pnpm test:reports` / `:ui` / `:all`; CI `.github/workflows/report-tests.yml` (Go on PR, UI nightly). Issue list: [Report UI Issues](./Report%20UI%20Issues.md). See [AI Report Testing Plan](./AI%20Report%20Testing%20Plan.md).
-7. **F1** Team invite + roles (US-05 / S-14).
+7. ~~**F1** Team invite + roles (US-05 / S-14).~~
 
 ---
 
@@ -150,7 +150,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | Status | Stories |
 | --- | --- |
 | Partial / design | US-01…US-04, US-06…US-11, US-15…US-26, US-32…US-38, US-41…US-44 |
-| Not started | US-05 (team API), US-12…US-14, US-27…US-31, US-39…US-40 |
+| Not started | US-12…US-14, US-27…US-31, US-39…US-40 |
 
 Detail mapping stays in [Closeloop User Stories dan Screens](./Closeloop%20User%20Stories%20dan%20Screens.md).
 
