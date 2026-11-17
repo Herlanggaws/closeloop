@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-17",
-    title: "Early access: web widget, inbox, and MCP",
-    body: "Builders on the waitlist can install the web widget, triage reports in the inbox, and connect Cursor or Claude Code via the MCP server so agents can read feedback and mark tickets fixed.",
+    title: "Docs, legal pages, and early-access product loop",
+    body: "Public docs for the web widget and mobile SDKs, plus About, Contact, Privacy, Terms, and DPA — all linked from the landing footer. Waitlist builders can still install the widget, triage in the inbox, and connect Cursor or Claude Code via MCP.",
   },
   {
     date: "2026-11-10",
