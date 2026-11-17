@@ -4,8 +4,10 @@ import { MarketingPageHeader, MarketingProse } from "@/components/MarketingProse
 import { CONTACT_EMAIL } from "@/lib/marketing-links";
 
 export const metadata: Metadata = {
-  title: "Contact · Saidloop",
-  description: "Get in touch with Saidloop.",
+  title: "Contact",
+  description:
+    "Email Saidloop for sales, Indie early access, Business self-host, privacy questions, or product support.",
+  alternates: { canonical: "/contact" },
 };
 
 export default function ContactPage() {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DocsPlatformPage } from "@/components/DocsPlatformPage";
 
 export const metadata: Metadata = {
-  title: "iOS SDK · Saidloop",
+  title: "iOS SDK",
   description: "Install the Saidloop iOS SDK via Swift Package Manager.",
 };
 

@@ -5,38 +5,11 @@ import { useState } from "react";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { SaidloopLogo } from "@/components/SaidloopLogo";
 import { WaitlistForm } from "@/components/WaitlistForm";
+import { LANDING_FAQ_ITEMS } from "@/lib/landing-faq";
 
 type Props = {
   onJoinWaitlist?: () => void;
 };
-
-const FAQ_ITEMS = [
-  {
-    question: "How long does it take to install?",
-    answer:
-      "One script tag or npm package for web; one dependency for Android, iOS, Flutter or React Native. Most builders see their first report in under five minutes.",
-  },
-  {
-    question: "What happens to private data in screenshots?",
-    answer:
-      "Sensitive inputs and elements you mark are masked on the client before screenshot or replay upload. You control what gets blurred.",
-  },
-  {
-    question: "What if I go over my report quota?",
-    answer:
-      "Reports keep coming in — they soft-block so new ones stay unreadable until you upgrade or the month resets. Your data is kept.",
-  },
-  {
-    question: "Can the AI merge code on its own?",
-    answer:
-      "No. Agents can open a PR; Saidloop never merges for you. You review and ship.",
-  },
-  {
-    question: "Can I self-host Saidloop?",
-    answer:
-      "Yes on Business — Docker or Helm with an annual license. Cloud plans remain the default for everyone else.",
-  },
-] as const;
 
 function FaqChevron({ open }: { open: boolean }) {
   if (open) {
@@ -90,7 +63,7 @@ function FaqList() {
       data-pencil-name="List"
       className="box-border [flex:1_1_0] h-fit flex flex-col gap-0 justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#1717171F] [margin:-0.5px_0px_0px_0px] w-[800px]"
     >
-      {FAQ_ITEMS.map((item, index) => {
+      {LANDING_FAQ_ITEMS.map((item, index) => {
         const isOpen = openIndex === index;
         const answerId = `faq-answer-${index}`;
 
@@ -166,8 +139,9 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
            />
         </svg>
       </button>
-      <div
+      <nav
         id="nav" data-pencil-name="Nav"
+        aria-label="Primary"
         className="box-border w-[1440px] h-[67.5px] shrink-0 flex flex-row gap-0 p-[0px_80px] justify-between items-center bg-[#FFFFFF] [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:0px_0px_-0.5px_0px]"
       >
         <SaidloopLogo height={22} />
@@ -204,9 +178,10 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
           </button>
         </div>
-      </div>
-      <div
+      </nav>
+      <section
         id="hero" data-pencil-name="Hero"
+        aria-labelledby="hero-heading"
         className="box-border w-full h-fit shrink-0 flex flex-col gap-[28px] p-[88px_80px_0px_80px] justify-start items-center bg-[#FFFFFF]"
       >
         <div
@@ -224,23 +199,24 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             MCP server for Cursor and Claude Code
           </div>
         </div>
-        <div
+        <h1
+          id="hero-heading"
           data-pencil-name="Headline"
-          className="box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-center"
+          className="m-0 box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-center font-ds-sans font-medium"
         >
-          <div
+          <span
             data-pencil-name="Line 1"
-            className="text-[68px]/[69px] box-border text-[#171717] font-ds-sans font-medium tracking-[-2.4px] text-left [white-space:nowrap]"
+            className="text-[68px]/[69px] box-border text-[#171717] tracking-[-2.4px] text-left [white-space:nowrap]"
           >
             Users report it. Your AI fixes it.
-          </div>
-          <div
+          </span>
+          <span
             data-pencil-name="Line 2"
-            className="text-[68px]/[69px] box-border text-[#17171780] font-ds-sans font-medium tracking-[-2.4px] text-left [white-space:nowrap]"
+            className="text-[68px]/[69px] box-border text-[#17171780] tracking-[-2.4px] text-left [white-space:nowrap]"
           >
             Saidloop tells them it's done.
-          </div>
-        </div>
+          </span>
+        </h1>
         <div
           data-pencil-name="Subhead"
           className="text-[18px]/[27px] box-border w-[640px] text-[#737373] font-ds-sans font-normal tracking-[-0.3px] text-center"
@@ -1044,11 +1020,15 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
           </div>
         </div>
-      </div>
-      <div
+      </section>
+      <section
         id="platforms" data-pencil-name="Platforms"
+        aria-labelledby="platforms-heading"
         className="box-border w-[1440px] h-[104px] shrink-0 flex flex-row gap-[48px] p-[40px_80px] justify-center items-center bg-[#FFFFFF] [border-width:1px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_-0.5px_0px]"
       >
+        <h2 id="platforms-heading" className="sr-only">
+          Platforms
+        </h2>
         <div
           data-pencil-name="Collect from"
           className="box-border w-fit shrink-0 h-fit flex flex-row gap-[12px] justify-start items-center"
@@ -1300,9 +1280,10 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
           </div>
         </div>
-      </div>
-      <div
+      </section>
+      <section
         id="how" data-pencil-name="How It Works"
+        aria-labelledby="how-heading"
         className="box-border w-full h-fit shrink-0 flex flex-col gap-[56px] p-[112px_80px] justify-start items-start"
       >
         <div
@@ -1338,23 +1319,24 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 How it works
               </div>
             </div>
-            <div
+            <h2
+              id="how-heading"
               data-pencil-name="Title"
-              className="box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-start"
+              className="m-0 box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-start font-ds-sans font-medium"
             >
-              <div
+              <span
                 data-pencil-name="Line 1"
-                className="text-[44px]/[48px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+                className="text-[44px]/[48px] box-border text-[#171717] tracking-[-1.2px] text-left [white-space:nowrap]"
               >
                 One loop,
-              </div>
-              <div
+              </span>
+              <span
                 data-pencil-name="Line 2"
-                className="text-[44px]/[48px] box-border text-[#17171780] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+                className="text-[44px]/[48px] box-border text-[#17171780] tracking-[-1.2px] text-left [white-space:nowrap]"
               >
                 from report to reply
-              </div>
-            </div>
+              </span>
+            </h2>
           </div>
           <div
             data-pencil-name="Description"
@@ -1742,9 +1724,10 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             someone.
           </div>
         </div>
-      </div>
-      <div
+      </section>
+      <section
         id="features" data-pencil-name="Features"
+        aria-labelledby="features-heading"
         className="box-border w-[1440px] h-[1278.5px] shrink-0 flex flex-col gap-[56px] p-[112px_80px] justify-start items-start bg-[#FFFFFF] [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
       >
         <div
@@ -1780,23 +1763,24 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 Features
               </div>
             </div>
-            <div
+            <h2
+              id="features-heading"
               data-pencil-name="Title"
-              className="box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-start"
+              className="m-0 box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-start font-ds-sans font-medium"
             >
-              <div
+              <span
                 data-pencil-name="Line 1"
-                className="text-[44px]/[48px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+                className="text-[44px]/[48px] box-border text-[#171717] tracking-[-1.2px] text-left [white-space:nowrap]"
               >
                 Everything a report needs
-              </div>
-              <div
+              </span>
+              <span
                 data-pencil-name="Line 2"
-                className="text-[44px]/[48px] box-border text-[#17171780] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+                className="text-[44px]/[48px] box-border text-[#17171780] tracking-[-1.2px] text-left [white-space:nowrap]"
               >
                 to become a fix
-              </div>
-            </div>
+              </span>
+            </h2>
           </div>
           <div
             data-pencil-name="Description"
@@ -2628,9 +2612,10 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
           </div>
         </div>
-      </div>
-      <div
+      </section>
+      <section
         id="mcp" data-pencil-name="MCP Section"
+        aria-labelledby="mcp-heading"
         className="box-border w-full h-fit shrink-0 flex flex-row gap-[80px] p-[112px_80px] justify-start items-start bg-[#0A0A0A]"
       >
         <div
@@ -2662,23 +2647,24 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               MCP server
             </div>
           </div>
-          <div
+          <h2
+            id="mcp-heading"
             data-pencil-name="Title"
-            className="box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-start"
+            className="m-0 box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-start font-ds-sans font-medium"
           >
-            <div
+            <span
               data-pencil-name="L1"
-              className="text-[44px]/[48px] box-border text-[#FFFFFF] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+              className="text-[44px]/[48px] box-border text-[#FFFFFF] tracking-[-1.2px] text-left [white-space:nowrap]"
             >
               Your agent reads the report
-            </div>
-            <div
+            </span>
+            <span
               data-pencil-name="L2"
-              className="text-[44px]/[48px] box-border text-[#FFFFFF80] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+              className="text-[44px]/[48px] box-border text-[#FFFFFF80] tracking-[-1.2px] text-left [white-space:nowrap]"
             >
               and closes the ticket.
-            </div>
-          </div>
+            </span>
+          </h2>
           <div
             data-pencil-name="Desc"
             className="text-[16px]/[24px] box-border w-[480px] text-[#FFFFFFB3] font-ds-sans font-normal tracking-[-0.2px] text-left"
@@ -2939,9 +2925,10 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
           </div>
         </div>
-      </div>
-      <div
+      </section>
+      <section
         id="before-after" data-pencil-name="Before After"
+        aria-labelledby="before-after-heading"
         className="box-border w-full h-fit shrink-0 flex flex-col gap-[48px] p-[112px_80px] justify-start items-start"
       >
         <div
@@ -2973,23 +2960,24 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               Built from a real workflow
             </div>
           </div>
-          <div
+          <h2
+            id="before-after-heading"
             data-pencil-name="Title"
-            className="box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-center"
+            className="m-0 box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-center font-ds-sans font-medium"
           >
-            <div
+            <span
               data-pencil-name="L1"
-              className="text-[44px]/[48px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+              className="text-[44px]/[48px] box-border text-[#171717] tracking-[-1.2px] text-left [white-space:nowrap]"
             >
               How your SaaS handled feedback,
-            </div>
-            <div
+            </span>
+            <span
               data-pencil-name="L2"
-              className="text-[44px]/[48px] box-border text-[#17171780] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+              className="text-[44px]/[48px] box-border text-[#17171780] tracking-[-1.2px] text-left [white-space:nowrap]"
             >
               before and after Saidloop
-            </div>
-          </div>
+            </span>
+          </h2>
         </div>
         <div
           data-pencil-name="Columns"
@@ -3280,9 +3268,10 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
           </div>
         </div>
-      </div>
-      <div
+      </section>
+      <section
         id="pricing" data-pencil-name="Pricing"
+        aria-labelledby="pricing-heading"
         className="box-border w-[1440px] h-[1064px] shrink-0 flex flex-col gap-[48px] p-[112px_80px] justify-start items-start bg-[#FFFFFF] [border-width:1px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_-0.5px_0px]"
       >
         <div
@@ -3314,23 +3303,24 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               Pricing
             </div>
           </div>
-          <div
+          <h2
+            id="pricing-heading"
             data-pencil-name="Title"
-            className="box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-center"
+            className="m-0 box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-center font-ds-sans font-medium"
           >
-            <div
+            <span
               data-pencil-name="L1"
-              className="text-[44px]/[48px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+              className="text-[44px]/[48px] box-border text-[#171717] tracking-[-1.2px] text-left [white-space:nowrap]"
             >
               Priced for solo builders,
-            </div>
-            <div
+            </span>
+            <span
               data-pencil-name="L2"
-              className="text-[44px]/[48px] box-border text-[#17171780] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+              className="text-[44px]/[48px] box-border text-[#17171780] tracking-[-1.2px] text-left [white-space:nowrap]"
             >
               not QA departments
-            </div>
-          </div>
+            </span>
+          </h2>
           <div
             data-pencil-name="Billing Toggle"
             className="box-border w-fit h-fit shrink-0 flex flex-row gap-[2px] p-[3px] justify-start items-start bg-[#F5F5F5] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px]"
@@ -4183,21 +4173,23 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
           </a>
         </div>
-      </div>
-      <div
+      </section>
+      <section
         id="faq" data-pencil-name="FAQ"
+        aria-labelledby="faq-heading"
         className="box-border w-full h-fit shrink-0 flex flex-row gap-[80px] p-[112px_80px] justify-start items-start"
       >
         <div
           data-pencil-name="Left"
           className="box-border w-[400px] shrink-0 h-fit flex flex-col gap-[16px] justify-start items-start"
         >
-          <div
+          <h2
+            id="faq-heading"
             data-pencil-name="Title"
-            className="text-[44px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
+            className="m-0 text-[44px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
           >
             Questions
-          </div>
+          </h2>
           <div
             data-pencil-name="Desc"
             className="text-[16px]/[24px] box-border w-full text-[#737373] font-ds-sans font-normal text-left"
@@ -4206,32 +4198,34 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
         </div>
         <FaqList />
-      </div>
-      <div
+      </section>
+      <section
         id="cta" data-pencil-name="CTA"
+        aria-labelledby="cta-heading"
         className="box-border w-full h-fit shrink-0 flex flex-row gap-0 p-[0px_80px_112px_80px] justify-start items-start"
       >
         <div
           data-pencil-name="CTA Card"
           className="box-border [flex:1_1_0] h-fit flex flex-col gap-[28px] p-[72px_64px] justify-start items-center bg-[#0A0A0A] rounded-[24px] overflow-hidden"
         >
-          <div
+          <h2
+            id="cta-heading"
             data-pencil-name="Title"
-            className="box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-center"
+            className="m-0 box-border w-fit h-fit shrink-0 flex flex-col gap-0 justify-start items-center font-ds-sans font-medium"
           >
-            <div
+            <span
               data-pencil-name="L1"
-              className="text-[56px]/[59px] box-border text-[#FFFFFF] font-ds-sans font-medium tracking-[-1.8px] text-left [white-space:nowrap]"
+              className="text-[56px]/[59px] box-border text-[#FFFFFF] tracking-[-1.8px] text-left [white-space:nowrap]"
             >
               Close the loop
-            </div>
-            <div
+            </span>
+            <span
               data-pencil-name="L2"
-              className="text-[56px]/[59px] box-border text-[#FFFFFF80] font-ds-sans font-medium tracking-[-1.8px] text-left [white-space:nowrap]"
+              className="text-[56px]/[59px] box-border text-[#FFFFFF80] tracking-[-1.8px] text-left [white-space:nowrap]"
             >
               with every user who reports
-            </div>
-          </div>
+            </span>
+          </h2>
           <div
             data-pencil-name="Desc"
             className="text-[16px]/[normal] box-border text-[#FFFFFFB3] font-ds-ui font-normal text-left [white-space:nowrap]"
@@ -4240,7 +4234,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <WaitlistForm variant="footer" />
         </div>
-      </div>
+      </section>
       <MarketingFooter />
     </div>
     </>

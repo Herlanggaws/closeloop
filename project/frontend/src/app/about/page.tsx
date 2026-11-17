@@ -4,7 +4,7 @@ import { MarketingShell } from "@/components/MarketingShell";
 import { MarketingPageHeader, MarketingProse } from "@/components/MarketingProse";
 
 export const metadata: Metadata = {
-  title: "About · Saidloop",
+  title: "About",
   description: "Saidloop closes the loop between user feedback and AI agents.",
 };
 

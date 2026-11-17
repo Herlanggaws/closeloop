@@ -4,7 +4,7 @@ import { MarketingShell } from "@/components/MarketingShell";
 import { MarketingPageHeader, MarketingProse } from "@/components/MarketingProse";
 
 export const metadata: Metadata = {
-  title: "Docs · Saidloop",
+  title: "Docs",
   description: "Install the Saidloop web widget and mobile SDKs, then connect your AI agent via MCP.",
 };
 

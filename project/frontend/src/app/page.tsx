@@ -1,17 +1,38 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LandingShell } from "@/components/LandingShell";
+import { LandingJsonLd } from "@/components/LandingJsonLd";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TAGLINE,
+  SITE_URL,
+} from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Saidloop — Users report it. Your AI fixes it.",
-  description:
-    "Bug reports and ideas from inside your app, ready for Cursor or Claude Code over MCP. When the fix ships, Saidloop tells them it's done.",
+  title: { absolute: `${SITE_NAME} — ${SITE_TAGLINE}` },
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen overflow-x-auto bg-[var(--bg-page)]">
+      <LandingJsonLd />
       <GoogleOneTap />
       <div className="mx-auto w-[1440px]">
         <Suspense fallback={null}>

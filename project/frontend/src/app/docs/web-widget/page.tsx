@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DocsPlatformPage } from "@/components/DocsPlatformPage";
 
 export const metadata: Metadata = {
-  title: "Web widget · Saidloop",
+  title: "Web widget",
   description: "Install the Saidloop web widget with a single script tag.",
 };
 

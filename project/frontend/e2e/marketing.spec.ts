@@ -30,4 +30,35 @@ test.describe("Marketing pages smoke", () => {
       "/#how",
     );
   });
+
+  test("landing exposes crawlable SEO signals", async ({ page }) => {
+    const response = await page.goto("/");
+    expect(response?.ok()).toBeTruthy();
+
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: /Users report it\. Your AI fixes it\./,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: /One loop,/ })).toBeVisible();
+
+    const jsonLd = page.locator('script[type="application/ld+json"]');
+    await expect(jsonLd).toHaveCount(3);
+    const payloads = await jsonLd.allTextContents();
+    expect(payloads.some((text) => text.includes('"FAQPage"'))).toBeTruthy();
+    expect(payloads.some((text) => text.includes('"SoftwareApplication"'))).toBeTruthy();
+
+    const robots = await page.request.get("/robots.txt");
+    expect(robots.ok()).toBeTruthy();
+    const robotsBody = await robots.text();
+    expect(robotsBody).toContain("Sitemap: https://saidloop.com/sitemap.xml");
+    expect(robotsBody).toContain("Disallow: /app/");
+
+    const sitemap = await page.request.get("/sitemap.xml");
+    expect(sitemap.ok()).toBeTruthy();
+    const sitemapBody = await sitemap.text();
+    expect(sitemapBody).toContain("https://saidloop.com</loc>");
+    expect(sitemapBody).toContain("https://saidloop.com/docs</loc>");
+  });
 });

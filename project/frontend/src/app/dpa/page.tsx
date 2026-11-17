@@ -9,7 +9,7 @@ import {
 } from "@/lib/marketing-links";
 
 export const metadata: Metadata = {
-  title: "DPA · Saidloop",
+  title: "DPA",
   description: "Data Processing Addendum for Saidloop customers.",
 };
 

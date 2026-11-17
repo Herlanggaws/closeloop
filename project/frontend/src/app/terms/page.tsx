@@ -9,7 +9,7 @@ import {
 } from "@/lib/marketing-links";
 
 export const metadata: Metadata = {
-  title: "Terms · Saidloop",
+  title: "Terms",
   description: "Terms of Service for Saidloop.",
 };
 
