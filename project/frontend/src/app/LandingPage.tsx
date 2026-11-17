@@ -1,12 +1,139 @@
 /* Auto-converted from closeloop.pen S-01 Landing Page for pixel-perfect review */
 "use client";
 
+import { useState } from "react";
+import { MarketingFooter } from "@/components/MarketingFooter";
 import { SaidloopLogo } from "@/components/SaidloopLogo";
 import { WaitlistForm } from "@/components/WaitlistForm";
 
 type Props = {
   onJoinWaitlist?: () => void;
 };
+
+const FAQ_ITEMS = [
+  {
+    question: "How long does it take to install?",
+    answer:
+      "One script tag or npm package for web; one dependency for Android, iOS, Flutter or React Native. Most builders see their first report in under five minutes.",
+  },
+  {
+    question: "What happens to private data in screenshots?",
+    answer:
+      "Sensitive inputs and elements you mark are masked on the client before screenshot or replay upload. You control what gets blurred.",
+  },
+  {
+    question: "What if I go over my report quota?",
+    answer:
+      "Reports keep coming in — they soft-block so new ones stay unreadable until you upgrade or the month resets. Your data is kept.",
+  },
+  {
+    question: "Can the AI merge code on its own?",
+    answer:
+      "No. Agents can open a PR; Saidloop never merges for you. You review and ship.",
+  },
+  {
+    question: "Can I self-host Saidloop?",
+    answer:
+      "Yes on Business — Docker or Helm with an annual license. Cloud plans remain the default for everyone else.",
+  },
+] as const;
+
+function FaqChevron({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <svg
+        data-pencil-name="Chevron"
+        data-icon-name="chevron-up"
+        data-icon-set="lucide"
+        viewBox="0 0 14 14"
+        preserveAspectRatio="xMidYMid meet"
+        xmlns="http://www.w3.org/2000/svg"
+        className="box-border w-[16px] shrink-0 h-[16px] transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
+        aria-hidden
+      >
+        <path
+          d="M6.84619 4.68945q-0.08545 0.02734-0.19482 0.1128-0.14014 0.12646-0.53321 0.51611l-1.28857 1.2749q-1.81836 1.82178-1.86279 1.90723-0.04102 0.08203-0.04102 0.23584 0 0.15381 0.03418 0.23926 0.0376 0.08203 0.1333 0.18115 0.09912 0.0957 0.18115 0.1333 0.08545 0.03418 0.23926 0.03418 0.15381 0 0.23584-0.04102 0.08545-0.04443 1.66797-1.62353l1.58252-1.58252 1.58252 1.58252q1.58252 1.5791 1.66455 1.62353 0.08545 0.04102 0.23926 0.04102 0.15381 0 0.23584-0.03418 0.08545-0.0376 0.18115-0.1333 0.09912-0.09912 0.1333-0.18115 0.0376-0.08545 0.0376-0.23926 0-0.15381-0.04443-0.23584-0.04101-0.08545-1.85938-1.90723l-1.44238-1.42871q-0.33496-0.33496-0.46143-0.41699-0.09912-0.07178-0.19824-0.07178l-0.04102 0q-0.14014 0-0.18115 0.01367z"
+          fill="#171717"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      data-pencil-name="Chevron"
+      data-icon-name="chevron-down"
+      data-icon-set="lucide"
+      viewBox="0 0 14 14"
+      preserveAspectRatio="xMidYMid meet"
+      xmlns="http://www.w3.org/2000/svg"
+      className="box-border w-[16px] shrink-0 h-[16px] transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
+      aria-hidden
+    >
+      <path
+        d="M3.34619 4.68945q-0.25293 0.08545-0.37939 0.30762-0.04102 0.08545-0.04102 0.25293 0 0.16748 0.04785 0.25977 0.05127 0.08887 1.8628 1.9038 1.81494 1.81152 1.9038 1.8628 0.09229 0.04785 0.25977 0.04785 0.16748 0 0.25635-0.04785 0.09229-0.05127 1.90381-1.8628 1.81494-1.81494 1.86279-1.9038 0.05127-0.09229 0.05127-0.25977 0-0.16748-0.04102-0.25293-0.09912-0.16748-0.28027-0.2666-0.05811-0.02734-0.09912-0.04102-0.04102-0.01367-0.15381-0.01367-0.11279 0-0.15381 0.01367-0.04101 0.01367-0.11279 0.04102-0.09912 0.05811-1.66455 1.62695l-1.56885 1.56543-2.82666-2.81299q-0.31104-0.29395-0.42041-0.37939-0.08545-0.05469-0.19824-0.05469l-0.02735 0q-0.14014 0-0.18115 0.01367z"
+        fill="#A3A3A3"
+      />
+    </svg>
+  );
+}
+
+function FaqList() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  const toggle = (index: number) => {
+    setOpenIndex((current) => (current === index ? null : index));
+  };
+
+  return (
+    <div
+      data-pencil-name="List"
+      className="box-border [flex:1_1_0] h-fit flex flex-col gap-0 justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#1717171F] [margin:-0.5px_0px_0px_0px] w-[800px]"
+    >
+      {FAQ_ITEMS.map((item, index) => {
+        const isOpen = openIndex === index;
+        const answerId = `faq-answer-${index}`;
+
+        return (
+          <div
+            key={item.question}
+            data-pencil-name={item.question}
+            className={`box-border w-[800px] h-fit shrink-0 flex flex-col p-[20px_0px] justify-start items-start [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#1717171F] [margin:0px_0px_-0.5px_0px] ${
+              isOpen ? "gap-[10px]" : "gap-0"
+            }`}
+          >
+            <button
+              type="button"
+              data-pencil-name="Head"
+              aria-expanded={isOpen}
+              aria-controls={answerId}
+              onClick={() => toggle(index)}
+              className="cursor-pointer border-0 bg-transparent p-0 box-border w-full h-fit shrink-0 flex flex-row gap-[16px] justify-start items-center text-left"
+            >
+              <div
+                data-pencil-name="Question"
+                className="text-[16px]/[normal] box-border [flex:1_1_0] text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left"
+              >
+                {item.question}
+              </div>
+              <FaqChevron open={isOpen} />
+            </button>
+            {isOpen ? (
+              <div
+                id={answerId}
+                data-pencil-name="Answer"
+                role="region"
+                className="text-[14px]/[21px] box-border w-full text-[#737373] font-ds-sans font-normal tracking-[-0.2px] text-left transition-opacity duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
+              >
+                {item.answer}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function LandingPageDesign({ onJoinWaitlist }: Props) {
   const openWaitlist = onJoinWaitlist ?? (() => {});
@@ -4078,168 +4205,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             Anything else? Reply to your waitlist email and it reaches the builder directly.
           </div>
         </div>
-        <div
-          data-pencil-name="List"
-          className="box-border [flex:1_1_0] h-[356.5px] flex flex-col gap-0 justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#1717171F] [margin:-0.5px_0px_0px_0px] w-[800px]"
-        >
-          <div
-            data-pencil-name="How long does it take to install?"
-            className="box-border w-[800px] h-[112.5px] shrink-0 flex flex-col gap-[10px] p-[20px_0px] justify-start items-start [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#1717171F] [margin:0px_0px_-0.5px_0px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-[16px] justify-start items-center"
-            >
-              <div
-                data-pencil-name="Question"
-                className="text-[16px]/[normal] box-border [flex:1_1_0] text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left"
-              >
-                How long does it take to install?
-              </div>
-              <svg
-                data-pencil-name="Chevron"
-                data-icon-name="chevron-up"
-                data-icon-set="lucide"
-                viewBox="0 0 13.99993896484375 14"
-                preserveAspectRatio="xMidYMid meet"
-                xmlns="http://www.w3.org/2000/svg"
-                className="box-border w-[16px] shrink-0 h-[16px]"
-              >
-                <path
-                  d="M6.84619 4.68945q-0.08545 0.02734-0.19482 0.1128-0.14014 0.12646-0.53321 0.51611l-1.28857 1.2749q-1.81836 1.82178-1.86279 1.90723-0.04102 0.08203-0.04102 0.23584 0 0.15381 0.03418 0.23926 0.0376 0.08203 0.1333 0.18115 0.09912 0.0957 0.18115 0.1333 0.08545 0.03418 0.23926 0.03418 0.15381 0 0.23584-0.04102 0.08545-0.04443 1.66797-1.62353l1.58252-1.58252 1.58252 1.58252q1.58252 1.5791 1.66455 1.62353 0.08545 0.04102 0.23926 0.04102 0.15381 0 0.23584-0.03418 0.08545-0.0376 0.18115-0.1333 0.09912-0.09912 0.1333-0.18115 0.0376-0.08545 0.0376-0.23926 0-0.15381-0.04443-0.23584-0.04101-0.08545-1.85938-1.90723l-1.44238-1.42871q-0.33496-0.33496-0.46143-0.41699-0.09912-0.07178-0.19824-0.07178l-0.04102 0q-0.14014 0-0.18115 0.01367z"
-                  fill="#171717"
-                 />
-              </svg>
-            </div>
-            <div
-              data-pencil-name="Answer"
-              className="text-[14px]/[21px] box-border w-full text-[#737373] font-ds-sans font-normal tracking-[-0.2px] text-left"
-            >
-              One script tag or npm package for web; one dependency for Android, iOS, Flutter or
-              React Native. Most builders see their first report in under five minutes.
-            </div>
-          </div>
-          <div
-            data-pencil-name="What happens to private data in screenshots?"
-            className="box-border w-[800px] h-[60.5px] shrink-0 flex flex-col gap-0 p-[20px_0px] justify-start items-start [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#1717171F] [margin:0px_0px_-0.5px_0px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-[16px] justify-start items-center"
-            >
-              <div
-                data-pencil-name="Question"
-                className="text-[16px]/[normal] box-border [flex:1_1_0] text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left"
-              >
-                What happens to private data in screenshots?
-              </div>
-              <svg
-                data-pencil-name="Chevron"
-                data-icon-name="chevron-down"
-                data-icon-set="lucide"
-                viewBox="0 0 13.99993896484375 14"
-                preserveAspectRatio="xMidYMid meet"
-                xmlns="http://www.w3.org/2000/svg"
-                className="box-border w-[16px] shrink-0 h-[16px]"
-              >
-                <path
-                  d="M3.34619 4.68945q-0.25293 0.08545-0.37939 0.30762-0.04102 0.08545-0.04102 0.25293 0 0.16748 0.04785 0.25977 0.05127 0.08887 1.8628 1.9038 1.81494 1.81152 1.9038 1.8628 0.09229 0.04785 0.25977 0.04785 0.16748 0 0.25635-0.04785 0.09229-0.05127 1.90381-1.8628 1.81494-1.81494 1.86279-1.9038 0.05127-0.09229 0.05127-0.25977 0-0.16748-0.04102-0.25293-0.09912-0.16748-0.28027-0.2666-0.05811-0.02734-0.09912-0.04102-0.04102-0.01367-0.15381-0.01367-0.11279 0-0.15381 0.01367-0.04101 0.01367-0.11279 0.04102-0.09912 0.05811-1.66455 1.62695l-1.56885 1.56543-2.82666-2.81299q-0.31104-0.29395-0.42041-0.37939-0.08545-0.05469-0.19824-0.05469l-0.02735 0q-0.14014 0-0.18115 0.01367z"
-                  fill="#A3A3A3"
-                 />
-              </svg>
-            </div>
-          </div>
-          <div
-            data-pencil-name="What if I go over my report quota?"
-            className="box-border w-[800px] h-[60.5px] shrink-0 flex flex-col gap-0 p-[20px_0px] justify-start items-start [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#1717171F] [margin:0px_0px_-0.5px_0px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-[16px] justify-start items-center"
-            >
-              <div
-                data-pencil-name="Question"
-                className="text-[16px]/[normal] box-border [flex:1_1_0] text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left"
-              >
-                What if I go over my report quota?
-              </div>
-              <svg
-                data-pencil-name="Chevron"
-                data-icon-name="chevron-down"
-                data-icon-set="lucide"
-                viewBox="0 0 13.99993896484375 14"
-                preserveAspectRatio="xMidYMid meet"
-                xmlns="http://www.w3.org/2000/svg"
-                className="box-border w-[16px] shrink-0 h-[16px]"
-              >
-                <path
-                  d="M3.34619 4.68945q-0.25293 0.08545-0.37939 0.30762-0.04102 0.08545-0.04102 0.25293 0 0.16748 0.04785 0.25977 0.05127 0.08887 1.8628 1.9038 1.81494 1.81152 1.9038 1.8628 0.09229 0.04785 0.25977 0.04785 0.16748 0 0.25635-0.04785 0.09229-0.05127 1.90381-1.8628 1.81494-1.81494 1.86279-1.9038 0.05127-0.09229 0.05127-0.25977 0-0.16748-0.04102-0.25293-0.09912-0.16748-0.28027-0.2666-0.05811-0.02734-0.09912-0.04102-0.04102-0.01367-0.15381-0.01367-0.11279 0-0.15381 0.01367-0.04101 0.01367-0.11279 0.04102-0.09912 0.05811-1.66455 1.62695l-1.56885 1.56543-2.82666-2.81299q-0.31104-0.29395-0.42041-0.37939-0.08545-0.05469-0.19824-0.05469l-0.02735 0q-0.14014 0-0.18115 0.01367z"
-                  fill="#A3A3A3"
-                 />
-              </svg>
-            </div>
-          </div>
-          <div
-            data-pencil-name="Can the AI merge code on its own?"
-            className="box-border w-[800px] h-[60.5px] shrink-0 flex flex-col gap-0 p-[20px_0px] justify-start items-start [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#1717171F] [margin:0px_0px_-0.5px_0px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-[16px] justify-start items-center"
-            >
-              <div
-                data-pencil-name="Question"
-                className="text-[16px]/[normal] box-border [flex:1_1_0] text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left"
-              >
-                Can the AI merge code on its own?
-              </div>
-              <svg
-                data-pencil-name="Chevron"
-                data-icon-name="chevron-down"
-                data-icon-set="lucide"
-                viewBox="0 0 13.99993896484375 14"
-                preserveAspectRatio="xMidYMid meet"
-                xmlns="http://www.w3.org/2000/svg"
-                className="box-border w-[16px] shrink-0 h-[16px]"
-              >
-                <path
-                  d="M3.34619 4.68945q-0.25293 0.08545-0.37939 0.30762-0.04102 0.08545-0.04102 0.25293 0 0.16748 0.04785 0.25977 0.05127 0.08887 1.8628 1.9038 1.81494 1.81152 1.9038 1.8628 0.09229 0.04785 0.25977 0.04785 0.16748 0 0.25635-0.04785 0.09229-0.05127 1.90381-1.8628 1.81494-1.81494 1.86279-1.9038 0.05127-0.09229 0.05127-0.25977 0-0.16748-0.04102-0.25293-0.09912-0.16748-0.28027-0.2666-0.05811-0.02734-0.09912-0.04102-0.04102-0.01367-0.15381-0.01367-0.11279 0-0.15381 0.01367-0.04101 0.01367-0.11279 0.04102-0.09912 0.05811-1.66455 1.62695l-1.56885 1.56543-2.82666-2.81299q-0.31104-0.29395-0.42041-0.37939-0.08545-0.05469-0.19824-0.05469l-0.02735 0q-0.14014 0-0.18115 0.01367z"
-                  fill="#A3A3A3"
-                 />
-              </svg>
-            </div>
-          </div>
-          <div
-            data-pencil-name="Can I self-host Saidloop?"
-            className="box-border w-[800px] h-[60.5px] shrink-0 flex flex-col gap-0 p-[20px_0px] justify-start items-start [border-width:0px_0px_1px_0px] [border-style:solid] [border-color:#1717171F] [margin:0px_0px_-0.5px_0px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-[16px] justify-start items-center"
-            >
-              <div
-                data-pencil-name="Question"
-                className="text-[16px]/[normal] box-border [flex:1_1_0] text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left"
-              >
-                Can I self-host Saidloop?
-              </div>
-              <svg
-                data-pencil-name="Chevron"
-                data-icon-name="chevron-down"
-                data-icon-set="lucide"
-                viewBox="0 0 13.99993896484375 14"
-                preserveAspectRatio="xMidYMid meet"
-                xmlns="http://www.w3.org/2000/svg"
-                className="box-border w-[16px] shrink-0 h-[16px]"
-              >
-                <path
-                  d="M3.34619 4.68945q-0.25293 0.08545-0.37939 0.30762-0.04102 0.08545-0.04102 0.25293 0 0.16748 0.04785 0.25977 0.05127 0.08887 1.8628 1.9038 1.81494 1.81152 1.9038 1.8628 0.09229 0.04785 0.25977 0.04785 0.16748 0 0.25635-0.04785 0.09229-0.05127 1.90381-1.8628 1.81494-1.81494 1.86279-1.9038 0.05127-0.09229 0.05127-0.25977 0-0.16748-0.04102-0.25293-0.09912-0.16748-0.28027-0.2666-0.05811-0.02734-0.09912-0.04102-0.04102-0.01367-0.15381-0.01367-0.11279 0-0.15381 0.01367-0.04101 0.01367-0.11279 0.04102-0.09912 0.05811-1.66455 1.62695l-1.56885 1.56543-2.82666-2.81299q-0.31104-0.29395-0.42041-0.37939-0.08545-0.05469-0.19824-0.05469l-0.02735 0q-0.14014 0-0.18115 0.01367z"
-                  fill="#A3A3A3"
-                 />
-              </svg>
-            </div>
-          </div>
-        </div>
+        <FaqList />
       </div>
       <div
         id="cta" data-pencil-name="CTA"
@@ -4275,173 +4241,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           <WaitlistForm variant="footer" />
         </div>
       </div>
-      <div
-        id="footer" data-pencil-name="Footer"
-        className="box-border w-full h-fit shrink-0 flex flex-col gap-[48px] p-[64px_80px_32px_80px] justify-start items-start bg-[#0A0A0A]"
-      >
-        <div
-          data-pencil-name="Top"
-          className="box-border w-full h-fit shrink-0 flex flex-row gap-0 justify-between items-start"
-        >
-          <div
-            data-pencil-name="Brand"
-            className="box-border w-fit shrink-0 h-fit flex flex-col gap-[16px] justify-start items-start"
-          >
-            <SaidloopLogo height={22} onDark href="/" />
-            <div
-              data-pencil-name="Tag"
-              className="text-[14px]/[normal] box-border text-[#FFFFFFB3] font-ds-ui font-normal text-left [white-space:nowrap]"
-            >
-              Feedback your AI agent can close.
-            </div>
-          </div>
-          <div
-            data-pencil-name="Link Columns"
-            className="box-border w-fit shrink-0 h-fit flex flex-row gap-[80px] justify-start items-start"
-          >
-            <div
-              data-pencil-name="Product"
-              className="box-border w-fit shrink-0 h-fit flex flex-col gap-[12px] justify-start items-start"
-            >
-              <div
-                data-pencil-name="H"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF] font-ds-ui font-medium text-left [white-space:nowrap]"
-              >
-                Product
-              </div>
-              <div
-                data-pencil-name="How it works"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                How it works
-              </div>
-              <div
-                data-pencil-name="Platforms"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Platforms
-              </div>
-              <div
-                data-pencil-name="MCP server"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                MCP server
-              </div>
-              <div
-                data-pencil-name="Pricing"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Pricing
-              </div>
-              <div
-                data-pencil-name="Changelog"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Changelog
-              </div>
-            </div>
-            <div
-              data-pencil-name="Developers"
-              className="box-border w-fit shrink-0 h-fit flex flex-col gap-[12px] justify-start items-start"
-            >
-              <div
-                data-pencil-name="H"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF] font-ds-ui font-medium text-left [white-space:nowrap]"
-              >
-                Developers
-              </div>
-              <div
-                data-pencil-name="Docs"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Docs
-              </div>
-              <div
-                data-pencil-name="Web widget"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Web widget
-              </div>
-              <div
-                data-pencil-name="Android SDK"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Android SDK
-              </div>
-              <div
-                data-pencil-name="iOS SDK"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                iOS SDK
-              </div>
-              <div
-                data-pencil-name="Flutter &amp; React Native"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Flutter &amp; React Native
-              </div>
-            </div>
-            <div
-              data-pencil-name="Company"
-              className="box-border w-fit shrink-0 h-fit flex flex-col gap-[12px] justify-start items-start"
-            >
-              <div
-                data-pencil-name="H"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF] font-ds-ui font-medium text-left [white-space:nowrap]"
-              >
-                Company
-              </div>
-              <div
-                data-pencil-name="About"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                About
-              </div>
-              <div
-                data-pencil-name="Privacy"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Privacy
-              </div>
-              <div
-                data-pencil-name="DPA"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                DPA
-              </div>
-              <div
-                data-pencil-name="Terms"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Terms
-              </div>
-              <div
-                data-pencil-name="Contact"
-                className="text-[13px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                Contact
-              </div>
-            </div>
-          </div>
-        </div>
-        <div
-          data-pencil-name="Bottom"
-          className="box-border w-[1280px] h-[34.5px] shrink-0 flex flex-row gap-0 p-[20px_0px_0px_0px] justify-between items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#FFFFFF1A] [margin:-0.5px_0px_0px_0px]"
-        >
-          <div
-            data-pencil-name="C"
-            className="text-[12px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-          >
-            © 2026 Saidloop. Made by a solo builder in Indonesia.
-          </div>
-          <div
-            data-pencil-name="S"
-            className="text-[12px]/[normal] box-border text-[#FFFFFF80] font-ds-ui font-normal text-left [white-space:nowrap]"
-          >
-            Status · X · GitHub
-          </div>
-        </div>
-      </div>
+      <MarketingFooter />
     </div>
     </>
   );
