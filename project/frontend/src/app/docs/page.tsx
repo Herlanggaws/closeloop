@@ -57,7 +57,7 @@ export default function DocsPage() {
         <p>
           Once reports are flowing, connect Cursor or Claude Code so your agent can read open
           feedback and mark tickets fixed. See the overview on the{" "}
-          <a href="/#mcp">landing page</a>, then connect from{" "}
+          <Link href="/#mcp">landing page</Link>, then connect from{" "}
           <Link href="/app/mcp">MCP server</Link> after signup.
         </p>
       </MarketingProse>
