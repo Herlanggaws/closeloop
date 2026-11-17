@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { api, logout } from "@/lib/api";
 import { displayName, initials } from "@/lib/tickets";
-import type { MeResponse } from "@/lib/usage";
+import { formatUsage, type MeResponse } from "@/lib/usage";
 
 type Integration = {
   id: string;
@@ -19,6 +19,94 @@ type IntegrationRow = {
   provider: string;
   config: Record<string, unknown> | string;
 };
+
+type CatalogItem = {
+  id: string;
+  name: string;
+  description: string;
+  group: "notify" | "debug";
+  action: "configure" | "upgrade" | "add";
+  icon: string;
+  planBadge?: string;
+  wired?: boolean;
+};
+
+const CATALOG: CatalogItem[] = [
+  {
+    id: "slack",
+    name: "Slack",
+    description: "Post new reports and status changes to a channel",
+    group: "notify",
+    action: "configure",
+    icon: "S",
+  },
+  {
+    id: "github_issues",
+    name: "GitHub Issues",
+    description: "Create issues from tickets in your repo",
+    group: "notify",
+    action: "configure",
+    icon: "G",
+  },
+  {
+    id: "linear",
+    name: "Linear",
+    description: "Two-way status sync with a Linear team",
+    group: "notify",
+    action: "configure",
+    icon: "L",
+  },
+  {
+    id: "jira",
+    name: "Jira",
+    description: "Create issues in Jira Cloud projects",
+    group: "notify",
+    action: "upgrade",
+    icon: "J",
+    planBadge: "Studio",
+  },
+  {
+    id: "sentry",
+    name: "Sentry",
+    description: "Link reports to errors by user and release",
+    group: "debug",
+    action: "configure",
+    icon: "Se",
+    wired: true,
+  },
+  {
+    id: "posthog",
+    name: "PostHog",
+    description: "Attach the session from before each report",
+    group: "debug",
+    action: "configure",
+    icon: "P",
+    wired: true,
+  },
+  {
+    id: "github_app",
+    name: "GitHub App",
+    description: "Repository access for AI auto PR",
+    group: "debug",
+    action: "configure",
+    icon: "Gh",
+  },
+  {
+    id: "webhooks",
+    name: "Webhooks",
+    description: "POST every report event to your endpoint",
+    group: "debug",
+    action: "add",
+    icon: "W",
+  },
+];
+
+const SLACK_EVENTS = [
+  { id: "new_bug", label: "New bug", defaultOn: true },
+  { id: "new_idea", label: "New idea", defaultOn: true },
+  { id: "status_changed", label: "Status changed", defaultOn: false },
+  { id: "marked_fixed", label: "Marked fixed", defaultOn: true },
+] as const;
 
 function asConfig(raw: IntegrationRow["config"]): Record<string, string> {
   let obj: Record<string, unknown> = {};
@@ -46,6 +134,10 @@ export function Integrations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<"slack" | "sentry" | "posthog" | null>(null);
+  const [slackEvents, setSlackEvents] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(SLACK_EVENTS.map((e) => [e.id, e.defaultOn])),
+  );
 
   const [sentryOrg, setSentryOrg] = useState("");
   const [sentryProject, setSentryProject] = useState("");
@@ -139,6 +231,38 @@ export function Integrations() {
 
   const plan = me?.org.plan || "free";
   const email = me?.user.email || "";
+  const sentryConnected = Boolean(sentryOrg.trim());
+  const posthogConnected = Boolean(posthogHost.trim() && posthogProject.trim());
+
+  function statusFor(item: CatalogItem): "connected" | "coming" | "upgrade" | "none" {
+    if (item.id === "sentry") return sentryConnected ? "connected" : "none";
+    if (item.id === "posthog") return posthogConnected ? "connected" : "none";
+    if (item.action === "upgrade") return "upgrade";
+    if (!item.wired) return "coming";
+    return "none";
+  }
+
+  function onAction(item: CatalogItem) {
+    if (item.id === "sentry" || item.id === "posthog" || item.id === "slack") {
+      setExpanded((prev) => (prev === item.id ? null : item.id));
+      return;
+    }
+    if (item.action === "upgrade") {
+      router.push("/app/settings/billing");
+    }
+  }
+
+  function actionLabel(item: CatalogItem) {
+    if (item.action === "upgrade") return "Upgrade";
+    if (item.action === "add") return "Add";
+    if (item.id === "slack" || item.id === "sentry" || item.id === "posthog") {
+      return expanded === item.id ? "Close" : "Configure";
+    }
+    return "Configure";
+  }
+
+  const notify = CATALOG.filter((i) => i.group === "notify");
+  const debug = CATALOG.filter((i) => i.group === "debug");
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -162,8 +286,18 @@ export function Integrations() {
           <NavItem href="/app/settings/team" label="Team" />
           <NavItem href="/app/settings/billing" label="Billing" />
         </nav>
-        {email && (
-          <div className="mt-auto flex flex-col gap-1">
+        <div className="mt-auto flex flex-col gap-2">
+          {me?.usage && (
+            <div className="rounded-[10px] border border-[#17171714] bg-white p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-ds-ui text-[11px] text-[#737373]">Reports this month</span>
+                <span className="font-ds-ui text-[11px] font-medium text-[#171717]">
+                  {formatUsage(me.usage.reports)}
+                </span>
+              </div>
+            </div>
+          )}
+          {email && (
             <div className="flex items-center gap-2.5 px-1.5 py-1">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#171717]">
                 {me?.user?.avatar_url ? (
@@ -175,144 +309,291 @@ export function Integrations() {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate font-ds-ui text-[12px] font-medium text-[#171717]">
+                <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
                   {me?.user?.name || displayName(email)}
                 </div>
-                <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">{email}</div>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="cursor-pointer font-ds-ui text-[11px] text-[#A3A3A3] hover:text-[#171717]"
+                >
+                  Log out
+                </button>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => logout()}
-              className="cursor-pointer rounded-md px-1.5 py-1 text-left font-ds-ui text-[12px] text-[#737373] hover:bg-[#1717170A]"
-            >
-              Log out
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
 
-      <main className="flex min-h-screen flex-1 flex-col overflow-y-auto bg-[#F7F7F7]">
-        <header className="flex h-14 shrink-0 items-center border-b border-[#17171714] bg-white px-8">
-          <h1 className="font-ds-sans text-[15px] font-semibold tracking-[-0.2px] text-[#171717]">
-            Integrations
-          </h1>
+      <main className="flex min-h-screen min-w-0 flex-1 flex-col overflow-y-auto bg-white">
+        <header className="flex shrink-0 items-end border-b border-[#17171714] px-10 pb-6 pt-7">
+          <div className="flex max-w-[720px] flex-col gap-1">
+            <h1 className="font-ds-sans text-2xl font-medium tracking-[-0.4px] text-[#171717]">
+              Integrations
+            </h1>
+            <p className="font-ds-ui text-[13.5px] text-[#737373]">
+              Send reports where your team already works, and pull in debugging context.
+            </p>
+          </div>
         </header>
 
-        <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5 px-8 py-8">
-          <p className="font-ds-ui text-[13px] text-[#737373]">
-            Paste Sentry and PostHog project details to turn report context IDs into deep links on
-            ticket detail. OAuth sync ships later.
-          </p>
+        <div className="flex flex-1 flex-col gap-8 px-10 pb-10 pt-6">
           {loading ? (
             <p className="font-ds-ui text-sm text-[#737373]">Loading…</p>
           ) : (
             <>
-              {error && <p className="text-sm text-[#DA314A]">{error}</p>}
+              {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
-              <section className="rounded-2xl border border-[#17171714] bg-white p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="font-ds-sans text-[16px] font-medium text-[#171717]">Sentry</h2>
-                    <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                      Links use <code className="font-ds-mono text-[12px]">sentry_event_id</code> from
-                      the report context.
+              <IntegrationGroup title="Notify and track">
+                {notify.map((item) => (
+                  <IntegrationCard
+                    key={item.id}
+                    item={item}
+                    status={statusFor(item)}
+                    actionLabel={actionLabel(item)}
+                    primary={item.action === "upgrade" || item.action === "add"}
+                    onAction={() => onAction(item)}
+                  />
+                ))}
+              </IntegrationGroup>
+
+              <IntegrationGroup title="Debugging context">
+                {debug.map((item) => (
+                  <IntegrationCard
+                    key={item.id}
+                    item={item}
+                    status={statusFor(item)}
+                    actionLabel={actionLabel(item)}
+                    primary={item.action === "add"}
+                    onAction={() => onAction(item)}
+                  />
+                ))}
+              </IntegrationGroup>
+
+              {expanded === "slack" && (
+                <div className="flex flex-col gap-5 rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="max-w-sm">
+                    <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
+                      Slack · #feedback
+                    </h3>
+                    <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                      Choose which events post to the channel. OAuth connect ships with F8.
                     </p>
                   </div>
-                  {(sentryOrg || sentryProject) && (
-                    <button
-                      type="button"
-                      disabled={saving === "sentry"}
-                      onClick={() => clearProvider("sentry")}
-                      className="cursor-pointer font-ds-ui text-[12px] text-[#737373] hover:text-[#171717]"
-                    >
-                      Disconnect
-                    </button>
-                  )}
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Field label="Org slug" value={sentryOrg} onChange={setSentryOrg} placeholder="acme" />
-                  <Field
-                    label="Project slug"
-                    value={sentryProject}
-                    onChange={setSentryProject}
-                    placeholder="web-app"
-                  />
-                </div>
-                <button
-                  type="button"
-                  disabled={saving === "sentry" || !sentryOrg.trim()}
-                  onClick={() =>
-                    saveProvider("sentry", {
-                      org: sentryOrg.trim(),
-                      project: sentryProject.trim(),
-                    })
-                  }
-                  className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
-                >
-                  {saving === "sentry" ? "Saving…" : "Save Sentry"}
-                </button>
-              </section>
-
-              <section className="rounded-2xl border border-[#17171714] bg-white p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="font-ds-sans text-[16px] font-medium text-[#171717]">PostHog</h2>
-                    <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                      Links use <code className="font-ds-mono text-[12px]">posthog_session_id</code>{" "}
-                      from the report context.
-                    </p>
+                  <div className="flex min-w-[280px] flex-1 flex-col gap-1">
+                    {SLACK_EVENTS.map((event) => (
+                      <label
+                        key={event.id}
+                        className="flex h-10 cursor-pointer items-center justify-between gap-4 rounded-md px-2 hover:bg-white"
+                      >
+                        <span className="font-ds-ui text-[13.5px] text-[#171717]">
+                          {event.label}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={slackEvents[event.id]}
+                          onClick={() =>
+                            setSlackEvents((prev) => ({
+                              ...prev,
+                              [event.id]: !prev[event.id],
+                            }))
+                          }
+                          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                            slackEvents[event.id] ? "bg-[#171717]" : "bg-[#E5E5E5]"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                              slackEvents[event.id] ? "left-4" : "left-0.5"
+                            }`}
+                          />
+                        </button>
+                      </label>
+                    ))}
                   </div>
-                  {(posthogHost || posthogProject) && (
-                    <button
-                      type="button"
-                      disabled={saving === "posthog"}
-                      onClick={() => clearProvider("posthog")}
-                      className="cursor-pointer font-ds-ui text-[12px] text-[#737373] hover:text-[#171717]"
-                    >
-                      Disconnect
-                    </button>
-                  )}
                 </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Field
-                    label="Host"
-                    value={posthogHost}
-                    onChange={setPosthogHost}
-                    placeholder="https://us.posthog.com"
-                  />
-                  <Field
-                    label="Project id"
-                    value={posthogProject}
-                    onChange={setPosthogProject}
-                    placeholder="12345"
-                  />
-                </div>
-                <button
-                  type="button"
-                  disabled={saving === "posthog" || !posthogHost.trim() || !posthogProject.trim()}
-                  onClick={() =>
-                    saveProvider("posthog", {
-                      host: posthogHost.trim().replace(/\/$/, ""),
-                      project_id: posthogProject.trim(),
-                    })
-                  }
-                  className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
-                >
-                  {saving === "posthog" ? "Saving…" : "Save PostHog"}
-                </button>
-              </section>
+              )}
 
-              <section className="rounded-2xl border border-dashed border-[#1717171F] bg-white p-6">
-                <h2 className="font-ds-sans text-[16px] font-medium text-[#171717]">Coming later</h2>
-                <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                  Slack, GitHub Issues, Linear, and Jira OAuth connect in M3.
-                </p>
-              </section>
+              {expanded === "sentry" && (
+                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
+                        Sentry
+                      </h3>
+                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                        Links use <code className="font-ds-mono text-[12px]">sentry_event_id</code>{" "}
+                        from report context.
+                      </p>
+                    </div>
+                    {sentryConnected && (
+                      <button
+                        type="button"
+                        disabled={saving === "sentry"}
+                        onClick={() => void clearProvider("sentry")}
+                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <Field label="Org slug" value={sentryOrg} onChange={setSentryOrg} placeholder="acme" />
+                    <Field
+                      label="Project slug"
+                      value={sentryProject}
+                      onChange={setSentryProject}
+                      placeholder="web-app"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={saving === "sentry" || !sentryOrg.trim()}
+                    onClick={() =>
+                      void saveProvider("sentry", {
+                        org: sentryOrg.trim(),
+                        project: sentryProject.trim(),
+                      })
+                    }
+                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                  >
+                    {saving === "sentry" ? "Saving…" : "Save Sentry"}
+                  </button>
+                </div>
+              )}
+
+              {expanded === "posthog" && (
+                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
+                        PostHog
+                      </h3>
+                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                        Links use{" "}
+                        <code className="font-ds-mono text-[12px]">posthog_session_id</code> from
+                        report context.
+                      </p>
+                    </div>
+                    {posthogConnected && (
+                      <button
+                        type="button"
+                        disabled={saving === "posthog"}
+                        onClick={() => void clearProvider("posthog")}
+                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <Field
+                      label="Host"
+                      value={posthogHost}
+                      onChange={setPosthogHost}
+                      placeholder="https://us.posthog.com"
+                    />
+                    <Field
+                      label="Project id"
+                      value={posthogProject}
+                      onChange={setPosthogProject}
+                      placeholder="12345"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={
+                      saving === "posthog" || !posthogHost.trim() || !posthogProject.trim()
+                    }
+                    onClick={() =>
+                      void saveProvider("posthog", {
+                        host: posthogHost.trim().replace(/\/$/, ""),
+                        project_id: posthogProject.trim(),
+                      })
+                    }
+                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                  >
+                    {saving === "posthog" ? "Saving…" : "Save PostHog"}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+function IntegrationGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-ds-ui text-xs font-medium text-[#A3A3A3]">{title}</h2>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{children}</div>
+    </section>
+  );
+}
+
+function IntegrationCard({
+  item,
+  status,
+  actionLabel,
+  primary,
+  onAction,
+}: {
+  item: CatalogItem;
+  status: "connected" | "coming" | "upgrade" | "none";
+  actionLabel: string;
+  primary: boolean;
+  onAction: () => void;
+}) {
+  const canOpen =
+    item.id === "slack" ||
+    item.id === "sentry" ||
+    item.id === "posthog" ||
+    item.action === "upgrade" ||
+    item.action === "add";
+
+  return (
+    <div className="flex min-h-[148px] flex-col rounded-xl border border-[#17171714] bg-white p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#17171714] bg-[#FAFAFA] font-ds-sans text-[11px] font-semibold text-[#171717]">
+          {item.icon}
+        </div>
+        {status === "connected" && (
+          <span className="inline-flex items-center gap-1.5 font-ds-ui text-[11px] text-[#16A34A]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
+            Connected
+          </span>
+        )}
+        {item.planBadge && (
+          <span className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">
+            {item.planBadge}
+          </span>
+        )}
+        {status === "coming" && !item.planBadge && item.id !== "slack" && (
+          <span className="font-ds-ui text-[11px] text-[#A3A3A3]">Soon</span>
+        )}
+      </div>
+      <div className="mt-3 font-ds-sans text-[15px] font-semibold text-[#171717]">
+        {item.name}
+      </div>
+      <p className="mt-1 flex-1 font-ds-ui text-[12.5px] leading-[18px] text-[#737373]">
+        {item.description}
+      </p>
+      <button
+        type="button"
+        onClick={onAction}
+        disabled={!canOpen && item.action === "configure"}
+        className={`mt-4 inline-flex h-8 w-fit cursor-pointer items-center rounded-md px-3 font-ds-sans text-[13px] font-medium disabled:cursor-default disabled:opacity-50 ${
+          primary
+            ? "bg-[#171717] text-white"
+            : "border border-[#1717171F] bg-white text-[#171717] hover:bg-[#FAFAFA]"
+        }`}
+      >
+        {!canOpen && item.action === "configure" ? "Coming later" : actionLabel}
+      </button>
     </div>
   );
 }
@@ -330,7 +611,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-ds-ui text-[12px] font-medium text-[#171717]">{label}</span>
+      <span className="font-ds-ui text-xs font-medium text-[#171717]">{label}</span>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -363,8 +644,8 @@ function NavItem({
       href={href}
       className={`flex h-8 items-center rounded-md px-2.5 font-ds-ui text-[13px] ${
         active
-          ? "bg-[#171717] font-medium text-white"
-          : "text-[#525252] hover:bg-[#1717170A] hover:text-[#171717]"
+          ? "bg-[#F5F5F5] font-medium text-[#171717]"
+          : "text-[#737373] hover:bg-[#1717170A] hover:text-[#171717]"
       }`}
     >
       {label}

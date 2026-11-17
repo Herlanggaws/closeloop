@@ -42,8 +42,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | Publish flags, roadmap columns |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
-| S-13 Integrations | `/app/settings/integrations` | **Partial** Sentry/PostHog config (deep links); Slack/GitHub/Linear/Jira OAuth later (F8/F10) |
-| S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan |
+| S-13 Integrations | `/app/settings/integrations` | **Partial** S-13 grid (notify + debug) + Slack event panel shell; Sentry/PostHog config live; Slack/GitHub/Linear/Jira OAuth later (F8/F10) |
+| S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |

@@ -19,6 +19,7 @@ import {
 } from "@/lib/inviteEmails";
 import { displayName, initials } from "@/lib/tickets";
 import {
+  formatLimit,
   formatUsage,
   planLabel,
   type MeResponse,
@@ -40,6 +41,21 @@ type Invite = {
   expires_at: string;
   created_at: string;
 };
+
+type RosterRow =
+  | { kind: "member"; member: Member }
+  | { kind: "invite"; invite: Invite };
+
+function relativeInvite(iso: string) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return "Invite sent just now";
+  if (mins < 60) return `Invite sent ${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `Invite sent ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `Invite sent ${days}d ago`;
+}
 
 export function Team() {
   const router = useRouter();
@@ -90,9 +106,7 @@ export function Team() {
       throw reason instanceof Error ? reason : new Error("Failed to load team");
     }
 
-    if (meSettled.status === "fulfilled") {
-      setMe(meSettled.value);
-    }
+    if (meSettled.status === "fulfilled") setMe(meSettled.value);
     if (projectSettled.status === "fulfilled") {
       setProjectName(projectSettled.value.project.name || "Project");
     }
@@ -238,6 +252,12 @@ export function Team() {
   const email = me?.user.email || "";
   const seats = usage?.seats || { used: members.length, limit: 1 };
   const atCap = seats.limit !== 0 && seats.used >= seats.limit;
+  const roster: RosterRow[] = [
+    ...members.map((member) => ({ kind: "member" as const, member })),
+    ...invites.map((invite) => ({ kind: "invite" as const, invite })),
+  ];
+  const seatSubtitle = `${planLabel(plan)} plan · ${seats.used} of ${formatLimit(seats.limit)} seats used`;
+  const memberSummary = `${members.length} active · ${invites.length} pending`;
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -261,8 +281,18 @@ export function Team() {
           <NavItem href="/app/settings/team" label="Team" active />
           <NavItem href="/app/settings/billing" label="Billing" />
         </nav>
-        {email && (
-          <div className="mt-auto flex flex-col gap-1">
+        <div className="mt-auto flex flex-col gap-2">
+          {(usage || me?.usage) && (
+            <div className="rounded-[10px] border border-[#17171714] bg-white p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-ds-ui text-[11px] text-[#737373]">Reports this month</span>
+                <span className="font-ds-ui text-[11px] font-medium text-[#171717]">
+                  {formatUsage((usage || me?.usage)!.reports)}
+                </span>
+              </div>
+            </div>
+          )}
+          {email && (
             <div className="flex items-center gap-2.5 px-1.5 py-1">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#171717]">
                 {me?.user?.avatar_url ? (
@@ -274,101 +304,89 @@ export function Team() {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate font-ds-ui text-[12px] font-medium text-[#171717]">
+                <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
                   {me?.user?.name || displayName(email)}
                 </div>
-                <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">{email}</div>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="cursor-pointer font-ds-ui text-[11px] text-[#A3A3A3] hover:text-[#171717]"
+                >
+                  Log out
+                </button>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => logout()}
-              className="cursor-pointer rounded-md px-1.5 py-1 text-left font-ds-ui text-[12px] text-[#737373] hover:bg-[#1717170A]"
-            >
-              Log out
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
 
-      <main className="flex min-h-screen flex-1 flex-col overflow-y-auto bg-[#F7F7F7]">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#17171714] bg-white px-8">
-          <h1 className="font-ds-sans text-[15px] font-semibold tracking-[-0.2px] text-[#171717]">
-            Team & roles
-          </h1>
-          <span className="font-ds-ui text-[12px] text-[#737373]">
-            {planLabel(plan)} · {formatUsage(seats)} seats
-          </span>
+      <main className="flex min-h-screen min-w-0 flex-1 flex-col overflow-y-auto bg-white">
+        <header className="flex shrink-0 items-end justify-between border-b border-[#17171714] px-10 pb-6 pt-7">
+          <div className="flex flex-col gap-1">
+            <h1 className="font-ds-sans text-2xl font-medium tracking-[-0.4px] text-[#171717]">
+              Team
+            </h1>
+            <p className="font-ds-ui text-[13.5px] text-[#737373]">{seatSubtitle}</p>
+          </div>
         </header>
 
-        <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5 px-8 py-8">
+        <div className="flex flex-1 flex-col gap-6 px-10 pb-10 pt-7">
           {loading ? (
             <p className="font-ds-ui text-sm text-[#737373]">Loading…</p>
           ) : (
             <>
-              {error && <p className="text-sm text-[#DA314A]">{error}</p>}
+              {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
               {isOwner && (
-                <section className="rounded-2xl border border-[#17171714] bg-white p-6">
-                  <h2 className="font-ds-sans text-[16px] font-medium text-[#171717]">
-                    Invite teammates
-                  </h2>
-                  <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                    Free includes 1 seat. Indie 3, Studio 5. Upgrade on Billing if you hit the cap.
-                  </p>
+                <section className="flex flex-wrap items-center gap-2 rounded-xl border border-[#17171714] bg-[#FAFAFA] p-4">
                   {atCap ? (
-                    <div className="mt-4 rounded-[10px] border border-[#1717171F] bg-[#FAFAFA] p-4">
-                      <p className="font-ds-ui text-sm text-[#171717]">Seat limit reached.</p>
+                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                      <p className="font-ds-ui text-[13px] text-[#171717]">
+                        Seat limit reached ({formatUsage(seats)}).
+                      </p>
                       <Link
                         href="/app/settings/billing"
-                        className="mt-2 inline-block font-ds-ui text-[13px] text-[#2563eb]"
+                        className="font-ds-ui text-[13px] font-medium text-[#171717] underline"
                       >
-                        Upgrade plan →
+                        Upgrade on Billing
                       </Link>
                     </div>
                   ) : (
-                    <div className="mt-4 flex flex-col gap-3">
+                    <>
                       <div
                         role="group"
                         aria-label="Invite emails"
                         onClick={() => inviteInputRef.current?.focus()}
-                        className={`flex min-h-[44px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-md border bg-white px-2 py-1.5 focus-within:border-[#171717] ${
+                        className={`flex min-h-9 min-w-[220px] flex-1 cursor-text flex-wrap items-center gap-1.5 rounded-md border bg-white px-2.5 py-1 focus-within:border-[#171717] ${
                           inviteError ? "border-[#DA314A]" : "border-[#1717171F]"
                         }`}
                       >
-                        {inviteEmails.map((email) => (
+                        {inviteEmails.map((addr) => (
                           <span
-                            key={email}
+                            key={addr}
                             className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#D4D4D4] bg-[#F5F5F5] py-0.5 pl-0.5 pr-1.5"
                           >
                             <span
                               className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium text-white"
-                              style={{ backgroundColor: avatarTone(email) }}
+                              style={{ backgroundColor: avatarTone(addr) }}
                               aria-hidden
                             >
-                              {email.slice(0, 1).toUpperCase()}
+                              {addr.slice(0, 1).toUpperCase()}
                             </span>
                             <span className="truncate font-ds-ui text-[12px] text-[#171717]">
-                              {email}
+                              {addr}
                             </span>
                             <button
                               type="button"
-                              aria-label={`Remove ${email}`}
+                              aria-label={`Remove ${addr}`}
                               disabled={saving}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                removeInviteEmail(email);
+                                removeInviteEmail(addr);
                               }}
                               className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full text-[#737373] hover:bg-[#17171714] hover:text-[#171717]"
                             >
-                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-                                <path
-                                  d="M2.5 2.5l5 5M7.5 2.5l-5 5"
-                                  stroke="currentColor"
-                                  strokeWidth="1.4"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
+                              ×
                             </button>
                           </span>
                         ))}
@@ -378,10 +396,9 @@ export function Team() {
                           disabled={saving}
                           spellCheck={false}
                           autoComplete="off"
-                          autoCorrect="off"
                           placeholder={
                             inviteEmails.length === 0
-                              ? "teammate@company.com, other@company.com"
+                              ? "name@studio.com, another@studio.com"
                               : ""
                           }
                           onChange={(e) => {
@@ -412,167 +429,181 @@ export function Team() {
                             }
                             setInviteDraft("");
                           }}
-                          className="min-w-[140px] flex-1 border-0 bg-transparent px-1 py-1 font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3]"
+                          className="min-w-[140px] flex-1 border-0 bg-transparent py-1 font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3]"
                         />
                       </div>
-                      {inviteError && (
-                        <div className="-mt-1 flex flex-col gap-1">
-                          <p className="font-ds-ui text-[13px] text-[#DA314A]">{inviteError}</p>
-                          {/seat limit/i.test(inviteError) && (
-                            <Link
-                              href="/app/settings/billing"
-                              className="font-ds-ui text-[13px] text-[#2563eb]"
-                            >
-                              Upgrade on Billing →
-                            </Link>
-                          )}
-                        </div>
-                      )}
-                      {inviteNotice && !inviteError && (
-                        <p className="-mt-1 font-ds-ui text-[13px] text-[#16A34A]">{inviteNotice}</p>
-                      )}
-                      <div className="flex flex-wrap items-center gap-3">
-                        <select
-                          value={role}
-                          onChange={(e) => setRole(e.target.value as "member" | "viewer")}
-                          className="h-9 rounded-md border border-[#1717171F] bg-white px-2 font-ds-ui text-[13px]"
-                        >
-                          <option value="member">Member</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
-                        <button
-                          type="button"
-                          disabled={saving || (inviteEmails.length === 0 && !inviteDraft.trim())}
-                          onClick={() => void sendInvites()}
-                          className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
-                        >
-                          {saving ? "Sending…" : "Send invite"}
-                        </button>
-                      </div>
-                    </div>
+                      <select
+                        value={role}
+                        onChange={(e) => setRole(e.target.value as "member" | "viewer")}
+                        className="h-8 w-[120px] rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-ui text-[13px] text-[#171717]"
+                      >
+                        <option value="member">Member</option>
+                        <option value="viewer">Viewer</option>
+                      </select>
+                      <button
+                        type="button"
+                        disabled={saving || (inviteEmails.length === 0 && !inviteDraft.trim())}
+                        onClick={() => void sendInvites()}
+                        className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-4 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                      >
+                        {saving ? "Sending…" : "Send invite"}
+                      </button>
+                    </>
+                  )}
+                  {inviteError && (
+                    <p className="w-full font-ds-ui text-[13px] text-[#DA314A]">{inviteError}</p>
+                  )}
+                  {inviteNotice && !inviteError && (
+                    <p className="w-full font-ds-ui text-[13px] text-[#16A34A]">{inviteNotice}</p>
                   )}
                 </section>
               )}
 
-              <section className="rounded-2xl border border-[#17171714] bg-white p-6">
-                <h2 className="font-ds-sans text-[16px] font-medium text-[#171717]">Members</h2>
-                <div className="mt-4 flex flex-col gap-2">
-                  {members.map((m) => (
-                    <div
-                      key={m.user_id}
-                      className="flex flex-wrap items-center gap-3 rounded-[10px] border border-[#17171714] px-3 py-2.5"
-                    >
-                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#171717]">
-                        {m.avatar_url ? (
-                          <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="font-ds-sans text-[11px] text-white">
-                            {initials(m.email)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
-                          {m.name || displayName(m.email)}
+              <section className="overflow-hidden rounded-xl border border-[#17171714] bg-white">
+                <div className="flex items-center justify-between gap-3 border-b border-[#17171714] px-[18px] py-3.5">
+                  <h2 className="font-ds-sans text-[13px] font-semibold text-[#171717]">Members</h2>
+                  <span className="font-ds-ui text-xs text-[#A3A3A3]">{memberSummary}</span>
+                </div>
+                <div className="flex flex-col">
+                  {roster.length === 0 ? (
+                    <p className="px-[18px] py-6 font-ds-ui text-[13px] text-[#737373]">
+                      No members yet.
+                    </p>
+                  ) : (
+                    roster.map((row) =>
+                      row.kind === "member" ? (
+                        <div
+                          key={row.member.user_id}
+                          className="flex flex-wrap items-center gap-3 border-b border-[#17171714] px-[18px] py-3.5 last:border-b-0"
+                        >
+                          <Avatar name={row.member.name || row.member.email} url={row.member.avatar_url} />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-ds-ui text-[13.5px] font-medium text-[#171717]">
+                              {row.member.name || displayName(row.member.email)}
+                            </div>
+                            <div className="truncate font-ds-ui text-xs text-[#A3A3A3]">
+                              {row.member.email}
+                            </div>
+                          </div>
+                          <span className="font-ds-ui text-xs text-[#A3A3A3]">Active</span>
+                          {isOwner && row.member.role !== "owner" ? (
+                            <select
+                              value={row.member.role}
+                              disabled={saving}
+                              onChange={(e) => void changeRole(row.member.user_id, e.target.value)}
+                              className="h-8 w-[120px] rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-ui text-[13px] text-[#171717]"
+                            >
+                              <option value="member">Member</option>
+                              <option value="viewer">Viewer</option>
+                              <option value="owner">Owner</option>
+                            </select>
+                          ) : (
+                            <span className="w-[120px] font-ds-ui text-[13px] capitalize text-[#737373]">
+                              {row.member.role}
+                            </span>
+                          )}
+                          {isOwner && row.member.role !== "owner" && (
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() => void removeMember(row.member.user_id)}
+                              className="cursor-pointer font-ds-ui text-xs text-[#A3A3A3] hover:text-[#DA314A]"
+                            >
+                              Remove
+                            </button>
+                          )}
                         </div>
-                        <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">{m.email}</div>
-                      </div>
-                      {isOwner && m.role !== "owner" ? (
-                        <select
-                          value={m.role}
-                          disabled={saving}
-                          onChange={(e) => void changeRole(m.user_id, e.target.value)}
-                          className="h-8 rounded-md border border-[#1717171F] bg-white px-2 font-ds-ui text-[12px]"
-                        >
-                          <option value="member">Member</option>
-                          <option value="viewer">Viewer</option>
-                          <option value="owner">Owner</option>
-                        </select>
                       ) : (
-                        <span className="rounded-full bg-[#F5F5F5] px-2 py-1 font-ds-ui text-[11px] capitalize text-[#737373]">
-                          {m.role}
-                        </span>
-                      )}
-                      {isOwner && m.role !== "owner" && (
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => void removeMember(m.user_id)}
-                          className="cursor-pointer font-ds-ui text-[12px] text-[#737373] hover:text-[#DA314A]"
+                        <div
+                          key={row.invite.id}
+                          className="flex flex-wrap items-center gap-3 border-b border-[#17171714] px-[18px] py-3.5 last:border-b-0"
                         >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                          <Avatar name={row.invite.email} />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-ds-ui text-[13.5px] font-medium text-[#171717]">
+                              {row.invite.email}
+                            </div>
+                            <div className="truncate font-ds-ui text-xs text-[#A3A3A3]">
+                              {relativeInvite(row.invite.created_at)}
+                            </div>
+                          </div>
+                          <span className="font-ds-ui text-xs text-[#EA6C0C]">Pending</span>
+                          <span className="w-[120px] font-ds-ui text-[13px] capitalize text-[#171717]">
+                            {row.invite.role}
+                          </span>
+                          {isOwner && (
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                disabled={saving}
+                                onClick={() => void resend(row.invite.id)}
+                                className="cursor-pointer font-ds-ui text-xs text-[#2563eb]"
+                              >
+                                Resend
+                              </button>
+                              <button
+                                type="button"
+                                disabled={saving}
+                                onClick={() => void revoke(row.invite.id)}
+                                className="cursor-pointer font-ds-ui text-xs text-[#A3A3A3] hover:text-[#DA314A]"
+                              >
+                                Revoke
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ),
+                    )
+                  )}
                 </div>
               </section>
 
-              {invites.length > 0 && (
-                <section className="rounded-2xl border border-[#17171714] bg-white p-6">
-                  <h2 className="font-ds-sans text-[16px] font-medium text-[#171717]">
-                    Pending invites
+              <section className="overflow-hidden rounded-xl border border-[#17171714] bg-white">
+                <div className="border-b border-[#17171714] px-[18px] py-3.5">
+                  <h2 className="font-ds-sans text-[13px] font-semibold text-[#171717]">
+                    What each role can do
                   </h2>
-                  <div className="mt-4 flex flex-col gap-2">
-                    {invites.map((inv) => (
-                      <div
-                        key={inv.id}
-                        className="flex flex-wrap items-center gap-3 rounded-[10px] border border-dashed border-[#1717171F] px-3 py-2.5"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-ds-ui text-[13px] text-[#171717]">
-                            {inv.email}
-                          </div>
-                          <div className="font-ds-ui text-[11px] capitalize text-[#A3A3A3]">
-                            {inv.role} · expires {new Date(inv.expires_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                        {isOwner && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={saving}
-                              onClick={() => void resend(inv.id)}
-                              className="cursor-pointer font-ds-ui text-[12px] text-[#2563eb]"
-                            >
-                              Resend
-                            </button>
-                            <button
-                              type="button"
-                              disabled={saving}
-                              onClick={() => void revoke(inv.id)}
-                              className="cursor-pointer font-ds-ui text-[12px] text-[#737373] hover:text-[#DA314A]"
-                            >
-                              Revoke
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              <section className="rounded-2xl border border-[#17171714] bg-white p-6">
-                <h2 className="font-ds-sans text-[16px] font-medium text-[#171717]">Role matrix</h2>
-                <ul className="mt-3 space-y-2 font-ds-ui text-[13px] text-[#525252]">
-                  <li>
-                    <strong className="text-[#171717]">Owner</strong> — billing, invites, delete
-                    projects, all triage
-                  </li>
-                  <li>
-                    <strong className="text-[#171717]">Member</strong> — triage, status, notes,
-                    merge, MCP tokens
-                  </li>
-                  <li>
-                    <strong className="text-[#171717]">Viewer</strong> — read inbox and tickets only
-                  </li>
-                </ul>
+                </div>
+                <div className="grid gap-0 md:grid-cols-3">
+                  <RoleCard
+                    title="Owner"
+                    body="Everything, plus billing, SSO, deleting projects and managing tokens."
+                  />
+                  <RoleCard
+                    title="Member"
+                    body="Triage reports, change status, merge, add notes, run auto PR, create MCP tokens."
+                  />
+                  <RoleCard
+                    title="Viewer"
+                    body="Read reports and the public board. Can't change anything."
+                  />
+                </div>
               </section>
             </>
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+function Avatar({ name, url }: { name: string; url?: string }) {
+  return (
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#171717]">
+      {url ? (
+        <img src={url} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span className="font-ds-sans text-xs font-medium text-white">{initials(name)}</span>
+      )}
+    </div>
+  );
+}
+
+function RoleCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="border-b border-[#17171714] px-[18px] py-4 md:border-b-0 md:border-r md:last:border-r-0">
+      <div className="font-ds-sans text-sm font-semibold text-[#171717]">{title}</div>
+      <p className="mt-1.5 font-ds-ui text-[12.5px] leading-[18px] text-[#737373]">{body}</p>
     </div>
   );
 }
@@ -599,8 +630,8 @@ function NavItem({
       href={href}
       className={`flex h-8 items-center rounded-md px-2.5 font-ds-ui text-[13px] ${
         active
-          ? "bg-[#171717] font-medium text-white"
-          : "text-[#525252] hover:bg-[#1717170A] hover:text-[#171717]"
+          ? "bg-[#F5F5F5] font-medium text-[#171717]"
+          : "text-[#737373] hover:bg-[#1717170A] hover:text-[#171717]"
       }`}
     >
       {label}
