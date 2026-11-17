@@ -32,7 +32,7 @@ func Load() Config {
 		APIURL:             env("API_URL", "http://localhost:8080"),
 		WebURL:             env("WEB_URL", "http://localhost:3000"),
 		APIAddr:            env("API_ADDR", ":8080"),
-		EmailFrom:          env("EMAIL_FROM", "Saidloop <noreply@saidloop.com>"),
+		EmailFrom:          env("EMAIL_FROM", "Saidloop <noreply@saidloop.dev>"),
 		ResendKey:          os.Getenv("RESEND_API_KEY"),
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),

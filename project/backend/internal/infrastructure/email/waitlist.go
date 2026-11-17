@@ -34,7 +34,7 @@ func RenderWaitlistHTML(m WaitlistMail) string {
           <tr>
             <td style="padding:14px 24px;background:#FAFAFA;border-bottom:1px solid #17171714;">
               <p style="margin:0 0 4px;font-size:14px;line-height:1.4;color:#171717;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">%s</p>
-              <p style="margin:0;font-size:12px;line-height:1.4;color:#A3A3A3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Saidloop &lt;noreply@saidloop.com&gt;</p>
+              <p style="margin:0;font-size:12px;line-height:1.4;color:#A3A3A3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Saidloop &lt;updates@saidloop.dev&gt;</p>
             </td>
           </tr>
           <tr>

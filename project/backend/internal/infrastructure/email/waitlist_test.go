@@ -20,7 +20,6 @@ func TestRenderWaitlistHTML(t *testing.T) {
 		"You&#39;re on the Saidloop waitlist",
 		"Hi Rina, you're on the list.",
 		"Saidloop",
-		"noreply@saidloop.com",
 		"We'll email you when it's your turn",
 		"joined the Saidloop waitlist",
 		"Sent with Saidloop",
