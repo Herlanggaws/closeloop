@@ -2854,7 +2854,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               data-pencil-name="L1"
               className="text-[44px]/[48px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.2px] text-left [white-space:nowrap]"
             >
-              How Bear Budget handled feedback,
+              How your SaaS handled feedback,
             </div>
             <div
               data-pencil-name="L2"
