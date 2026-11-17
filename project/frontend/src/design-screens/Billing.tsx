@@ -424,7 +424,7 @@ export function Billing() {
               data-pencil-name="S"
               className="text-[13.5px]/[normal] box-border text-[#737373] font-ds-ui font-normal text-left [white-space:nowrap]"
             >
-              Payments are handled by Lemon Squeezy as merchant of record.
+              Payments are handled by Polar as merchant of record.
             </div>
           </div>
         </div>

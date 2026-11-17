@@ -44,7 +44,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking live; board/delete shell |
 | S-13 Integrations | `/app/settings/integrations` | OAuth connects (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | Invite + roles (US-05) |
-| S-15 Billing & credits | `/app/settings/billing` | Manual plan now; MoR later |
+| S-15 Billing & credits | `/app/settings/billing` | Manual plan now; Polar MoR later |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |
 | S-18…S-20 Widget UX | `/preview/widget/*` | Ship in real widget bundle |
@@ -59,7 +59,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] Landing waitlist capture (email → Postgres store-only; ESP later), hero + footer forms
 - [ ] Interview 5–10 builders; log “mau coba minggu ini”
 - [x] Final name: Saidloop (domain TBD)
-- [ ] Pick Lemon Squeezy vs Paddle (billing still manual `plan` for now)
+- [x] MoR: [Polar](https://polar.sh/) (billing still manual `plan` until M5)
 
 #### M1 · Inti web (F1, F2, F4, F5, F6) — priority
 - [x] **F1** Google OAuth
@@ -105,7 +105,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] **F12** Docker / Helm self-host + license activation (S-17)
 
 #### M5 · Beta publik
-- [ ] MoR billing (Indie / Studio / Business) + entitlements
+- [ ] Polar billing (Indie / Studio / Business) + entitlements
 - [ ] Annual pricing, early-access Indie 3 months
 - [ ] Quota soft-block when over plan
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
@@ -113,7 +113,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 ### Open questions (from PRD)
 
 - [x] Nama final: Saidloop (domain TBD)
-- [ ] Lemon Squeezy atau Paddle?
+- [x] MoR: Polar (https://polar.sh/) — bukan Lemon Squeezy / Paddle
 - [ ] Basis repo: fork pola Bear Budget Go vs clean (current: new Closeloop repo)
 - [ ] Siapa 5–10 builder interview?
 - [ ] Jam / minggu kapasitas
