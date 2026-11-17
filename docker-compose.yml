@@ -1,0 +1,91 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-closeloop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-closeloop}
+      POSTGRES_DB: ${POSTGRES_DB:-closeloop}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-closeloop} -d ${POSTGRES_DB:-closeloop}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/xervproject-cloud/closeloop-backend:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8080"
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    env_file:
+      - path: ./project/.env
+        required: false
+      - path: ./project/backend/.env
+        required: false
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-closeloop}:${POSTGRES_PASSWORD:-closeloop}@db:5432/${POSTGRES_DB:-closeloop}?sslmode=disable
+      STORAGE_ROOT: /data/uploads
+      API_ADDR: :8080
+    volumes:
+      - uploads_data:/data/uploads
+
+  frontend:
+    image: ghcr.io/xervproject-cloud/closeloop-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "3000"
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    env_file:
+      - path: ./project/.env
+        required: false
+      - path: ./project/frontend/.env
+        required: false
+      - path: ./project/frontend/.env.local
+        required: false
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.saidloop.com}
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/entrypoint.sh:/entrypoint.sh:ro
+      - certbot_etc:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: ["/entrypoint.sh"]
+
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    depends_on:
+      - nginx
+    environment:
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-admin@saidloop.com}
+    volumes:
+      - ./nginx/certbot-Loop.sh:/certbot-Loop.sh:ro
+      - certbot_etc:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: ["/bin/sh", "/certbot-Loop.sh"]
+
+volumes:
+  postgres_data:
+  uploads_data:
+  certbot_etc:
+  certbot_www:
