@@ -31,10 +31,10 @@ export const metadata: Metadata = {
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen overflow-x-auto bg-[var(--bg-page)]">
+    <main className="min-h-screen overflow-x-hidden bg-[var(--bg-page)]">
       <LandingJsonLd />
       <GoogleOneTap />
-      <div className="mx-auto w-[1440px]">
+      <div className="mx-auto w-full max-w-[1440px]">
         <Suspense fallback={null}>
           <LandingShell />
         </Suspense>
