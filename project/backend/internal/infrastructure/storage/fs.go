@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -83,6 +84,17 @@ func (s *FSStore) Put(key string, r io.Reader) (int64, error) {
 
 func (s *FSStore) Open(key string) (*os.File, error) {
 	return os.Open(filepath.Join(s.Root, filepath.FromSlash(key)))
+}
+
+func (s *FSStore) RemoveProject(projectID string) error {
+	if projectID == "" || strings.Contains(projectID, "..") || strings.ContainsAny(projectID, `/\`) {
+		return fmt.Errorf("invalid project id")
+	}
+	path := filepath.Join(s.Root, projectID)
+	if err := os.RemoveAll(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 func splitLines(s string) []string {

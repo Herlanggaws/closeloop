@@ -3,7 +3,7 @@ import { DesignFrame } from "@/components/DesignFrame";
 import { EmailFixed } from "@/design-screens/EmailFixed";
 
 export const metadata: Metadata = {
-  title: "Email · Fixed · Closeloop",
+  title: "Email · Fixed · Saidloop",
 };
 
 export default function Page() {

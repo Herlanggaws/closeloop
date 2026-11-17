@@ -5,9 +5,10 @@ cd "$ROOT/frontend"
 
 export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:8080}"
 
-echo "Building widget…"
+echo "Building widget → public/w.js…"
 pnpm --filter @closeloop/widget build
 
-echo "Starting frontend on :3000…"
+echo "Starting widget watch + Next on :3000…"
+echo "Demo host: http://localhost:3000/demo.html?key=…"
 pnpm --filter @closeloop/widget dev &
 pnpm dev

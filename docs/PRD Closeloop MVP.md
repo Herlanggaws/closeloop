@@ -173,7 +173,7 @@ Satu laporan berjalan dari user ke AI agent dan kembali ke user. Langkah yang di
 
 ## Pricing dan billing
 
-Harga dalam USD, dibayar lewat merchant of record (Lemon Squeezy atau Paddle) karena Doit hanya rupiah dan Stripe tidak bisa langsung untuk akun Indonesia.
+Harga dalam USD, dibayar lewat merchant of record [Polar](https://polar.sh/) karena Doit hanya rupiah dan Stripe tidak bisa langsung untuk akun Indonesia.
 
 | Plan | Harga | Project | Laporan per bulan | Isi utama |
 | --- | --- | --- | --- | --- |
@@ -241,7 +241,7 @@ Semua fitur masuk MVP, jadi pengerjaannya dipecah ke milestone internal dan beta
 | Volume laporan Bear Budget kecil (6 baris sejak September) | Dogfooding kurang menguji skala | Tambah 3 sampai 5 beta builder di M1 |
 
 - [ ] Nama final dan domain (Closeloop masih nama sementara).
-- [ ] Lemon Squeezy atau Paddle?
+- [x] MoR: Polar (https://polar.sh/).
 - [ ] Boleh pakai backend Go Bear Budget sebagai basis repo baru, atau mulai repo bersih?
 - [ ] Siapa 5 sampai 10 builder yang bisa diinterview?
 - [ ] Berapa jam per minggu yang tersedia untuk proyek ini?

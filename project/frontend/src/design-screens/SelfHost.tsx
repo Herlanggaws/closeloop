@@ -1,36 +1,18 @@
 /* Auto-converted from closeloop.pen export: S-17-Self-host */
+import { SaidloopLogo } from "@/components/SaidloopLogo";
+
 export function SelfHost() {
   return (
     <>
 <div
       data-pencil-name="S-17 Self-host License"
-      className="box-border w-[1440px] h-[900px] flex flex-col gap-[24px] justify-center items-center bg-[#F7F7F7]"
+      className="box-border flex min-h-screen w-full flex-col items-center justify-center gap-[24px] bg-[#F7F7F7]"
     >
       <div
         data-pencil-name="Brand"
         className="box-border w-fit h-fit shrink-0 flex flex-row gap-[10px] justify-start items-center"
       >
-        <div
-          data-pencil-name="Logo"
-          className="box-border w-fit shrink-0 h-fit flex flex-row gap-[8px] justify-start items-center"
-        >
-          <div data-pencil-name="Mark" className="box-border w-[22px] shrink-0 h-[22px] relative">
-            <div
-              data-pencil-name="Loop"
-              className="box-border w-[22px] h-[22px] absolute left-0 top-0 bg-[#0A0A0A] [clip-path:path('M7.238_0.663_C2.892_2.245_0_6.376_0_11_C0_17.075_4.925_22_11_22_C17.075_22_22_17.075_22_11_C22_7.748_20.561_4.664_18.071_2.574_L14.96_6.281_C16.354_7.452_17.16_9.179_17.16_11_C17.16_14.402_14.402_17.16_11_17.16_C7.598_17.16_4.84_14.402_4.84_11_C4.84_8.41_6.46_6.097_8.893_5.211_L7.238_0.663_Z')] [z-index:0]"
-            ></div>
-            <div
-              data-pencil-name="Dot"
-              className="box-border w-[7px] h-[7px] absolute left-[15px] top-[1px] bg-[#22C55E] rounded-[50%] [z-index:1]"
-            ></div>
-          </div>
-          <div
-            data-pencil-name="Wordmark"
-            className="text-[20px]/[normal] box-border text-[#0A0A0A] font-ds-sans font-semibold tracking-[-0.6px] text-left [white-space:nowrap]"
-          >
-            Closeloop
-          </div>
-        </div>
+        <SaidloopLogo href={null} height={22} />
         <div
           data-pencil-name="Badge"
           className="box-border w-fit shrink-0 h-fit flex flex-row gap-0 p-[2px_8px] justify-start items-start [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[999px]"
@@ -212,7 +194,7 @@ export function SelfHost() {
                 data-pencil-name="C"
                 className="text-[12px]/[normal] box-border text-[#E5E5E5] font-ds-mono font-normal text-left [white-space:nowrap]"
               >
-                docker pull ghcr.io/closeloop/server:1.5.2
+                docker pull ghcr.io/saidloop/server:1.5.2
               </div>
             </div>
           </div>

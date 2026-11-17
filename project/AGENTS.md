@@ -9,4 +9,12 @@
 - Error shape: `{ "error": { "code": "...", "message": "..." } }`.
 - Run both: `pnpm dev` from `project/` (orchestrates scripts).
 - Backend only: `bash scripts/dev-backend.sh`
-- Frontend only: `bash scripts/dev-frontend.sh`
+- Frontend only: `bash scripts/dev-frontend.sh` (builds + watches widget → `frontend/public/w.js`)
+- Widget demo host: `http://localhost:3000/demo.html?key=pk_…` (see `demo/README.md`)
+- Report automation (plan: `../docs/AI Report Testing Plan.md`; human report: `../docs/reports/latest.md`):
+  - API/MCP: `pnpm test:reports` (Go L0/L1/L2 → `closeloop_test`)
+  - UI smoke: `pnpm test:reports:ui` (Playwright R-UI-01…05; needs API :8080 + web :3000)
+  - Coverage gate: `pnpm test:reports:coverage`
+  - Both: `pnpm test:reports:all`
+  - CI: `.github/workflows/report-tests.yml` (Go on PR/push to `dev`; Playwright nightly / `workflow_dispatch` / label `run-ui-tests`)
+  - Feature work must add/update tests (`.cursor/rules/feature-automation-tests.mdc`).

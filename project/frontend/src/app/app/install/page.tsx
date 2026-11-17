@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
-import { InstallWidget } from "@/design-screens/InstallWidget";
+import { InstallStatus } from "@/design-screens/InstallStatus";
 
 export const metadata: Metadata = {
-  title: "Install widget · Closeloop",
+  title: "Install widget · Saidloop",
 };
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <InstallWidget />
-    </DesignFrame>
-  );
+  return <InstallStatus />;
 }

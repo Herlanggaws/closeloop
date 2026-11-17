@@ -3,7 +3,7 @@ import { DesignFrame } from "@/components/DesignFrame";
 import { EmailVote } from "@/design-screens/EmailVote";
 
 export const metadata: Metadata = {
-  title: "Email · Vote · Closeloop",
+  title: "Email · Vote · Saidloop",
 };
 
 export default function Page() {

@@ -3,8 +3,11 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -20,10 +23,10 @@ type Server struct {
 	Cfg    config.Config
 	Store  *application.Store
 	Files  *storage.FSStore
-	Mailer *email.Mailer
+	Mailer application.MailSender
 }
 
-func New(cfg config.Config, store *application.Store, files *storage.FSStore, mailer *email.Mailer) *Server {
+func New(cfg config.Config, store *application.Store, files *storage.FSStore, mailer application.MailSender) *Server {
 	return &Server{Cfg: cfg, Store: store, Files: files, Mailer: mailer}
 }
 
@@ -35,16 +38,38 @@ func (s *Server) Router() *gin.Engine {
 
 	api := r.Group("/api")
 	{
+		api.POST("/waitlist", s.joinWaitlist)
+		api.POST("/waitlist/resend", s.resendWaitlist)
 		api.POST("/auth/register", s.register)
 		api.POST("/auth/login", s.login)
+		api.GET("/auth/google", s.googleLogin)
+		api.GET("/auth/google/callback", s.googleCallback)
+		api.GET("/auth/google/config", s.googleConfig)
+		api.POST("/auth/google/one-tap", s.googleOneTap)
 		api.POST("/auth/refresh", s.refresh)
+		api.POST("/auth/logout", s.logout)
 		api.GET("/me", s.authRequired(), s.me)
+		api.PATCH("/org/plan", s.authRequired(), s.patchOrgPlan)
+		api.GET("/org/members", s.authRequired(), s.listOrgMembers)
+		api.POST("/org/invites", s.authRequired(), s.createOrgInvites)
+		api.POST("/org/invites/:id/resend", s.authRequired(), s.resendOrgInvite)
+		api.DELETE("/org/invites/:id", s.authRequired(), s.revokeOrgInvite)
+		api.PATCH("/org/members/:userId", s.authRequired(), s.patchOrgMember)
+		api.DELETE("/org/members/:userId", s.authRequired(), s.deleteOrgMember)
+		api.GET("/invites/:token", s.peekInvite)
+		api.POST("/invites/:token/accept", s.authRequired(), s.acceptInvite)
 		api.GET("/projects", s.authRequired(), s.listProjects)
 		api.POST("/projects", s.authRequired(), s.createProject)
 		api.GET("/projects/:id", s.authRequired(), s.getProject)
 		api.PATCH("/projects/:id", s.authRequired(), s.patchProject)
+		api.DELETE("/projects/:id", s.authRequired(), s.deleteProject)
+		api.GET("/projects/:id/mcp-tokens", s.authRequired(), s.listMCPTokens)
 		api.POST("/projects/:id/mcp-tokens", s.authRequired(), s.createMCPToken)
+		api.DELETE("/projects/:id/mcp-tokens/:tokenId", s.authRequired(), s.deleteMCPToken)
 		api.GET("/projects/:id/tickets", s.authRequired(), s.listTickets)
+		api.GET("/projects/:id/integrations", s.authRequired(), s.listIntegrations)
+		api.PUT("/projects/:id/integrations/:provider", s.authRequired(), s.putIntegration)
+		api.DELETE("/projects/:id/integrations/:provider", s.authRequired(), s.deleteIntegration)
 		api.GET("/tickets/:id", s.authRequired(), s.getTicket)
 		api.PATCH("/tickets/:id", s.authRequired(), s.patchTicket)
 		api.POST("/tickets/:id/notes", s.authRequired(), s.addNote)
@@ -53,6 +78,7 @@ func (s *Server) Router() *gin.Engine {
 
 	ingest := r.Group("/v1/ingest")
 	{
+		ingest.GET("/config", s.ingestConfig)
 		ingest.POST("/reports", s.ingestReport)
 		ingest.PUT("/attachments/:id/upload", s.uploadAttachment)
 		ingest.POST("/reports/:id/complete", s.completeReport)
@@ -104,6 +130,8 @@ func mapErr(c *gin.Context, err error) {
 		writeErr(c, 409, "CONFLICT", err.Error())
 	case errors.Is(err, application.ErrPlanRequired):
 		writeErr(c, 402, "PLAN_REQUIRED", "Upgrade required for this action")
+	case errors.Is(err, application.ErrSeatLimit):
+		writeErr(c, 403, "SEAT_LIMIT", "Seat limit reached for your plan")
 	case errors.Is(err, application.ErrInvalidInput):
 		writeErr(c, 400, "INVALID_INPUT", err.Error())
 	default:
@@ -146,8 +174,72 @@ func (s *Server) issueSession(c *gin.Context, user application.User) {
 		mapErr(c, err)
 		return
 	}
-	c.SetCookie("refresh_token", refresh, int((30 * 24 * time.Hour).Seconds()), "/", "", false, true)
-	c.JSON(200, gin.H{"access_token": access, "user": gin.H{"id": user.ID, "email": user.Email, "name": user.Name}})
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		Path:     "/",
+		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+	c.JSON(200, gin.H{"access_token": access, "user": gin.H{"id": user.ID, "email": user.Email, "name": user.Name, "avatar_url": user.AvatarURL}})
+}
+
+func (s *Server) sendWaitlistConfirmation(addr string) {
+	if s.Mailer == nil {
+		return
+	}
+	mail := email.WaitlistMail{
+		To:           addr,
+		GreetingName: email.GreetingFromEmail(addr),
+	}
+	if sendErr := s.Mailer.Send(addr, email.WaitlistSubject(), email.RenderWaitlistHTML(mail)); sendErr != nil {
+		slog.Error("waitlist confirmation email", "err", sendErr, "to", addr)
+	}
+}
+
+func (s *Server) joinWaitlist(c *gin.Context) {
+	var body struct {
+		Email  string `json:"email"`
+		Source string `json:"source"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	inserted, createdAt, err := s.Store.AddWaitlist(c.Request.Context(), body.Email, body.Source)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	addr := strings.ToLower(strings.TrimSpace(body.Email))
+	if inserted {
+		s.sendWaitlistConfirmation(addr)
+	}
+	c.JSON(200, gin.H{
+		"ok":         true,
+		"inserted":   inserted,
+		"email":      addr,
+		"created_at": createdAt.UTC().Format(time.RFC3339),
+	})
+}
+
+func (s *Server) resendWaitlist(c *gin.Context) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	addr, _, err := s.Store.GetWaitlist(c.Request.Context(), body.Email)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	s.sendWaitlistConfirmation(addr)
+	c.JSON(200, gin.H{"ok": true, "email": addr})
 }
 
 func (s *Server) register(c *gin.Context) {
@@ -185,6 +277,291 @@ func (s *Server) login(c *gin.Context) {
 	s.issueSession(c, user)
 }
 
+func (s *Server) googleLogin(c *gin.Context) {
+	if s.Cfg.GoogleClientID == "" || s.Cfg.GoogleClientSecret == "" {
+		redirectErr := fmt.Sprintf("%s/login?error=%s", s.Cfg.WebURL, url.QueryEscape("Google OAuth is not configured on server"))
+		c.Redirect(http.StatusTemporaryRedirect, redirectErr)
+		return
+	}
+	state, err := auth.RandomToken(16)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		Path:     "/",
+		MaxAge:   300,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	redirectURI := s.Cfg.APIURL + "/api/auth/google/callback"
+	u, _ := url.Parse("https://accounts.google.com/o/oauth2/v2/auth")
+	q := u.Query()
+	q.Set("client_id", s.Cfg.GoogleClientID)
+	q.Set("redirect_uri", redirectURI)
+	q.Set("response_type", "code")
+	q.Set("scope", "openid email profile")
+	q.Set("state", state)
+	q.Set("prompt", "select_account")
+	u.RawQuery = q.Encode()
+
+	c.Redirect(http.StatusTemporaryRedirect, u.String())
+}
+
+func (s *Server) googleCallback(c *gin.Context) {
+	fail := func(reason string) {
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s/login?error=%s", s.Cfg.WebURL, url.QueryEscape(reason)))
+	}
+
+	if s.Cfg.GoogleClientID == "" || s.Cfg.GoogleClientSecret == "" {
+		fail("Google OAuth is not configured on server")
+		return
+	}
+
+	if errParam := c.Query("error"); errParam != "" {
+		fail(fmt.Sprintf("Google sign in cancelled: %s", errParam))
+		return
+	}
+
+	state := c.Query("state")
+	cookieState, err := c.Cookie("oauth_state")
+	if err != nil || state == "" || state != cookieState {
+		fail("Invalid or expired OAuth state")
+		return
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	code := c.Query("code")
+	if code == "" {
+		fail("Missing authorization code")
+		return
+	}
+
+	redirectURI := s.Cfg.APIURL + "/api/auth/google/callback"
+	tokenURL := "https://oauth2.googleapis.com/token"
+	form := url.Values{
+		"code":          {code},
+		"client_id":     {s.Cfg.GoogleClientID},
+		"client_secret": {s.Cfg.GoogleClientSecret},
+		"redirect_uri":  {redirectURI},
+		"grant_type":    {"authorization_code"},
+	}
+
+	resp, err := http.PostForm(tokenURL, form)
+	if err != nil {
+		slog.Error("google token exchange failed", "err", err)
+		fail("Failed to exchange code with Google")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var tokenErr map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&tokenErr)
+		slog.Error("google token status error", "status", resp.StatusCode, "body", tokenErr)
+		fail("Google rejected authorization code")
+		return
+	}
+
+	var tokenRes struct {
+		AccessToken string `json:"access_token"`
+		IDToken     string `json:"id_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenRes); err != nil {
+		fail("Failed to parse Google token response")
+		return
+	}
+
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, "https://www.googleapis.com/oauth2/v3/userinfo", nil)
+	if err != nil {
+		fail("Failed to create userinfo request")
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+tokenRes.AccessToken)
+
+	userinfoResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fail("Failed to fetch userinfo from Google")
+		return
+	}
+	defer userinfoResp.Body.Close()
+
+	if userinfoResp.StatusCode != http.StatusOK {
+		fail("Google userinfo returned error")
+		return
+	}
+
+	var gUser struct {
+		Sub           string `json:"sub"`
+		Email         string `json:"email"`
+		EmailVerified bool   `json:"email_verified"`
+		Name          string `json:"name"`
+		Picture       string `json:"picture"`
+	}
+	if err := json.NewDecoder(userinfoResp.Body).Decode(&gUser); err != nil {
+		fail("Failed to parse Google userinfo")
+		return
+	}
+	if gUser.Email == "" || gUser.Sub == "" {
+		fail("Google account missing email or identifier")
+		return
+	}
+
+	user, _, isNew, err := s.Store.UpsertGoogleUser(c.Request.Context(), gUser.Email, gUser.Name, gUser.Sub, gUser.Picture)
+	if err != nil {
+		slog.Error("upsert google user failed", "err", err)
+		fail("Database error saving user")
+		return
+	}
+
+	access, err := auth.IssueAccess(s.Cfg.JWTSecret, user.ID, user.Email, 15*time.Minute)
+	if err != nil {
+		fail("Failed to issue access token")
+		return
+	}
+	refresh, err := auth.RandomToken(32)
+	if err != nil {
+		fail("Failed to generate refresh token")
+		return
+	}
+	if err := s.Store.SaveRefresh(c.Request.Context(), user.ID, refresh, time.Now().Add(30*24*time.Hour)); err != nil {
+		fail("Failed to save refresh token")
+		return
+	}
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		Path:     "/",
+		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	isNewParam := "0"
+	if isNew {
+		isNewParam = "1"
+	}
+	targetURL := fmt.Sprintf("%s/auth/callback?access_token=%s&new=%s", s.Cfg.WebURL, url.QueryEscape(access), isNewParam)
+	c.Redirect(http.StatusTemporaryRedirect, targetURL)
+}
+
+func (s *Server) googleConfig(c *gin.Context) {
+	c.JSON(200, gin.H{"client_id": s.Cfg.GoogleClientID})
+}
+
+func (s *Server) googleOneTap(c *gin.Context) {
+	if s.Cfg.GoogleClientID == "" {
+		writeErr(c, 503, "NOT_CONFIGURED", "Google OAuth is not configured on server")
+		return
+	}
+
+	var body struct {
+		Credential string `json:"credential"`
+	}
+	if err := c.BindJSON(&body); err != nil || body.Credential == "" {
+		writeErr(c, 400, "INVALID_INPUT", "missing credential")
+		return
+	}
+
+	tokenInfoURL := "https://oauth2.googleapis.com/tokeninfo?id_token=" + url.QueryEscape(body.Credential)
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, tokenInfoURL, nil)
+	if err != nil {
+		writeErr(c, 500, "INTERNAL", "failed to create verification request")
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		slog.Error("google tokeninfo request failed", "err", err)
+		writeErr(c, 502, "UPSTREAM_ERROR", "failed to verify token with Google")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		writeErr(c, 401, "UNAUTHORIZED", "invalid Google credential")
+		return
+	}
+
+	var claims struct {
+		Aud           string `json:"aud"`
+		Sub           string `json:"sub"`
+		Email         string `json:"email"`
+		EmailVerified string `json:"email_verified"`
+		Name          string `json:"name"`
+		Picture       string `json:"picture"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&claims); err != nil {
+		writeErr(c, 500, "INTERNAL", "failed to parse Google token claims")
+		return
+	}
+
+	if claims.Aud != s.Cfg.GoogleClientID {
+		writeErr(c, 401, "UNAUTHORIZED", "token audience mismatch")
+		return
+	}
+	if claims.Sub == "" || claims.Email == "" {
+		writeErr(c, 400, "INVALID_INPUT", "missing subject or email in token")
+		return
+	}
+
+	user, _, isNew, err := s.Store.UpsertGoogleUser(c.Request.Context(), claims.Email, claims.Name, claims.Sub, claims.Picture)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+
+	access, err := auth.IssueAccess(s.Cfg.JWTSecret, user.ID, user.Email, 15*time.Minute)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	refresh, err := auth.RandomToken(32)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if err := s.Store.SaveRefresh(c.Request.Context(), user.ID, refresh, time.Now().Add(30*24*time.Hour)); err != nil {
+		mapErr(c, err)
+		return
+	}
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		Path:     "/",
+		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	c.JSON(200, gin.H{
+		"access_token": access,
+		"user": gin.H{
+			"id":         user.ID,
+			"email":      user.Email,
+			"name":       user.Name,
+			"avatar_url": user.AvatarURL,
+		},
+		"is_new": isNew,
+	})
+}
+
 func (s *Server) refresh(c *gin.Context) {
 	raw, err := c.Cookie("refresh_token")
 	if err != nil || raw == "" {
@@ -199,18 +576,79 @@ func (s *Server) refresh(c *gin.Context) {
 	s.issueSession(c, user)
 }
 
+func (s *Server) logout(c *gin.Context) {
+	raw, _ := c.Cookie("refresh_token")
+	_ = s.Store.RevokeRefresh(c.Request.Context(), raw)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+	c.JSON(200, gin.H{"ok": true})
+}
+
 func (s *Server) me(c *gin.Context) {
 	userID := c.GetString("userID")
+	user, err := s.Store.UserByID(c.Request.Context(), userID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
 	org, role, err := s.Store.PrimaryOrg(c.Request.Context(), userID)
 	if err != nil {
 		mapErr(c, err)
 		return
 	}
+	usage, err := s.Store.OrgUsage(c.Request.Context(), org.ID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
 	c.JSON(200, gin.H{
-		"user": gin.H{"id": userID, "email": c.GetString("email")},
-		"org":  gin.H{"id": org.ID, "name": org.Name, "plan": org.Plan},
-		"role": role,
+		"user": gin.H{
+			"id":         userID,
+			"email":      user.Email,
+			"name":       user.Name,
+			"avatar_url": user.AvatarURL,
+		},
+		"org": gin.H{
+			"id":   org.ID,
+			"name": org.Name,
+			"plan": usage.Plan,
+		},
+		"role":  role,
+		"usage": usage,
 	})
+}
+
+func (s *Server) patchOrgPlan(c *gin.Context) {
+	var body struct {
+		Plan string `json:"plan"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	org, role, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	updated, err := s.Store.UpdateOrgPlan(c.Request.Context(), org.ID, body.Plan, role)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	usage, err := s.Store.OrgUsage(c.Request.Context(), updated.ID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"org": updated, "usage": usage})
 }
 
 func (s *Server) listProjects(c *gin.Context) {
@@ -282,6 +720,8 @@ func (s *Server) patchProject(c *gin.Context) {
 		return
 	}
 	var body struct {
+		Name               *string   `json:"name"`
+		Platforms          *[]string `json:"platforms"`
 		NotifyEnabled      *bool     `json:"notify_enabled"`
 		SensitiveSelectors *[]string `json:"sensitive_selectors"`
 	}
@@ -289,7 +729,28 @@ func (s *Server) patchProject(c *gin.Context) {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
 		return
 	}
-	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.NotifyEnabled, body.SensitiveSelectors); err != nil {
+	if body.Name != nil {
+		trimmed := strings.TrimSpace(*body.Name)
+		if trimmed == "" {
+			writeErr(c, 400, "INVALID_INPUT", "name is required")
+			return
+		}
+		body.Name = &trimmed
+	}
+	if body.Platforms != nil {
+		if len(*body.Platforms) == 0 {
+			writeErr(c, 400, "INVALID_INPUT", "at least one platform is required")
+			return
+		}
+		allowed := map[string]struct{}{"web": {}, "android": {}, "ios": {}}
+		for _, platform := range *body.Platforms {
+			if _, ok := allowed[platform]; !ok {
+				writeErr(c, 400, "INVALID_INPUT", "invalid platform")
+				return
+			}
+		}
+	}
+	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.SensitiveSelectors); err != nil {
 		mapErr(c, err)
 		return
 	}
@@ -301,9 +762,43 @@ func (s *Server) patchProject(c *gin.Context) {
 	c.JSON(200, gin.H{"project": p})
 }
 
-func (s *Server) createMCPToken(c *gin.Context) {
+func (s *Server) deleteProject(c *gin.Context) {
 	id := c.Param("id")
 	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	owner, err := s.Store.UserIsProjectOwner(c.Request.Context(), c.GetString("userID"), id)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if !owner {
+		writeErr(c, 403, "FORBIDDEN", "only owners can delete a project")
+		return
+	}
+	if err := s.Store.SoftDeleteProject(c.Request.Context(), id); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.Status(204)
+}
+
+func (s *Server) listMCPTokens(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	list, err := s.Store.ListMCPTokens(c.Request.Context(), id)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"tokens": list})
+}
+
+func (s *Server) createMCPToken(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireTicketWrite(c, id) {
 		return
 	}
 	org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID"))
@@ -320,6 +815,19 @@ func (s *Server) createMCPToken(c *gin.Context) {
 	c.JSON(201, gin.H{"token": raw, "prefix": prefix, "scopes": ternary(write, []string{"read", "write"}, []string{"read"})})
 }
 
+func (s *Server) deleteMCPToken(c *gin.Context) {
+	projectID := c.Param("id")
+	tokenID := c.Param("tokenId")
+	if !s.requireProjectAccess(c, projectID) {
+		return
+	}
+	if err := s.Store.DeleteMCPToken(c.Request.Context(), projectID, tokenID); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"ok": true})
+}
+
 func (s *Server) listTickets(c *gin.Context) {
 	id := c.Param("id")
 	if !s.requireProjectAccess(c, id) {
@@ -333,6 +841,51 @@ func (s *Server) listTickets(c *gin.Context) {
 	c.JSON(200, gin.H{"tickets": list})
 }
 
+func (s *Server) listIntegrations(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	list, err := s.Store.ListIntegrations(c.Request.Context(), id)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"integrations": list})
+}
+
+func (s *Server) putIntegration(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	var body struct {
+		Config map[string]any `json:"config"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	item, err := s.Store.UpsertIntegration(c.Request.Context(), id, c.Param("provider"), body.Config)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"integration": item})
+}
+
+func (s *Server) deleteIntegration(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	if err := s.Store.DeleteIntegration(c.Request.Context(), id, c.Param("provider")); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.Status(204)
+}
+
 func (s *Server) getTicket(c *gin.Context) {
 	t, err := s.Store.GetTicket(c.Request.Context(), c.Param("id"))
 	if err != nil {
@@ -343,8 +896,11 @@ func (s *Server) getTicket(c *gin.Context) {
 		return
 	}
 	reports, _ := s.Store.TicketReports(c.Request.Context(), t.ID)
+	events, _ := s.Store.ListTicketEvents(c.Request.Context(), t.ID)
 	atts, _ := s.Store.TicketAttachments(c.Request.Context(), t.ID)
-	var attOut []gin.H
+	reporterTotal, reporterEmail, _ := s.Store.TicketReporterStats(c.Request.Context(), t.ID)
+	integrations, _ := s.Store.ListIntegrations(c.Request.Context(), t.ProjectID)
+	attOut := make([]gin.H, 0, len(atts))
 	for _, a := range atts {
 		item := gin.H{"id": a.ID, "report_id": a.ReportID, "kind": a.Kind, "uploaded": a.Uploaded}
 		if a.Uploaded {
@@ -354,7 +910,26 @@ func (s *Server) getTicket(c *gin.Context) {
 		}
 		attOut = append(attOut, item)
 	}
-	c.JSON(200, gin.H{"ticket": t, "reports": reports, "attachments": attOut})
+	if events == nil {
+		events = []application.TicketEvent{}
+	}
+	if reports == nil {
+		reports = []application.Report{}
+	}
+	if integrations == nil {
+		integrations = []application.Integration{}
+	}
+	c.JSON(200, gin.H{
+		"ticket":        t,
+		"reports":       reports,
+		"attachments":   attOut,
+		"events":        events,
+		"integrations":  integrations,
+		"reporters": gin.H{
+			"total":      reporterTotal,
+			"with_email": reporterEmail,
+		},
+	})
 }
 
 func (s *Server) patchTicket(c *gin.Context) {
@@ -371,7 +946,7 @@ func (s *Server) patchTicket(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	if !s.requireProjectAccess(c, t.ProjectID) {
+	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
 	if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, body.Status, "user:"+c.GetString("email"), body.Note); err != nil {
@@ -398,7 +973,7 @@ func (s *Server) addNote(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	if !s.requireProjectAccess(c, t.ProjectID) {
+	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
 	if err := s.Store.AddNote(c.Request.Context(), t.ID, "user:"+c.GetString("email"), body.Body); err != nil {
@@ -417,15 +992,20 @@ func (s *Server) mergeTickets(c *gin.Context) {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
 		return
 	}
+	if body.ParentID == "" || len(body.ChildIDs) == 0 {
+		writeErr(c, 400, "INVALID_INPUT", "parent_id and child_ids required")
+		return
+	}
 	t, err := s.Store.GetTicket(c.Request.Context(), body.ParentID)
 	if err != nil {
 		mapErr(c, err)
 		return
 	}
-	if !s.requireProjectAccess(c, t.ProjectID) {
+	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
-	if err := s.Store.MergeTickets(c.Request.Context(), body.ParentID, body.ChildIDs); err != nil {
+	actor := "user:" + c.GetString("email")
+	if err := s.Store.MergeTickets(c.Request.Context(), body.ParentID, actor, body.ChildIDs); err != nil {
 		mapErr(c, err)
 		return
 	}
@@ -437,12 +1017,28 @@ func (s *Server) projectFromKey(c *gin.Context) (application.Project, bool) {
 	if key == "" {
 		key = c.Query("key")
 	}
+	if key == "" {
+		writeErr(c, 401, "MISSING_KEY", "missing X-Closeloop-Key")
+		return application.Project{}, false
+	}
 	p, err := s.Store.ProjectByPublicKey(c.Request.Context(), key)
 	if err != nil {
 		mapErr(c, err)
 		return application.Project{}, false
 	}
 	return p, true
+}
+
+func (s *Server) ingestConfig(c *gin.Context) {
+	p, ok := s.projectFromKey(c)
+	if !ok {
+		return
+	}
+	selectors := p.SensitiveSelectors
+	if selectors == nil {
+		selectors = []string{}
+	}
+	c.JSON(200, gin.H{"sensitive_selectors": selectors})
 }
 
 func (s *Server) ingestReport(c *gin.Context) {

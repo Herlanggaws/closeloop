@@ -19,6 +19,7 @@ var (
 	ErrForbidden      = errors.New("forbidden")
 	ErrConflict       = errors.New("conflict")
 	ErrPlanRequired   = errors.New("plan required")
+	ErrSeatLimit      = errors.New("seat limit reached")
 	ErrInvalidInput   = errors.New("invalid input")
 )
 
@@ -31,6 +32,7 @@ type User struct {
 	Email        string         `json:"email"`
 	PasswordHash sql.NullString `json:"-"`
 	Name         string         `json:"name"`
+	AvatarURL    string         `json:"avatar_url"`
 }
 
 type Org struct {
@@ -55,21 +57,55 @@ type Ticket struct {
 	Status      string         `json:"status"`
 	Title       string         `json:"title"`
 	ReportCount int            `json:"report_count"`
-	FixedAt     sql.NullTime   `json:"fixed_at"`
-	FixedNote   sql.NullString `json:"fixed_note"`
+	FixedAt     sql.NullTime   `json:"-"`
+	FixedNote   sql.NullString `json:"-"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
+func (t Ticket) MarshalJSON() ([]byte, error) {
+	var fixedAt any
+	var fixedNote any
+	if t.FixedAt.Valid {
+		fixedAt = t.FixedAt.Time
+	}
+	if t.FixedNote.Valid {
+		fixedNote = t.FixedNote.String
+	}
+	return json.Marshal(map[string]any{
+		"id":           t.ID,
+		"project_id":   t.ProjectID,
+		"type":         t.Type,
+		"status":       t.Status,
+		"title":        t.Title,
+		"report_count": t.ReportCount,
+		"fixed_at":     fixedAt,
+		"fixed_note":   fixedNote,
+		"created_at":   t.CreatedAt,
+		"updated_at":   t.UpdatedAt,
+	})
+}
+
 type Report struct {
-	ID         string          `json:"id"`
-	TicketID   string          `json:"ticket_id"`
-	ReporterID sql.NullString  `json:"reporter_id"`
-	Message    string          `json:"message"`
-	Platform   string          `json:"platform"`
-	Context    json.RawMessage `json:"context"`
-	AppVersion sql.NullString  `json:"app_version"`
-	CreatedAt  time.Time       `json:"created_at"`
+	ID             string          `json:"id"`
+	TicketID       string          `json:"ticket_id"`
+	ReporterID     *string         `json:"reporter_id"`
+	ReporterEmail  *string         `json:"reporter_email,omitempty"`
+	ExternalUserID *string         `json:"external_user_id,omitempty"`
+	Message        string          `json:"message"`
+	Platform       string          `json:"platform"`
+	Context        json.RawMessage `json:"context"`
+	AppVersion     *string         `json:"app_version"`
+	CreatedAt      time.Time       `json:"created_at"`
+}
+
+type TicketEvent struct {
+	ID        string          `json:"id"`
+	TicketID  string          `json:"ticket_id"`
+	Actor     string          `json:"actor"`
+	Kind      string          `json:"kind"`
+	Payload   json.RawMessage `json:"payload"`
+	CreatedAt time.Time       `json:"created_at"`
 }
 
 func (s *Store) Register(ctx context.Context, email, password, name string) (User, Org, error) {
@@ -89,9 +125,9 @@ func (s *Store) Register(ctx context.Context, email, password, name string) (Use
 
 	var user User
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO users(email, password_hash, name) VALUES ($1,$2,$3)
-		RETURNING id, email, password_hash, name`, email, hash, name).
-		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name)
+		INSERT INTO users(email, password_hash, name, avatar_url) VALUES ($1,$2,$3,'')
+		RETURNING id, email, password_hash, name, avatar_url`, email, hash, name).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") {
 			return User{}, Org{}, ErrConflict
@@ -100,7 +136,7 @@ func (s *Store) Register(ctx context.Context, email, password, name string) (Use
 	}
 	var org Org
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO organizations(name, plan) VALUES ($1,'indie')
+		INSERT INTO organizations(name, plan) VALUES ($1,'free')
 		RETURNING id, name, plan`, name+"'s org").
 		Scan(&org.ID, &org.Name, &org.Plan)
 	if err != nil {
@@ -115,10 +151,101 @@ func (s *Store) Register(ctx context.Context, email, password, name string) (Use
 	return user, org, nil
 }
 
+func (s *Store) UpsertGoogleUser(ctx context.Context, email, name, googleSub, avatarURL string) (User, Org, bool, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	googleSub = strings.TrimSpace(googleSub)
+	avatarURL = strings.TrimSpace(avatarURL)
+	if email == "" || googleSub == "" {
+		return User{}, Org{}, false, ErrInvalidInput
+	}
+	if name == "" {
+		name = strings.Split(email, "@")[0]
+	}
+
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return User{}, Org{}, false, err
+	}
+	defer tx.Rollback()
+
+	var user User
+	// 1. Existing user linked by google_sub
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, email, password_hash, name, avatar_url
+		FROM users
+		WHERE google_sub = $1`, googleSub).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
+	if err == nil {
+		if avatarURL != "" && user.AvatarURL != avatarURL {
+			_, _ = tx.ExecContext(ctx, `UPDATE users SET avatar_url = $1 WHERE id = $2`, avatarURL, user.ID)
+			user.AvatarURL = avatarURL
+		}
+		if err := tx.Commit(); err != nil {
+			return User{}, Org{}, false, err
+		}
+		return user, Org{}, false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return User{}, Org{}, false, err
+	}
+
+	// 2. Existing user by email — link google_sub and optionally update avatar
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, email, password_hash, name, avatar_url
+		FROM users
+		WHERE email = $1`, email).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
+	if err == nil {
+		if avatarURL != "" && user.AvatarURL != avatarURL {
+			_, err = tx.ExecContext(ctx, `UPDATE users SET google_sub = $1, avatar_url = $2 WHERE id = $3`, googleSub, avatarURL, user.ID)
+			user.AvatarURL = avatarURL
+		} else {
+			_, err = tx.ExecContext(ctx, `UPDATE users SET google_sub = $1 WHERE id = $2`, googleSub, user.ID)
+		}
+		if err != nil {
+			return User{}, Org{}, false, err
+		}
+		if err := tx.Commit(); err != nil {
+			return User{}, Org{}, false, err
+		}
+		return user, Org{}, false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return User{}, Org{}, false, err
+	}
+
+	// 3. New user registration
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO users(email, google_sub, name, avatar_url) VALUES ($1,$2,$3,$4)
+		RETURNING id, email, password_hash, name, avatar_url`, email, googleSub, name, avatarURL).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
+	if err != nil {
+		return User{}, Org{}, false, err
+	}
+
+	var org Org
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO organizations(name, plan) VALUES ($1,'free')
+		RETURNING id, name, plan`, name+"'s org").
+		Scan(&org.ID, &org.Name, &org.Plan)
+	if err != nil {
+		return User{}, Org{}, false, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `INSERT INTO memberships(org_id, user_id, role) VALUES ($1,$2,'owner')`, org.ID, user.ID); err != nil {
+		return User{}, Org{}, false, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return User{}, Org{}, false, err
+	}
+	return user, org, true, nil
+}
+
 func (s *Store) Login(ctx context.Context, email, password string) (User, error) {
 	var user User
-	err := s.DB.QueryRowContext(ctx, `SELECT id, email, password_hash, name FROM users WHERE email=$1`, strings.ToLower(email)).
-		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name)
+	err := s.DB.QueryRowContext(ctx, `SELECT id, email, password_hash, name, avatar_url FROM users WHERE email=$1`, strings.ToLower(email)).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrUnauthorized
 	}
@@ -131,6 +258,16 @@ func (s *Store) Login(ctx context.Context, email, password string) (User, error)
 	return user, nil
 }
 
+func (s *Store) UserByID(ctx context.Context, id string) (User, error) {
+	var user User
+	err := s.DB.QueryRowContext(ctx, `SELECT id, email, password_hash, name, avatar_url FROM users WHERE id=$1`, id).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	return user, err
+}
+
 func (s *Store) SaveRefresh(ctx context.Context, userID, raw string, expires time.Time) error {
 	_, err := s.DB.ExecContext(ctx, `
 		INSERT INTO refresh_tokens(user_id, token_hash, expires_at) VALUES ($1,$2,$3)`,
@@ -141,15 +278,25 @@ func (s *Store) SaveRefresh(ctx context.Context, userID, raw string, expires tim
 func (s *Store) UserByRefresh(ctx context.Context, raw string) (User, error) {
 	var user User
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT u.id, u.email, u.password_hash, u.name
+		SELECT u.id, u.email, u.password_hash, u.name, u.avatar_url
 		FROM refresh_tokens rt
 		JOIN users u ON u.id = rt.user_id
 		WHERE rt.token_hash=$1 AND rt.revoked_at IS NULL AND rt.expires_at > now()`, auth.SHA256(raw)).
-		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name)
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Name, &user.AvatarURL)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrUnauthorized
 	}
 	return user, err
+}
+
+func (s *Store) RevokeRefresh(ctx context.Context, raw string) error {
+	if raw == "" {
+		return nil
+	}
+	_, err := s.DB.ExecContext(ctx, `
+		UPDATE refresh_tokens SET revoked_at=now()
+		WHERE token_hash=$1 AND revoked_at IS NULL`, auth.SHA256(raw))
+	return err
 }
 
 func (s *Store) PrimaryOrg(ctx context.Context, userID string) (Org, string, error) {
@@ -179,6 +326,22 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 	}
 	defer tx.Rollback()
 
+	var plan string
+	if err := tx.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1 FOR UPDATE`, orgID).Scan(&plan); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Project{}, "", ErrNotFound
+		}
+		return Project{}, "", err
+	}
+	var used int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM projects WHERE org_id=$1 AND deleted_at IS NULL`, orgID).Scan(&used); err != nil {
+		return Project{}, "", err
+	}
+	if LimitsForPlan(plan).ProjectLimitReached(used) {
+		return Project{}, "", ErrPlanRequired
+	}
+
 	var p Project
 	var plats, sels StringArray
 	err = tx.QueryRowContext(ctx, `
@@ -204,7 +367,7 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors
-		FROM projects WHERE org_id=$1 ORDER BY created_at`, orgID)
+		FROM projects WHERE org_id=$1 AND deleted_at IS NULL ORDER BY created_at`, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +390,7 @@ func (s *Store) ProjectByID(ctx context.Context, projectID string) (Project, err
 	var plats, sels StringArray
 	err := s.DB.QueryRowContext(ctx, `
 		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors
-		FROM projects WHERE id=$1`, projectID).
+		FROM projects WHERE id=$1 AND deleted_at IS NULL`, projectID).
 		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrNotFound
@@ -242,7 +405,7 @@ func (s *Store) ProjectByPublicKey(ctx context.Context, key string) (Project, er
 	err := s.DB.QueryRowContext(ctx, `
 		SELECT p.id, p.org_id, p.name, p.platforms, p.notify_enabled, p.sensitive_selectors
 		FROM project_keys pk JOIN projects p ON p.id=pk.project_id
-		WHERE pk.public_key=$1 AND pk.revoked_at IS NULL`, key).
+		WHERE pk.public_key=$1 AND pk.revoked_at IS NULL AND p.deleted_at IS NULL`, key).
 		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrUnauthorized
@@ -262,10 +425,16 @@ func (s *Store) PublicKeyForProject(ctx context.Context, projectID string) (stri
 	return key, err
 }
 
-func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, notify *bool, selectors *[]string) error {
+func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, name *string, platforms *[]string, notify *bool, selectors *[]string) error {
 	p, err := s.ProjectByID(ctx, projectID)
 	if err != nil {
 		return err
+	}
+	if name != nil {
+		p.Name = *name
+	}
+	if platforms != nil {
+		p.Platforms = *platforms
 	}
 	if notify != nil {
 		p.NotifyEnabled = *notify
@@ -274,9 +443,142 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, not
 		p.SensitiveSelectors = *selectors
 	}
 	_, err = s.DB.ExecContext(ctx, `
-		UPDATE projects SET notify_enabled=$2, sensitive_selectors=$3 WHERE id=$1`,
-		projectID, p.NotifyEnabled, asArray(p.SensitiveSelectors))
+		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, sensitive_selectors=$5
+		WHERE id=$1 AND deleted_at IS NULL`,
+		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, asArray(p.SensitiveSelectors))
 	return err
+}
+
+func (s *Store) UserIsProjectOwner(ctx context.Context, userID, projectID string) (bool, error) {
+	var ok bool
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM projects p
+			JOIN memberships m ON m.org_id=p.org_id
+			WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2 AND m.role='owner'
+		)`, projectID, userID).Scan(&ok)
+	return ok, err
+}
+
+func (s *Store) SoftDeleteProject(ctx context.Context, projectID string) error {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.ExecContext(ctx, `
+		UPDATE projects SET deleted_at=now()
+		WHERE id=$1 AND deleted_at IS NULL`, projectID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE project_keys SET revoked_at=now()
+		WHERE project_id=$1 AND revoked_at IS NULL`, projectID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM mcp_tokens WHERE project_id=$1`, projectID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) ListProjectsDueForPurge(ctx context.Context, cutoff time.Time, limit int) ([]string, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id FROM projects
+		WHERE deleted_at IS NOT NULL AND deleted_at <= $1
+		ORDER BY deleted_at
+		LIMIT $2`, cutoff, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (s *Store) HardDeleteProject(ctx context.Context, projectID string) error {
+	res, err := s.DB.ExecContext(ctx, `DELETE FROM projects WHERE id=$1 AND deleted_at IS NOT NULL`, projectID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+type MCPClientSighting struct {
+	Key        string    `json:"key"`
+	Name       string    `json:"name"`
+	LastSeenAt time.Time `json:"last_seen_at"`
+}
+
+type MCPToken struct {
+	ID         string
+	ProjectID  string
+	Prefix     string
+	Scopes     []string
+	Clients    []MCPClientSighting
+	LastUsedAt sql.NullTime
+	CreatedAt  time.Time
+}
+
+func (t MCPToken) MarshalJSON() ([]byte, error) {
+	var lastUsed any
+	if t.LastUsedAt.Valid {
+		lastUsed = t.LastUsedAt.Time
+	}
+	clients := t.Clients
+	if clients == nil {
+		clients = []MCPClientSighting{}
+	}
+	return json.Marshal(map[string]any{
+		"id":           t.ID,
+		"project_id":   t.ProjectID,
+		"prefix":       t.Prefix,
+		"scopes":       t.Scopes,
+		"clients":      clients,
+		"last_used_at": lastUsed,
+		"created_at":   t.CreatedAt,
+	})
+}
+
+func NormalizeMCPClient(rawName string) (key, label string) {
+	n := strings.ToLower(strings.TrimSpace(rawName))
+	switch {
+	case n == "" || strings.Contains(n, "closeloop"):
+		return "", ""
+	case strings.Contains(n, "cursor"):
+		return "cursor", "Cursor"
+	case strings.Contains(n, "claude") || strings.Contains(n, "anthropic"):
+		return "claude", "Claude Code"
+	default:
+		return n, strings.TrimSpace(rawName)
+	}
 }
 
 func (s *Store) CreateMCPToken(ctx context.Context, projectID string, write bool) (raw string, prefix string, err error) {
@@ -296,6 +598,96 @@ func (s *Store) CreateMCPToken(ctx context.Context, projectID string, write bool
 	return raw, prefix, err
 }
 
+func (s *Store) ListMCPTokens(ctx context.Context, projectID string) ([]MCPToken, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id, project_id, prefix, scopes, COALESCE(clients, '[]'::jsonb), last_used_at, created_at
+		FROM mcp_tokens
+		WHERE project_id=$1
+		ORDER BY created_at DESC`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []MCPToken
+	for rows.Next() {
+		var t MCPToken
+		var sc StringArray
+		var clientsJSON []byte
+		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Prefix, &sc, &clientsJSON, &t.LastUsedAt, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		t.Scopes = []string(sc)
+		t.Clients = decodeMCPClients(clientsJSON)
+		out = append(out, t)
+	}
+	if out == nil {
+		out = []MCPToken{}
+	}
+	return out, rows.Err()
+}
+
+func decodeMCPClients(raw []byte) []MCPClientSighting {
+	if len(raw) == 0 {
+		return []MCPClientSighting{}
+	}
+	var clients []MCPClientSighting
+	if err := json.Unmarshal(raw, &clients); err != nil || clients == nil {
+		return []MCPClientSighting{}
+	}
+	return clients
+}
+
+func (s *Store) RecordMCPClient(ctx context.Context, rawToken, clientName string) {
+	key, label := NormalizeMCPClient(clientName)
+	if key == "" {
+		return
+	}
+	hash := auth.SHA256(rawToken)
+	var clientsJSON []byte
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT COALESCE(clients, '[]'::jsonb) FROM mcp_tokens WHERE token_hash=$1`, hash).
+		Scan(&clientsJSON)
+	if err != nil {
+		return
+	}
+	clients := decodeMCPClients(clientsJSON)
+	now := time.Now().UTC()
+	found := false
+	for i := range clients {
+		if clients[i].Key == key {
+			clients[i].Name = label
+			clients[i].LastSeenAt = now
+			found = true
+			break
+		}
+	}
+	if !found {
+		clients = append(clients, MCPClientSighting{Key: key, Name: label, LastSeenAt: now})
+	}
+	encoded, err := json.Marshal(clients)
+	if err != nil {
+		return
+	}
+	_, _ = s.DB.ExecContext(ctx, `
+		UPDATE mcp_tokens SET clients=$2, last_used_at=now() WHERE token_hash=$1`, hash, encoded)
+}
+
+func (s *Store) DeleteMCPToken(ctx context.Context, projectID, tokenID string) error {
+	res, err := s.DB.ExecContext(ctx, `
+		DELETE FROM mcp_tokens WHERE id=$1 AND project_id=$2`, tokenID, projectID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) MCPByToken(ctx context.Context, raw string) (projectID string, scopes []string, plan string, err error) {
 	var sc StringArray
 	err = s.DB.QueryRowContext(ctx, `
@@ -303,7 +695,7 @@ func (s *Store) MCPByToken(ctx context.Context, raw string) (projectID string, s
 		FROM mcp_tokens mt
 		JOIN projects p ON p.id=mt.project_id
 		JOIN organizations o ON o.id=p.org_id
-		WHERE mt.token_hash=$1`, auth.SHA256(raw)).
+		WHERE mt.token_hash=$1 AND p.deleted_at IS NULL`, auth.SHA256(raw)).
 		Scan(&projectID, &sc, &plan)
 	scopes = []string(sc)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -368,6 +760,16 @@ func (s *Store) CreateReport(ctx context.Context, project Project, in CreateRepo
 	}
 	defer tx.Rollback()
 
+	var plan string
+	if err := tx.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1`, project.OrgID).Scan(&plan); err != nil {
+		return "", "", "", "", "", err
+	}
+	used, err := countOrgReportsThisMonthTx(ctx, tx, project.OrgID)
+	if err != nil {
+		return "", "", "", "", "", err
+	}
+	quotaLocked := LimitsForPlan(plan).ReportQuotaExceeded(used)
+
 	ticketID = uuid.NewString()
 	reportID = uuid.NewString()
 	attachmentID = uuid.NewString()
@@ -377,9 +779,9 @@ func (s *Store) CreateReport(ctx context.Context, project Project, in CreateRepo
 		return "", "", "", "", "", err
 	}
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO reports(id, ticket_id, reporter_id, message, platform, context, app_version)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		reportID, ticketID, reporterID, in.Message, in.Platform, ctxBytes, nullStr(in.AppVersion)); err != nil {
+		INSERT INTO reports(id, ticket_id, reporter_id, message, platform, context, app_version, quota_locked)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+		reportID, ticketID, reporterID, in.Message, in.Platform, ctxBytes, nullStr(in.AppVersion), quotaLocked); err != nil {
 		return "", "", "", "", "", err
 	}
 	uploadToken = auth.SHA256(uuid.NewString())[:32]
@@ -398,6 +800,21 @@ func (s *Store) CreateReport(ctx context.Context, project Project, in CreateRepo
 		return "", "", "", "", "", err
 	}
 	return ticketID, reportID, attachmentID, uploadToken, storageKey, nil
+}
+
+// reportReadableSQL is true when a report is unlocked or from a prior calendar month.
+const reportReadableSQL = `(r.quota_locked = false OR r.created_at < date_trunc('month', now()))`
+
+func countOrgReportsThisMonthTx(ctx context.Context, tx *sql.Tx, orgID string) (int, error) {
+	var n int
+	err := tx.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM reports r
+		JOIN tickets t ON t.id = r.ticket_id
+		JOIN projects p ON p.id = t.project_id
+		WHERE p.org_id = $1
+		  AND r.created_at >= date_trunc('month', now())`, orgID).Scan(&n)
+	return n, err
 }
 
 func (s *Store) CompleteUpload(ctx context.Context, attachmentID, token string, size int64) error {
@@ -425,7 +842,11 @@ func (s *Store) AttachmentForUpload(ctx context.Context, attachmentID, token str
 
 func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platform string) ([]Ticket, error) {
 	q := `SELECT id, project_id, type, status, title, report_count, fixed_at, fixed_note, created_at, updated_at
-		FROM tickets WHERE project_id=$1`
+		FROM tickets WHERE project_id=$1
+		AND EXISTS (
+			SELECT 1 FROM reports r
+			WHERE r.ticket_id = tickets.id AND ` + reportReadableSQL + `
+		)`
 	args := []any{projectID}
 	i := 2
 	if status != "" {
@@ -438,7 +859,14 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 		args = append(args, typ)
 		i++
 	}
-	_ = platform
+	if platform != "" {
+		q += fmt.Sprintf(` AND EXISTS (
+			SELECT 1 FROM reports r
+			WHERE r.ticket_id = tickets.id AND r.platform=$%d AND `+reportReadableSQL+`
+		)`, i)
+		args = append(args, platform)
+		i++
+	}
 	q += " ORDER BY created_at DESC LIMIT 100"
 	rows, err := s.DB.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -465,26 +893,111 @@ func (s *Store) GetTicket(ctx context.Context, ticketID string) (Ticket, error) 
 	if errors.Is(err, sql.ErrNoRows) {
 		return Ticket{}, ErrNotFound
 	}
-	return t, err
+	if err != nil {
+		return Ticket{}, err
+	}
+	// Merged-away shells keep status=duplicate with zero reports; always readable.
+	if t.Status == "duplicate" {
+		return t, nil
+	}
+	var readable, total int
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE `+reportReadableSQL+`),
+			COUNT(*)
+		FROM reports r
+		WHERE r.ticket_id=$1`, ticketID).Scan(&readable, &total)
+	if err != nil {
+		return Ticket{}, err
+	}
+	// Soft-block only when the ticket still has reports and all are quota-locked.
+	if total > 0 && readable == 0 {
+		return Ticket{}, ErrPlanRequired
+	}
+	return t, nil
 }
 
 func (s *Store) TicketReports(ctx context.Context, ticketID string) ([]Report, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, ticket_id, reporter_id, message, platform, context, app_version, created_at
-		FROM reports WHERE ticket_id=$1 ORDER BY created_at`, ticketID)
+		SELECT rep.id, rep.ticket_id, rep.reporter_id, r.email, r.external_user_id,
+			rep.message, rep.platform, rep.context, rep.app_version, rep.created_at
+		FROM reports rep
+		LEFT JOIN reporters r ON r.id = rep.reporter_id
+		WHERE rep.ticket_id=$1
+		  AND (rep.quota_locked = false OR rep.created_at < date_trunc('month', now()))
+		ORDER BY rep.created_at`, ticketID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []Report
 	for rows.Next() {
-		var r Report
-		if err := rows.Scan(&r.ID, &r.TicketID, &r.ReporterID, &r.Message, &r.Platform, &r.Context, &r.AppVersion, &r.CreatedAt); err != nil {
+		var (
+			r          Report
+			reporterID sql.NullString
+			email      sql.NullString
+			externalID sql.NullString
+			appVersion sql.NullString
+		)
+		if err := rows.Scan(
+			&r.ID, &r.TicketID, &reporterID, &email, &externalID,
+			&r.Message, &r.Platform, &r.Context, &appVersion, &r.CreatedAt,
+		); err != nil {
 			return nil, err
+		}
+		if reporterID.Valid {
+			r.ReporterID = &reporterID.String
+		}
+		if email.Valid && email.String != "" {
+			r.ReporterEmail = &email.String
+		}
+		if externalID.Valid && externalID.String != "" {
+			r.ExternalUserID = &externalID.String
+		}
+		if appVersion.Valid {
+			r.AppVersion = &appVersion.String
+		}
+		if len(r.Context) == 0 {
+			r.Context = json.RawMessage(`{}`)
 		}
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) ListTicketEvents(ctx context.Context, ticketID string) ([]TicketEvent, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id, ticket_id, actor, kind, payload, created_at
+		FROM ticket_events
+		WHERE ticket_id=$1
+		ORDER BY created_at`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []TicketEvent
+	for rows.Next() {
+		var e TicketEvent
+		if err := rows.Scan(&e.ID, &e.TicketID, &e.Actor, &e.Kind, &e.Payload, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		if len(e.Payload) == 0 {
+			e.Payload = json.RawMessage(`{}`)
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) TicketReporterStats(ctx context.Context, ticketID string) (total int, withEmail int, err error) {
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT
+			COUNT(DISTINCT r.id),
+			COUNT(DISTINCT r.id) FILTER (WHERE r.email IS NOT NULL AND r.email <> '')
+		FROM reports rep
+		JOIN reporters r ON r.id = rep.reporter_id
+		WHERE rep.ticket_id=$1`, ticketID).Scan(&total, &withEmail)
+	return total, withEmail, err
 }
 
 func (s *Store) TicketAttachments(ctx context.Context, ticketID string) ([]struct {
@@ -552,26 +1065,64 @@ func (s *Store) AddNote(ctx context.Context, ticketID, actor, body string) error
 	return err
 }
 
-func (s *Store) MergeTickets(ctx context.Context, parentID string, childIDs []string) error {
+func (s *Store) MergeTickets(ctx context.Context, parentID, actor string, childIDs []string) error {
+	if len(childIDs) == 0 {
+		return ErrInvalidInput
+	}
+
+	parent, err := s.GetTicket(ctx, parentID)
+	if err != nil {
+		return err
+	}
+
+	mergedChildren := make([]string, 0, len(childIDs))
+	for _, childID := range childIDs {
+		if childID == parentID {
+			continue
+		}
+		child, err := s.GetTicket(ctx, childID)
+		if err != nil {
+			return err
+		}
+		if child.ProjectID != parent.ProjectID {
+			return ErrInvalidInput
+		}
+		mergedChildren = append(mergedChildren, childID)
+	}
+	if len(mergedChildren) == 0 {
+		return ErrInvalidInput
+	}
+
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	for _, child := range childIDs {
-		if child == parentID {
-			continue
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE reports SET ticket_id=$1 WHERE ticket_id=$2`, parentID, child); err != nil {
+
+	for _, childID := range mergedChildren {
+		if _, err := tx.ExecContext(ctx, `UPDATE reports SET ticket_id=$1 WHERE ticket_id=$2`, parentID, childID); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE tickets SET status='duplicate', updated_at=now() WHERE id=$1`, child); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE tickets SET status='duplicate', updated_at=now() WHERE id=$1`, childID); err != nil {
 			return err
 		}
 	}
+
+	var reportCount int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM reports WHERE ticket_id=$1`, parentID).Scan(&reportCount); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `
-		UPDATE tickets SET report_count=(SELECT COUNT(*) FROM reports WHERE ticket_id=$1), updated_at=now()
-		WHERE id=$1`, parentID); err != nil {
+		UPDATE tickets SET report_count=$2, updated_at=now()
+		WHERE id=$1`, parentID, reportCount); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO ticket_events(ticket_id, actor, kind, payload)
+		VALUES ($1,$2,'merged',$3)`, parentID, actor, mustJSON(map[string]any{
+		"child_ids":    mergedChildren,
+		"report_count": reportCount,
+	})); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -642,7 +1193,17 @@ func (s *Store) FinishJob(ctx context.Context, id string, jobErr error) error {
 	return err
 }
 
-func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int, []struct{ Email, Body string }, error) {
+type ReporterNotifyMail struct {
+	Email       string
+	Body        string
+	ProjectName string
+	TicketTitle string
+	ReportQuote string
+	ReportedAt  time.Time
+	AppVersion  string
+}
+
+func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int, []ReporterNotifyMail, error) {
 	t, err := s.GetTicket(ctx, ticketID)
 	if err != nil {
 		return 0, nil, err
@@ -655,10 +1216,12 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 		return 0, nil, nil
 	}
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT DISTINCT r.id, r.email
+		SELECT DISTINCT ON (r.id)
+			r.id, r.email, rep.message, rep.created_at, rep.app_version
 		FROM reports rep
 		JOIN reporters r ON r.id=rep.reporter_id
-		WHERE rep.ticket_id=$1 AND r.email IS NOT NULL AND r.email<>''`, ticketID)
+		WHERE rep.ticket_id=$1
+		ORDER BY r.id, rep.created_at ASC`, ticketID)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -670,22 +1233,39 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 	if body == "" {
 		body = "Your report was fixed."
 	}
-	var mails []struct{ Email, Body string }
+	var mails []ReporterNotifyMail
 	count := 0
 	for rows.Next() {
-		var rid string
-		var email sql.NullString
-		if err := rows.Scan(&rid, &email); err != nil {
+		var (
+			rid        string
+			email      sql.NullString
+			message    string
+			reportedAt time.Time
+			appVersion sql.NullString
+		)
+		if err := rows.Scan(&rid, &email, &message, &reportedAt, &appVersion); err != nil {
 			return 0, nil, err
 		}
 		_, _ = s.DB.ExecContext(ctx, `
 			INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
-			VALUES ($1,$2,'email',$3,now())`, ticketID, rid, body)
-		_, _ = s.DB.ExecContext(ctx, `
-			INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
 			VALUES ($1,$2,'in_app',$3,now())`, ticketID, rid, body)
-		if email.Valid {
-			mails = append(mails, struct{ Email, Body string }{Email: email.String, Body: body})
+		if email.Valid && email.String != "" {
+			_, _ = s.DB.ExecContext(ctx, `
+				INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
+				VALUES ($1,$2,'email',$3,now())`, ticketID, rid, body)
+			version := ""
+			if appVersion.Valid {
+				version = appVersion.String
+			}
+			mails = append(mails, ReporterNotifyMail{
+				Email:       email.String,
+				Body:        body,
+				ProjectName: p.Name,
+				TicketTitle: t.Title,
+				ReportQuote: message,
+				ReportedAt:  reportedAt,
+				AppVersion:  version,
+			})
 		}
 		count++
 	}
@@ -694,11 +1274,12 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 
 func (s *Store) UnseenUpdates(ctx context.Context, projectID, externalUID, email string) ([]map[string]any, error) {
 	q := `
-		SELECT n.id, n.ticket_id, n.body, t.title, n.sent_at
+		SELECT n.id, n.ticket_id, n.body, t.title, p.name, n.sent_at
 		FROM notifications n
 		JOIN reporters r ON r.id=n.reporter_id
 		JOIN tickets t ON t.id=n.ticket_id
-		WHERE n.channel='in_app' AND n.seen_at IS NULL AND r.project_id=$1`
+		JOIN projects p ON p.id=t.project_id
+		WHERE n.channel='in_app' AND n.seen_at IS NULL AND r.project_id=$1 AND p.deleted_at IS NULL`
 	args := []any{projectID}
 	if externalUID != "" {
 		q += " AND r.external_user_id=$2"
@@ -717,13 +1298,19 @@ func (s *Store) UnseenUpdates(ctx context.Context, projectID, externalUID, email
 	var out []map[string]any
 	var ids []string
 	for rows.Next() {
-		var id, ticketID, body, title string
+		var id, ticketID, body, title, projectName string
 		var sent sql.NullTime
-		if err := rows.Scan(&id, &ticketID, &body, &title, &sent); err != nil {
+		if err := rows.Scan(&id, &ticketID, &body, &title, &projectName, &sent); err != nil {
 			return nil, err
 		}
 		ids = append(ids, id)
-		item := map[string]any{"id": id, "ticket_id": ticketID, "body": body, "title": title}
+		item := map[string]any{
+			"id":           id,
+			"ticket_id":    ticketID,
+			"body":         body,
+			"title":        title,
+			"project_name": projectName,
+		}
 		if sent.Valid {
 			item["sent_at"] = sent.Time
 		}
@@ -741,9 +1328,254 @@ func (s *Store) UserCanAccessProject(ctx context.Context, userID, projectID stri
 		SELECT EXISTS(
 			SELECT 1 FROM projects p
 			JOIN memberships m ON m.org_id=p.org_id
-			WHERE p.id=$1 AND m.user_id=$2
+			WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2
 		)`, projectID, userID).Scan(&ok)
 	return ok, err
+}
+
+type Integration struct {
+	ID        string          `json:"id"`
+	ProjectID string          `json:"project_id"`
+	Provider  string          `json:"provider"`
+	Config    json.RawMessage `json:"config"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
+
+func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integration, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id, project_id, provider, config, updated_at
+		FROM integrations WHERE project_id=$1 ORDER BY provider`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Integration
+	for rows.Next() {
+		var item Integration
+		if err := rows.Scan(&item.ID, &item.ProjectID, &item.Provider, &item.Config, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if len(item.Config) == 0 {
+			item.Config = json.RawMessage(`{}`)
+		}
+		out = append(out, item)
+	}
+	if out == nil {
+		out = []Integration{}
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if provider != "sentry" && provider != "posthog" {
+		return Integration{}, ErrInvalidInput
+	}
+	if config == nil {
+		config = map[string]any{}
+	}
+	cleaned := map[string]any{}
+	for k, v := range config {
+		if s, ok := v.(string); ok {
+			s = strings.TrimSpace(s)
+			if s == "" {
+				continue
+			}
+			cleaned[k] = s
+			continue
+		}
+		if v != nil {
+			cleaned[k] = v
+		}
+	}
+	body, err := json.Marshal(cleaned)
+	if err != nil {
+		return Integration{}, err
+	}
+
+	var item Integration
+	err = s.DB.QueryRowContext(ctx, `
+		INSERT INTO integrations(project_id, provider, config, updated_at)
+		VALUES ($1,$2,$3::jsonb, now())
+		ON CONFLICT (project_id, provider) DO UPDATE
+		SET config = EXCLUDED.config, updated_at = now()
+		RETURNING id, project_id, provider, config, updated_at`,
+		projectID, provider, body).
+		Scan(&item.ID, &item.ProjectID, &item.Provider, &item.Config, &item.UpdatedAt)
+	if err != nil {
+		return Integration{}, err
+	}
+	if len(item.Config) == 0 {
+		item.Config = json.RawMessage(`{}`)
+	}
+	return item, nil
+}
+
+func (s *Store) DeleteIntegration(ctx context.Context, projectID, provider string) error {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	res, err := s.DB.ExecContext(ctx, `
+		DELETE FROM integrations WHERE project_id=$1 AND provider=$2`, projectID, provider)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+type UsageCounter struct {
+	Used  int `json:"used"`
+	Limit int `json:"limit"` // 0 = unlimited
+}
+
+type OrgUsage struct {
+	Plan        string       `json:"plan"`
+	Projects    UsageCounter `json:"projects"`
+	Reports     UsageCounter `json:"reports"`
+	Seats       UsageCounter `json:"seats"`
+	PeriodStart time.Time    `json:"period_start"`
+}
+
+func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
+	var plan string
+	if err := s.DB.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1`, orgID).Scan(&plan); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return OrgUsage{}, ErrNotFound
+		}
+		return OrgUsage{}, err
+	}
+	plan = NormalizePlan(plan)
+	limits := LimitsForPlan(plan)
+
+	var projectsUsed int
+	if err := s.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM projects WHERE org_id=$1 AND deleted_at IS NULL`, orgID).Scan(&projectsUsed); err != nil {
+		return OrgUsage{}, err
+	}
+
+	periodStart := time.Now().UTC()
+	periodStart = time.Date(periodStart.Year(), periodStart.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	var reportsUsed int
+	if err := s.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM reports r
+		JOIN tickets t ON t.id = r.ticket_id
+		JOIN projects p ON p.id = t.project_id
+		WHERE p.org_id = $1
+		  AND r.created_at >= date_trunc('month', now())`, orgID).Scan(&reportsUsed); err != nil {
+		return OrgUsage{}, err
+	}
+
+	seatsUsed, err := s.CountOrgSeats(ctx, orgID)
+	if err != nil {
+		return OrgUsage{}, err
+	}
+
+	return OrgUsage{
+		Plan:        plan,
+		Projects:    UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
+		Reports:     UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
+		Seats:       UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},
+		PeriodStart: periodStart,
+	}, nil
+}
+
+func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Org, error) {
+	if role != "owner" {
+		return Org{}, ErrForbidden
+	}
+	plan = NormalizePlan(plan)
+	if !ValidPlan(plan) {
+		return Org{}, ErrInvalidInput
+	}
+
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return Org{}, err
+	}
+	defer tx.Rollback()
+
+	var org Org
+	err = tx.QueryRowContext(ctx, `
+		UPDATE organizations SET plan=$2 WHERE id=$1
+		RETURNING id, name, plan`, orgID, plan).
+		Scan(&org.ID, &org.Name, &org.Plan)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Org{}, ErrNotFound
+	}
+	if err != nil {
+		return Org{}, err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE reports r
+		SET quota_locked = false
+		FROM tickets t
+		JOIN projects p ON p.id = t.project_id
+		WHERE r.ticket_id = t.id AND p.org_id = $1 AND r.quota_locked = true`, orgID); err != nil {
+		return Org{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return Org{}, err
+	}
+	return org, nil
+}
+
+func normalizeWaitlistEmail(email string) (string, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" || !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		return "", ErrInvalidInput
+	}
+	return email, nil
+}
+
+func (s *Store) AddWaitlist(ctx context.Context, email, source string) (inserted bool, createdAt time.Time, err error) {
+	email, err = normalizeWaitlistEmail(email)
+	if err != nil {
+		return false, time.Time{}, err
+	}
+	if source == "" {
+		source = "landing"
+	}
+	err = s.DB.QueryRowContext(ctx, `
+		INSERT INTO waitlist(email, source) VALUES ($1, $2)
+		ON CONFLICT (email) DO NOTHING
+		RETURNING created_at`, email, source).Scan(&createdAt)
+	if err == nil {
+		return true, createdAt, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, time.Time{}, err
+	}
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT created_at FROM waitlist WHERE email = $1`, email).Scan(&createdAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, time.Time{}, ErrNotFound
+		}
+		return false, time.Time{}, err
+	}
+	return false, createdAt, nil
+}
+
+func (s *Store) GetWaitlist(ctx context.Context, email string) (normalized string, createdAt time.Time, err error) {
+	email, err = normalizeWaitlistEmail(email)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT email, created_at FROM waitlist WHERE email = $1`, email).Scan(&normalized, &createdAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", time.Time{}, ErrNotFound
+		}
+		return "", time.Time{}, err
+	}
+	return normalized, createdAt, nil
 }
 
 func nullStr(s string) any {

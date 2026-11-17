@@ -1,4 +1,6 @@
 /* Auto-converted from closeloop.pen export: S-24-Board-Ideas */
+import { SaidloopLogo } from "@/components/SaidloopLogo";
+
 export function BoardIdeas() {
   return (
     <>
@@ -771,27 +773,7 @@ export function BoardIdeas() {
             >
               Powered by
             </div>
-            <div
-              data-pencil-name="Logo"
-              className="box-border w-fit shrink-0 h-fit flex flex-row gap-[8px] justify-start items-center"
-            >
-              <div data-pencil-name="Mark" className="box-border w-[14px] shrink-0 h-[14px] relative">
-                <div
-                  data-pencil-name="Loop"
-                  className="box-border w-[14px] h-[14px] absolute left-0 top-0 bg-[#0A0A0A] [clip-path:path('M4.606_0.422_C1.841_1.429_0_4.057_0_7_C0_10.866_3.134_14_7_14_C10.866_14_14_10.866_14_7_C14_4.931_13.085_2.968_11.5_1.638_L9.52_3.997_C10.407_4.742_10.92_5.841_10.92_7_C10.92_9.165_9.165_10.92_7_10.92_C4.835_10.92_3.08_9.165_3.08_7_C3.08_5.352_4.111_3.88_5.659_3.316_L4.606_0.422_Z')] [z-index:0]"
-                ></div>
-                <div
-                  data-pencil-name="Dot"
-                  className="box-border w-[4.5px] h-[4.5px] absolute left-[9.5px] top-[0.5px] bg-[#22C55E] rounded-[50%] [z-index:1]"
-                ></div>
-              </div>
-              <div
-                data-pencil-name="Wordmark"
-                className="text-[13px]/[normal] box-border text-[#0A0A0A] font-ds-sans font-semibold tracking-[-0.6px] text-left [white-space:nowrap]"
-              >
-                Closeloop
-              </div>
-            </div>
+            <SaidloopLogo href={null} height={14} />
           </div>
         </div>
       </div>

@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
 import { InboxEmpty } from "@/design-screens/InboxEmpty";
 
 export const metadata: Metadata = {
-  title: "Inbox · Empty · Closeloop",
+  title: "Inbox · Empty · Saidloop",
 };
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <InboxEmpty />
-    </DesignFrame>
-  );
+  return <InboxEmpty />;
 }

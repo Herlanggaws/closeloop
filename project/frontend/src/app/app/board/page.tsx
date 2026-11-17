@@ -1,15 +1,5 @@
-import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
-import { PublicBoard } from "@/design-screens/PublicBoard";
-
-export const metadata: Metadata = {
-  title: "Public board · Closeloop",
-};
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <PublicBoard />
-    </DesignFrame>
-  );
+  redirect("/app/inbox");
 }

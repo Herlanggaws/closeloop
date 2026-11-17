@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Foundation } from "./Foundation";
 
 export const metadata: Metadata = {
-  title: "Design System · Closeloop",
-  description: "Closeloop design system foundations — color, type, spacing, radius, elevation, and components.",
+  title: "Design System · Saidloop",
+  description: "Saidloop design system foundations — color, type, spacing, radius, elevation, and components.",
 };
 
 export default function DesignSystemPage() {

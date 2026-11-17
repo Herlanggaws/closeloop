@@ -1,6 +1,8 @@
 export { CreateProject } from "./CreateProject";
 export { InstallWidget } from "./InstallWidget";
+export { InstallStatus } from "./InstallStatus";
 export { ConnectMCP } from "./ConnectMCP";
+export { McpServer } from "./McpServer";
 export { InboxEmpty } from "./InboxEmpty";
 export { Inbox } from "./Inbox";
 export { ReportDetail } from "./ReportDetail";
@@ -24,3 +26,5 @@ export { BoardIdeas } from "./BoardIdeas";
 export { BoardDetail } from "./BoardDetail";
 export { BoardRoadmap } from "./BoardRoadmap";
 export { EmailVote } from "./EmailVote";
+export { JoinWaitlist } from "./JoinWaitlist";
+export { EmailWaitlist } from "./EmailWaitlist";

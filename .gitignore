@@ -25,5 +25,11 @@ project/.data/
 project/frontend/public/w.js
 project/frontend/public/w.js.map
 
+# Playwright
+project/frontend/test-results/
+project/frontend/playwright-report/
+project/frontend/blob-report/
+project/frontend/playwright/.cache/
+
 # Pen HTML intermediate exports (TSX screens are source of truth)
 project/frontend/src/design-exports/

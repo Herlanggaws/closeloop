@@ -59,7 +59,7 @@ func main() {
 	defer stop()
 
 	if *mode == "worker" || *mode == "all" {
-		go application.RunWorker(ctx, store, mailer)
+		go application.RunWorker(ctx, store, mailer, files)
 	}
 	if *mode == "worker" {
 		<-ctx.Done()

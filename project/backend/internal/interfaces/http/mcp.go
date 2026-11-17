@@ -48,6 +48,16 @@ func (s *Server) mcpHandler(c *gin.Context) {
 
 	switch req.Method {
 	case "initialize":
+		var initParams struct {
+			ClientInfo struct {
+				Name    string `json:"name"`
+				Version string `json:"version"`
+			} `json:"clientInfo"`
+		}
+		_ = json.Unmarshal(req.Params, &initParams)
+		if initParams.ClientInfo.Name != "" {
+			s.Store.RecordMCPClient(c.Request.Context(), token, initParams.ClientInfo.Name)
+		}
 		c.JSON(200, mcpResult(req.ID, map[string]any{
 			"protocolVersion": "2024-11-05",
 			"capabilities":    map[string]any{"tools": map[string]any{}},

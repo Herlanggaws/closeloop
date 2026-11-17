@@ -3,7 +3,7 @@ import { DesignFrame } from "@/components/DesignFrame";
 import { FixedBanner } from "@/design-screens/FixedBanner";
 
 export const metadata: Metadata = {
-  title: "Fixed banner · Closeloop",
+  title: "Fixed banner · Saidloop",
 };
 
 export default function Page() {

@@ -2,7 +2,7 @@
 
 Nov 3, 2026 · @Herlangga Wicaksono
 
-Frontend Next.js, backend Go, sisanya dipilih supaya bisa dikerjakan satu orang dengan bantuan AI dan bisa di-self-host. Payment gateway ditunda; plan diatur manual di database dulu.
+Frontend Next.js, backend Go, sisanya dipilih supaya bisa dikerjakan satu orang dengan bantuan AI dan bisa di-self-host. MoR dipilih: [Polar](https://polar.sh/); integrasi ditunda sampai M5, plan sementara diatur manual di database.
 
 ## Keputusan stack
 
@@ -29,7 +29,7 @@ Semua bagian server cukup Postgres plus object storage, tanpa Redis atau message
 | AI auto PR | GitHub App + runner container terisolasi + Claude Agent SDK | Agent menulis fix di sandbox, hasilnya PR; tidak pernah merge |
 | Hosting cloud | Vercel (Next.js), Fly.io (API, worker, runner), Neon (Postgres) | Murah di awal, region global, mesin runner bisa dinyalakan per job |
 | Observability | Sentry, PostHog, log JSON (slog) | Sudah dipakai di Bear Budget |
-| Billing | Ditunda | Kolom `plan` di tabel organisasi diisi manual sampai payment gateway dipilih |
+| Billing | Polar (MoR) | Dipilih; kolom `plan` diisi manual sampai webhook/checkout Polar dipasang di M5 |
 
 ## Arsitektur
 
@@ -243,7 +243,7 @@ Urutan teknis mengikuti milestone PRD; tiap milestone berakhir dengan sesuatu ya
 2. **M2, mobile:** SDK Android dan iOS, antrean offline, masking; lalu wrapper Flutter dan React Native dengan contoh app. Pasang di app KMP Bear Budget.
 3. **M3, tool tim dan publik:** River job untuk integrasi, provider Slack, GitHub Issues, Linear, Jira; board publik SSR dengan vote dan verifikasi email; modul rrweb dan player.
 4. **M4, AI dan Business:** GitHub App, image runner, ledger kredit, halaman runs; SAML/OIDC, audit log, docker compose, Helm, lisensi Ed25519.
-5. **M5, beta publik:** payment gateway dipilih dan dipasang di belakang kolom `plan` yang sudah ada.
+5. **M5, beta publik:** pasang Polar (checkout + webhook) di belakang kolom `plan` yang sudah ada.
 
 ## Keputusan terbuka
 

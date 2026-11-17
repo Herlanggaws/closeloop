@@ -1,15 +1,5 @@
-import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
-import { BoardRoadmap } from "@/design-screens/BoardRoadmap";
-
-export const metadata: Metadata = {
-  title: "Roadmap · Closeloop",
-};
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <BoardRoadmap />
-    </DesignFrame>
-  );
+  redirect("/app/inbox");
 }

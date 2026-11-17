@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { DesignFrame } from "@/components/DesignFrame";
 import { ReportDetail } from "@/design-screens/ReportDetail";
 
 export const metadata: Metadata = {
-  title: "Report detail · Closeloop",
+  title: "Report detail · Saidloop",
 };
 
 export default function Page() {
-  return (
-    <DesignFrame>
-      <ReportDetail />
-    </DesignFrame>
-  );
+  return <ReportDetail />;
 }

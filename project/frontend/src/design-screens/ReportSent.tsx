@@ -495,7 +495,7 @@ export function ReportSent() {
             data-pencil-name="T"
             className="text-[11px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
           >
-            Powered by Closeloop
+            Powered by Saidloop
           </div>
         </div>
       </div>

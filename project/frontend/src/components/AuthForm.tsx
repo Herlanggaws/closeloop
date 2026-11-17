@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { api, setAccessToken } from "@/lib/api";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { API_URL, api, setAccessToken } from "@/lib/api";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
 
 type AuthMode = "login" | "signup";
@@ -115,11 +115,19 @@ const secondaryBtn =
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const copy = COPY[mode];
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const err = searchParams?.get("error");
+    if (err) {
+      setError(err);
+    }
+  }, [searchParams]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -167,7 +175,14 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           <p className="font-ds-ui m-0 text-[14px] leading-normal font-normal text-[var(--text-secondary)]">{copy.subtitle}</p>
         </div>
 
-        <button type="button" data-pencil-name="Google" className={secondaryBtn}>
+        <button
+          type="button"
+          data-pencil-name="Google"
+          className={secondaryBtn}
+          onClick={() => {
+            window.location.href = `${API_URL}/api/auth/google`;
+          }}
+        >
           <ChromeIcon />
           Continue with Google
         </button>

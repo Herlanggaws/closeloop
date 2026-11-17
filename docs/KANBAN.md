@@ -15,14 +15,14 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | DES | Design system foundations | Tokens + `/design-system` review page |
 | DES | S-01…S-27 pixel screens | Exported from pen → Next routes under `/app/*`, `/board/*`, `/preview/*` |
 | DES | Landing (S-01) | Pixel match, waitlist CTAs → signup |
-| F1 | Email register / login (S-02) | JWT session; Google button UI only |
+| F1 | Email register / login (S-02) | JWT session; Google OAuth live |
 | F1 | Create project API | `POST /api/projects`, public key issued |
 | F1 | MCP token create | Shown once; hashed storage |
 | F2 | Ingest API | `POST /v1/ingest/reports`, upload, complete, identify, updates |
 | F2 | Web widget package | `@closeloop/widget` (Preact) present |
 | F4 | Tickets API | List, get, patch status, notes, merge |
 | F5 | MCP tools | `list_open_feedback`, `get_feedback_context`, `update_status`, `add_note`, `mark_fixed` |
-| F6 | mark_fixed → notify path | Backend path exists (email/banner plumbing partial) |
+| F6 | mark_fixed → notify path | Worker emails S-23 HTML via Resend (or `.mail` log); in-app banner wired |
 | TECH | Monorepo skeleton | Go API + Next frontend + widget / emails / js-sdk packages |
 | TECH | Preview index | `/preview` lists all design screens |
 
@@ -30,50 +30,61 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 | Screen | Route | Wire to |
 | --- | --- | --- |
-| S-03 Create project | `/app/onboarding` | Live create-project form + platforms |
-| S-04 Install widget | `/app/install` | Real public key + snippet + first-report wait |
-| S-05 Connect MCP | `/app/mcp` | Create token + Cursor/Claude config copy |
-| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | Filters, selection, live ticket list |
-| S-07 Report detail | `/app/tickets/[id]` | Screenshot, context, status, notes |
-| S-08 Merge duplicates | `/app/inbox/merge` | Multi-select → merge API |
-| S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | Note + preview + `mark_fixed` |
+| S-03 Create project | `/app/onboarding` | **Wired** name + platforms → POST /api/projects → install |
+| S-04 Install widget | `/app/onboarding/install` | **Wired** wizard public key + snippet + demo + first-report poll |
+| S-04b Install status | `/app/install` | **Wired** app-shell status, snippet, first-report, demo link |
+| S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** wizard token + scopes + Cursor/Claude copy + test connection |
+| S-05b MCP status | `/app/mcp` | **Wired** app-shell status, multi-client install, token list, revoke, generate |
+| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |
+| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Sentry/PostHog deep links when configured; Auto PR stub |
+| S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
+| S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed (notify enqueue); channel toggles visual |
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | Publish flags, roadmap columns |
-| S-12 Project settings | `/app/settings` | Keys, masking selectors, notify toggle |
-| S-13 Integrations | `/app/settings/integrations` | OAuth connects (F8/F10) |
-| S-14 Team & roles | `/app/settings/team` | Invite + roles (US-05) |
-| S-15 Billing & credits | `/app/settings/billing` | Manual plan now; MoR later |
+| S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
+| S-13 Integrations | `/app/settings/integrations` | **Partial** S-13 grid (notify + debug) + Slack event panel shell; Sentry/PostHog config live; Slack/GitHub/Linear/Jira OAuth later (F8/F10) |
+| S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
+| S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |
-| S-18…S-21 Widget UX | `/preview/widget/*` | Ship in real widget bundle |
+| S-18…S-20 Widget UX | `/preview/widget/*` + `@closeloop/widget` | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet env |
+| S-21 Fixed banner | `/preview/widget/fixed` + `@closeloop/widget` | **Wired** ingest updates → S-21 banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` | Needs F3 SDK |
-| S-23 / S-27 Emails | `/preview/email/*` | React Email + Resend |
+| S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed + waitlist confirmation wired (Go + Resend); S-27 vote verify/released HTML ready (no board wire yet) |
+| S-28 Join Waitlist | `/` modal + `/preview/waitlist` | Enter / invalid / joined / already + resend; CTAs open modal (`?join=1`) |
 | S-24…S-26 Public board | `/board`, `/idea`, `/roadmap` | SSR board + votes |
 
 ### Todo — by PRD feature
 
 #### M0 · Validasi
-- [ ] Landing waitlist capture (email → store / ESP), not only signup CTA
+- [x] Landing waitlist capture (email → Postgres + confirmation HTML via Resend/`.mail`), hero + footer forms
+- [x] S-28 Join Waitlist modal (enter / invalid / joined / already + resend)
 - [ ] Interview 5–10 builders; log “mau coba minggu ini”
-- [ ] Final name + domain
-- [ ] Pick Lemon Squeezy vs Paddle (billing still manual `plan` for now)
+- [x] Final name: Saidloop (domain TBD)
+- [x] MoR: [Polar](https://polar.sh/) (billing still manual `plan` until M5)
 
 #### M1 · Inti web (F1, F2, F4, F5, F6) — priority
-- [ ] **F1** Google OAuth
-- [ ] **F1** Multi-project UI + plan limits
-- [ ] **F1** MCP token rotate / revoke UI
-- [ ] **F1** Team invite + roles (US-05) — API + S-14
-- [ ] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
-- [ ] **F2** Sensitive selectors from project settings applied before capture
-- [ ] **F4** Wire inbox + detail to API (replace static design shells)
-- [ ] **F4** Filters (type, status, platform), bulk select, empty state logic
-- [ ] **F4** Sentry / PostHog deep links when integration present
-- [ ] **F5** One-click Cursor / Claude Code install docs from S-05
-- [ ] **F5** Free-plan read-only MCP enforcement end-to-end
-- [ ] **F6** Resend email on fixed (S-23 template)
-- [ ] **F6** In-app fixed banner via ingest updates (S-21)
-- [ ] **F6** Per-project notify kill switch (S-12)
-- [ ] Dogfood: 100% Bear Budget feedback via Closeloop (no SSH + psql)
+
+> Live app surface: M1 only. Auto PR (`/app/auto-pr`), public board (`/app/board`, `/board*`), SSO, self-host, OAuth integrations, and Auto PR credits are **hidden** (nav stripped + routes redirect to inbox). Design screens remain under `/preview`.
+- [x] **F1** Google OAuth
+- [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
+- [x] **F1** Log out (revoke refresh + clear session)
+- [x] **F1** Multi-project UI + plan limits
+- [x] **F1** MCP token list / revoke / generate UI (`/app/mcp`)
+- [x] **F1** Team invite + roles (US-05) — API + S-14
+- [x] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
+- [x] **F2** Sensitive selectors from project settings applied before capture
+- [x] **F4** Wire inbox to API (list, type/status filters, empty, test report) — detail still design
+- [x] **F4** Wire report detail (S-07) + mark fixed (S-09) to API
+- [x] **F4** Wire merge duplicates (S-08) — pick parent + POST merge; activity event
+- [x] **F4** Platform filter on inbox list (`?platform=` + Platform dropdown)
+- [x] **F4** Sentry / PostHog deep links when integration present
+- [x] **F5** Wire Connect MCP (S-05) — token, Cursor/Claude install copy, test connection
+- [x] **F5** Free-plan read-only MCP (create scopes + write tools gated; UI badge)
+- [x] **F6** Resend email on fixed (S-23 template)
+- [x] **F6** In-app fixed banner via ingest updates (S-21)
+- [x] **F6** Per-project notify kill switch (S-12)
+- [x] Dogfood: Bear Budget Web feedback loop verified via demo host & R-UI-01 smoke
 
 #### M2 · Mobile (F3, F7)
 - [ ] **F3** Android Kotlin SDK (shake / `show()`, offline queue, masking)
@@ -98,15 +109,15 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] **F12** Docker / Helm self-host + license activation (S-17)
 
 #### M5 · Beta publik
-- [ ] MoR billing (Indie / Studio / Business) + entitlements
+- [ ] Polar billing (Indie / Studio / Business) + entitlements
 - [ ] Annual pricing, early-access Indie 3 months
-- [ ] Quota soft-block when over plan
+- [x] Quota soft-block when over plan (shipped with M1 F1; Polar checkout still M5)
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
 
 ### Open questions (from PRD)
 
-- [ ] Nama final dan domain
-- [ ] Lemon Squeezy atau Paddle?
+- [x] Nama final: Saidloop (domain TBD)
+- [x] MoR: Polar (https://polar.sh/) — bukan Lemon Squeezy / Paddle
 - [ ] Basis repo: fork pola Bear Budget Go vs clean (current: new Closeloop repo)
 - [ ] Siapa 5–10 builder interview?
 - [ ] Jam / minggu kapasitas
@@ -117,8 +128,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 | Milestone | Focus | Status |
 | --- | --- | --- |
-| M0 | Landing + waitlist + interviews | Design landing done; waitlist/interviews todo |
-| M1 | F1 F2 F4 F5 F6 | Backend core WIP; UI design done; wire + widget polish next |
+| M0 | Landing + waitlist + interviews | Waitlist + confirmation email shipped; interviews todo |
+| M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
 | M3 | F8 F9 F11 | Design only |
 | M4 | F10 F12 | Design only |
@@ -128,11 +139,13 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 ## Suggested next sprint (M1 wire-up)
 
-1. Reconnect **S-03 → S-06 → S-07 → S-08 → S-09** to live APIs (keep pixel UI).
-2. Ship production **widget** (S-18…S-21) against ingest API + masking.
-3. Finish **F6** email (Resend) + in-app banner.
-4. Harden **MCP** install path for Cursor / Claude Code on Bear Budget.
+1. ~~Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired.~~
+2. ~~Ship production **widget** (S-18…S-20) + CDN-ready snippets.~~
+3. ~~Finish **F6** email (Resend) + in-app banner.~~
+4. ~~Dogfood Closeloop on Bear Budget (MCP status page shipped, R-UI-01 verified).~~
 5. Start **M0** waitlist + 5 builder interviews in parallel.
+6. ~~**Report test automation** Phase A–D~~ — local `pnpm test:reports` / `:ui` / `:all`; CI `.github/workflows/report-tests.yml` (Go on PR, UI nightly). Issue list: [Report UI Issues](./Report%20UI%20Issues.md). See [AI Report Testing Plan](./AI%20Report%20Testing%20Plan.md).
+7. ~~**F1** Team invite + roles (US-05 / S-14).~~
 
 ---
 
@@ -141,7 +154,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | Status | Stories |
 | --- | --- |
 | Partial / design | US-01…US-04, US-06…US-11, US-15…US-26, US-32…US-38, US-41…US-44 |
-| Not started | US-05 (team API), US-12…US-14, US-27…US-31, US-39…US-40 |
+| Not started | US-12…US-14, US-27…US-31, US-39…US-40 |
 
 Detail mapping stays in [Closeloop User Stories dan Screens](./Closeloop%20User%20Stories%20dan%20Screens.md).
 

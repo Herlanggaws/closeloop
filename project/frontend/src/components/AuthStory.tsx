@@ -1,4 +1,4 @@
-/* Pixel-perfect story panel from closeloop.pen S-02 */
+/* Pixel-perfect story panel from saidloop.pen S-02 */
 export function AuthStory() {
   return (
     <>
@@ -63,7 +63,7 @@ export function AuthStory() {
               &gt; fix the newest bug from users
             </div>
             <div
-              data-pencil-name="closeloop.list_open_feedback()"
+              data-pencil-name="saidloop.list_open_feedback()"
               className="box-border w-full h-fit shrink-0 flex flex-col gap-[4px] justify-start items-start"
             >
               <div
@@ -78,7 +78,7 @@ export function AuthStory() {
                   data-pencil-name="Tool"
                   className="text-[12.5px]/[normal] box-border text-[#FFFFFF] font-ds-mono font-medium text-left [white-space:nowrap]"
                 >
-                  closeloop.list_open_feedback()
+                  saidloop.list_open_feedback()
                 </div>
               </div>
               <div
@@ -94,7 +94,7 @@ export function AuthStory() {
               </div>
             </div>
             <div
-              data-pencil-name="closeloop.get_feedback_context(142)"
+              data-pencil-name="saidloop.get_feedback_context(142)"
               className="box-border w-full h-fit shrink-0 flex flex-col gap-[4px] justify-start items-start"
             >
               <div
@@ -109,7 +109,7 @@ export function AuthStory() {
                   data-pencil-name="Tool"
                   className="text-[12.5px]/[normal] box-border text-[#FFFFFF] font-ds-mono font-medium text-left [white-space:nowrap]"
                 >
-                  closeloop.get_feedback_context(142)
+                  saidloop.get_feedback_context(142)
                 </div>
               </div>
               <div
@@ -160,7 +160,7 @@ export function AuthStory() {
               </div>
             </div>
             <div
-              data-pencil-name="closeloop.mark_fixed(142)"
+              data-pencil-name="saidloop.mark_fixed(142)"
               className="box-border w-full h-fit shrink-0 flex flex-col gap-[4px] justify-start items-start"
             >
               <div
@@ -175,7 +175,7 @@ export function AuthStory() {
                   data-pencil-name="Tool"
                   className="text-[12.5px]/[normal] box-border text-[#FFFFFF] font-ds-mono font-medium text-left [white-space:nowrap]"
                 >
-                  closeloop.mark_fixed(142)
+                  saidloop.mark_fixed(142)
                 </div>
               </div>
               <div

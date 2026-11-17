@@ -1,14 +1,7 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 
-export function Logo({ className = "" }: { className?: string }) {
-  return (
-    <Link href="/" className={`inline-flex items-center gap-2 font-semibold tracking-tight text-ink ${className}`}>
-      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-ink text-sm text-white">C</span>
-      Closeloop
-    </Link>
-  );
-}
+export { SaidloopLogo as Logo } from "./SaidloopLogo";
 
 export function Button({
   children,
