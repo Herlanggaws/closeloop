@@ -319,19 +319,33 @@ export function ProjectSettings() {
                 description="Name and platforms for this project."
               >
                 <Field label="Project name">
-                  <input
-                    value={nameDraft}
-                    onChange={(e) => setNameDraft(e.target.value)}
-                    onBlur={() => void saveName()}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.currentTarget.blur();
+                  <div className="flex h-9 items-center gap-2 rounded-md border border-[#1717171F] bg-white px-2.5">
+                    <input
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void saveName();
+                        }
+                      }}
+                      disabled={savingGeneral}
+                      className="min-w-0 flex-1 bg-transparent font-ds-ui text-[13px] text-[#171717] outline-none disabled:opacity-60"
+                      placeholder="My app"
+                    />
+                    <button
+                      type="button"
+                      disabled={
+                        savingGeneral ||
+                        !nameDraft.trim() ||
+                        nameDraft.trim() === (project?.name || "")
                       }
-                    }}
-                    disabled={savingGeneral}
-                    className="h-9 w-full rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-ui text-[13px] text-[#171717] outline-none focus:border-[#171717] disabled:opacity-60"
-                    placeholder="My app"
-                  />
+                      onClick={() => void saveName()}
+                      className="cursor-pointer font-ds-ui text-[12px] font-medium text-[#171717] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-[#A3A3A3] disabled:no-underline"
+                    >
+                      Save
+                    </button>
+                  </div>
                 </Field>
                 <div className="flex flex-wrap gap-2">
                   {PLATFORM_OPTIONS.map((option) => {
