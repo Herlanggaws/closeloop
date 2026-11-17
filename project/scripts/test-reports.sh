@@ -11,7 +11,8 @@ cd "$ROOT"
 [ -f backend/.env ] && set -a && source backend/.env && set +a
 
 USER_NAME="${USER:-$(whoami)}"
-TEST_DATABASE_URL="${TEST_DATABASE_URL:-postgres://${USER_NAME}@localhost:5432/closeloop_test?sslmode=disable}"
+DEFAULT_TEST_DB="${DATABASE_URL%/closeloop*}/closeloop_test?sslmode=disable"
+TEST_DATABASE_URL="${TEST_DATABASE_URL:-${DEFAULT_TEST_DB:-postgres://${USER_NAME}@localhost:5432/closeloop_test?sslmode=disable}}"
 export TEST_DATABASE_URL
 export JWT_SECRET="${JWT_SECRET:-dev-jwt-secret-change-me-in-production}"
 
@@ -26,8 +27,9 @@ if [[ -z "${CI:-}" ]]; then
     echo "Postgres is not running. Start with: brew services start postgresql@15"
     exit 1
   fi
-  psql -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='closeloop_test'" | grep -q 1 \
-    || createdb closeloop_test
+  MAINT_URL="${TEST_DATABASE_URL%/closeloop_test*}/postgres?sslmode=disable"
+  psql "$MAINT_URL" -tc "SELECT 1 FROM pg_database WHERE datname='closeloop_test'" | grep -q 1 \
+    || psql "$MAINT_URL" -c "CREATE DATABASE closeloop_test"
 else
   echo "CI mode — using provided TEST_DATABASE_URL (service container)"
 fi

@@ -82,7 +82,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F6** Resend email on fixed (S-23 template)
 - [x] **F6** In-app fixed banner via ingest updates (S-21)
 - [x] **F6** Per-project notify kill switch (S-12)
-- [ ] Dogfood: 100% Bear Budget feedback via Closeloop (no SSH + psql)
+- [x] Dogfood: Bear Budget Web feedback loop verified via demo host & R-UI-01 smoke
 
 #### M2 · Mobile (F3, F7)
 - [ ] **F3** Android Kotlin SDK (shake / `show()`, offline queue, masking)
@@ -127,7 +127,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | Milestone | Focus | Status |
 | --- | --- | --- |
 | M0 | Landing + waitlist + interviews | Waitlist store-only shipped; interviews todo |
-| M1 | F1 F2 F4 F5 F6 | Core M1 web done; dogfood Bear Budget left |
+| M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
 | M3 | F8 F9 F11 | Design only |
 | M4 | F10 F12 | Design only |
@@ -140,7 +140,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 1. ~~Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired.~~
 2. ~~Ship production **widget** (S-18…S-20) + CDN-ready snippets.~~
 3. ~~Finish **F6** email (Resend) + in-app banner.~~
-4. Dogfood Closeloop on Bear Budget (MCP status page shipped).
+4. ~~Dogfood Closeloop on Bear Budget (MCP status page shipped, R-UI-01 verified).~~
 5. Start **M0** waitlist + 5 builder interviews in parallel.
 6. ~~**Report test automation** Phase A–D~~ — local `pnpm test:reports` / `:ui` / `:all`; CI `.github/workflows/report-tests.yml` (Go on PR, UI nightly). Issue list: [Report UI Issues](./Report%20UI%20Issues.md). See [AI Report Testing Plan](./AI%20Report%20Testing%20Plan.md).
 7. ~~**F1** Team invite + roles (US-05 / S-14).~~
