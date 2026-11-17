@@ -719,7 +719,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 data-pencil-name="Title"
                 className="text-[12px]/[normal] box-border text-[#FFFFFFB3] font-ds-mono font-normal text-left [white-space:nowrap]"
               >
-                Claude Code · bear-budget
+                Claude Code · your-saas
               </div>
             </div>
             <div
@@ -905,7 +905,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                   data-pencil-name="Meta"
                   className="text-[11px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
                 >
-                  Bear Budget · just now
+                  Your SaaS · just now
                 </div>
               </div>
             </div>
