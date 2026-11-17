@@ -1036,7 +1036,17 @@ func (s *Store) FinishJob(ctx context.Context, id string, jobErr error) error {
 	return err
 }
 
-func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int, []struct{ Email, Body string }, error) {
+type ReporterNotifyMail struct {
+	Email       string
+	Body        string
+	ProjectName string
+	TicketTitle string
+	ReportQuote string
+	ReportedAt  time.Time
+	AppVersion  string
+}
+
+func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int, []ReporterNotifyMail, error) {
 	t, err := s.GetTicket(ctx, ticketID)
 	if err != nil {
 		return 0, nil, err
@@ -1049,10 +1059,12 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 		return 0, nil, nil
 	}
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT DISTINCT r.id, r.email
+		SELECT DISTINCT ON (r.id)
+			r.id, r.email, rep.message, rep.created_at, rep.app_version
 		FROM reports rep
 		JOIN reporters r ON r.id=rep.reporter_id
-		WHERE rep.ticket_id=$1`, ticketID)
+		WHERE rep.ticket_id=$1
+		ORDER BY r.id, rep.created_at ASC`, ticketID)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -1064,12 +1076,17 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 	if body == "" {
 		body = "Your report was fixed."
 	}
-	var mails []struct{ Email, Body string }
+	var mails []ReporterNotifyMail
 	count := 0
 	for rows.Next() {
-		var rid string
-		var email sql.NullString
-		if err := rows.Scan(&rid, &email); err != nil {
+		var (
+			rid        string
+			email      sql.NullString
+			message    string
+			reportedAt time.Time
+			appVersion sql.NullString
+		)
+		if err := rows.Scan(&rid, &email, &message, &reportedAt, &appVersion); err != nil {
 			return 0, nil, err
 		}
 		_, _ = s.DB.ExecContext(ctx, `
@@ -1079,7 +1096,19 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 			_, _ = s.DB.ExecContext(ctx, `
 				INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
 				VALUES ($1,$2,'email',$3,now())`, ticketID, rid, body)
-			mails = append(mails, struct{ Email, Body string }{Email: email.String, Body: body})
+			version := ""
+			if appVersion.Valid {
+				version = appVersion.String
+			}
+			mails = append(mails, ReporterNotifyMail{
+				Email:       email.String,
+				Body:        body,
+				ProjectName: p.Name,
+				TicketTitle: t.Title,
+				ReportQuote: message,
+				ReportedAt:  reportedAt,
+				AppVersion:  version,
+			})
 		}
 		count++
 	}

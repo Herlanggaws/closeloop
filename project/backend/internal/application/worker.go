@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/closeloop/api/internal/infrastructure/email"
 )
 
 type MailSender interface {
@@ -49,9 +51,20 @@ func handleJob(ctx context.Context, store *Store, mail MailSender, kind string, 
 			return err
 		}
 		for _, m := range mails {
-			html := fmt.Sprintf("<p>%s</p><p>— Closeloop</p>", m.Body)
-			if err := mail.Send(m.Email, "Your report was fixed", html); err != nil {
-				slog.Error("send mail", "err", err)
+			fixed := email.FixedMail{
+				To:           m.Email,
+				ProjectName:  m.ProjectName,
+				TicketTitle:  m.TicketTitle,
+				Note:         m.Body,
+				ReportQuote:  m.ReportQuote,
+				ReportedAt:   m.ReportedAt,
+				AppVersion:   m.AppVersion,
+				GreetingName: email.GreetingFromEmail(m.Email),
+			}
+			subject := email.FixedSubject(fixed.TicketTitle)
+			html := email.RenderFixedHTML(fixed)
+			if err := mail.Send(m.Email, subject, html); err != nil {
+				slog.Error("send mail", "err", err, "to", m.Email)
 			}
 		}
 		return nil

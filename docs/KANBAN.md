@@ -22,7 +22,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | F2 | Web widget package | `@closeloop/widget` (Preact) present |
 | F4 | Tickets API | List, get, patch status, notes, merge |
 | F5 | MCP tools | `list_open_feedback`, `get_feedback_context`, `update_status`, `add_note`, `mark_fixed` |
-| F6 | mark_fixed → notify path | Backend path exists (email/banner plumbing partial) |
+| F6 | mark_fixed → notify path | Worker emails S-23 HTML via Resend (or `.mail` log); in-app banner wired |
 | TECH | Monorepo skeleton | Go API + Next frontend + widget / emails / js-sdk packages |
 | TECH | Preview index | `/preview` lists all design screens |
 
@@ -50,7 +50,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-18…S-20 Widget UX | `/preview/widget/*` | Ship in real widget bundle |
 | S-21 Fixed banner | `/preview/widget/fixed` + `@closeloop/widget` | **Wired** ingest updates → S-21 banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` | Needs F3 SDK |
-| S-23 / S-27 Emails | `/preview/email/*` | React Email + Resend |
+| S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed mail HTML shipped (Go renderer + preview); S-27 vote still design |
 | S-24…S-26 Public board | `/board`, `/idea`, `/roadmap` | SSR board + votes |
 
 ### Todo — by PRD feature
@@ -77,7 +77,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] **F4** Sentry / PostHog deep links when integration present
 - [x] **F5** Wire Connect MCP (S-05) — token, Cursor/Claude install copy, test connection
 - [x] **F5** Free-plan read-only MCP (create scopes + write tools gated; UI badge)
-- [ ] **F6** Resend email on fixed (S-23 template)
+- [x] **F6** Resend email on fixed (S-23 template)
 - [x] **F6** In-app fixed banner via ingest updates (S-21)
 - [x] **F6** Per-project notify kill switch (S-12)
 - [ ] Dogfood: 100% Bear Budget feedback via Closeloop (no SSH + psql)
@@ -135,9 +135,9 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 ## Suggested next sprint (M1 wire-up)
 
-1. Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired (demo host `/demo.html?key=…`). Next: production **widget** polish (S-18…S-21) or **F6** notify.
+1. Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired (demo host `/demo.html?key=…`). Next: production **widget** polish (S-18…S-20) or settings masking save.
 2. Ship production **widget** (S-18…S-21) against ingest API + masking.
-3. Finish **F6** email (Resend) + in-app banner.
+3. ~~Finish **F6** email (Resend) + in-app banner.~~
 4. Dogfood Closeloop on Bear Budget (MCP status page shipped).
 5. Start **M0** waitlist + 5 builder interviews in parallel.
 
