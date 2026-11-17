@@ -628,6 +628,8 @@ func (s *Server) patchProject(c *gin.Context) {
 		return
 	}
 	var body struct {
+		Name               *string   `json:"name"`
+		Platforms          *[]string `json:"platforms"`
 		NotifyEnabled      *bool     `json:"notify_enabled"`
 		SensitiveSelectors *[]string `json:"sensitive_selectors"`
 	}
@@ -635,7 +637,28 @@ func (s *Server) patchProject(c *gin.Context) {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
 		return
 	}
-	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.NotifyEnabled, body.SensitiveSelectors); err != nil {
+	if body.Name != nil {
+		trimmed := strings.TrimSpace(*body.Name)
+		if trimmed == "" {
+			writeErr(c, 400, "INVALID_INPUT", "name is required")
+			return
+		}
+		body.Name = &trimmed
+	}
+	if body.Platforms != nil {
+		if len(*body.Platforms) == 0 {
+			writeErr(c, 400, "INVALID_INPUT", "at least one platform is required")
+			return
+		}
+		allowed := map[string]struct{}{"web": {}, "android": {}, "ios": {}}
+		for _, platform := range *body.Platforms {
+			if _, ok := allowed[platform]; !ok {
+				writeErr(c, 400, "INVALID_INPUT", "invalid platform")
+				return
+			}
+		}
+	}
+	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.SensitiveSelectors); err != nil {
 		mapErr(c, err)
 		return
 	}

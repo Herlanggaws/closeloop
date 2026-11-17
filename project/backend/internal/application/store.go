@@ -408,10 +408,16 @@ func (s *Store) PublicKeyForProject(ctx context.Context, projectID string) (stri
 	return key, err
 }
 
-func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, notify *bool, selectors *[]string) error {
+func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, name *string, platforms *[]string, notify *bool, selectors *[]string) error {
 	p, err := s.ProjectByID(ctx, projectID)
 	if err != nil {
 		return err
+	}
+	if name != nil {
+		p.Name = *name
+	}
+	if platforms != nil {
+		p.Platforms = *platforms
 	}
 	if notify != nil {
 		p.NotifyEnabled = *notify
@@ -420,8 +426,8 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, not
 		p.SensitiveSelectors = *selectors
 	}
 	_, err = s.DB.ExecContext(ctx, `
-		UPDATE projects SET notify_enabled=$2, sensitive_selectors=$3 WHERE id=$1`,
-		projectID, p.NotifyEnabled, asArray(p.SensitiveSelectors))
+		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, sensitive_selectors=$5 WHERE id=$1`,
+		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, asArray(p.SensitiveSelectors))
 	return err
 }
 

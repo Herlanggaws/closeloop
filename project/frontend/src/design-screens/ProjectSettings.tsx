@@ -28,20 +28,29 @@ type ProjectResponse = {
   project: ProjectInfo;
 };
 
-const PLATFORM_LABELS: Record<string, string> = {
-  web: "Web",
-  android: "Android",
-  ios: "iOS",
-  flutter: "Flutter",
-};
+const PLATFORM_OPTIONS = [
+  { id: "web", label: "Web" },
+  { id: "android", label: "Android" },
+  { id: "ios", label: "iOS" },
+] as const;
+
+const ALLOWED_PLATFORMS = new Set(PLATFORM_OPTIONS.map((option) => option.id));
+
+function normalizePlatforms(value?: string[]) {
+  const next = (value || []).filter((id) => ALLOWED_PLATFORMS.has(id));
+  return next.length > 0 ? next : ["web"];
+}
 
 export function ProjectSettings() {
   const router = useRouter();
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [publicKey, setPublicKey] = useState("");
+  const [nameDraft, setNameDraft] = useState("");
+  const [platforms, setPlatforms] = useState<string[]>(["web"]);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
   const [savingNotify, setSavingNotify] = useState(false);
+  const [savingGeneral, setSavingGeneral] = useState(false);
   const [selectors, setSelectors] = useState<string[]>([]);
   const [selectorDraft, setSelectorDraft] = useState("");
   const [savingSelectors, setSavingSelectors] = useState(false);
@@ -68,9 +77,16 @@ export function ProjectSettings() {
         setProject(projectRes.project);
         setMe(meRes);
         setPublicKey(projectRes.public_key);
+        setNameDraft(projectRes.project.name || "");
+        const nextPlatforms = normalizePlatforms(projectRes.project.platforms);
+        setPlatforms(nextPlatforms);
         setNotifyEnabled(projectRes.project.notify_enabled);
         setSelectors(projectRes.project.sensitive_selectors || []);
         localStorage.setItem("closeloop_public_key", projectRes.public_key);
+        localStorage.setItem(
+          "closeloop_platforms",
+          JSON.stringify(nextPlatforms),
+        );
         setError("");
       })
       .catch((err) => {
@@ -94,13 +110,71 @@ export function ProjectSettings() {
   const projectName = project?.name || "Project";
   const plan = me?.org.plan || "Indie";
   const email = me?.user.email || "";
-  const platforms = project?.platforms?.length ? project.platforms : ["web"];
 
   async function copyPublicKey() {
     if (!publicKey) return;
     await navigator.clipboard.writeText(publicKey);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function saveName() {
+    if (!project || savingGeneral) return;
+    const next = nameDraft.trim();
+    if (!next) {
+      setNameDraft(project.name);
+      setError("Name is required");
+      return;
+    }
+    if (next === project.name) return;
+
+    const previous = project.name;
+    setSavingGeneral(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: next }),
+      });
+      setProject(res.project);
+      setNameDraft(res.project.name);
+    } catch (err) {
+      setNameDraft(previous);
+      setError(err instanceof Error ? err.message : "Failed to update name");
+    } finally {
+      setSavingGeneral(false);
+    }
+  }
+
+  async function togglePlatform(id: string) {
+    if (!project || savingGeneral) return;
+    const next = platforms.includes(id)
+      ? platforms.filter((platform) => platform !== id)
+      : [...platforms, id];
+    if (next.length === 0) {
+      setError("At least one platform is required");
+      return;
+    }
+
+    const previous = platforms;
+    setPlatforms(next);
+    setSavingGeneral(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ platforms: next }),
+      });
+      const saved = normalizePlatforms(res.project.platforms);
+      setProject(res.project);
+      setPlatforms(saved);
+      localStorage.setItem("closeloop_platforms", JSON.stringify(saved));
+    } catch (err) {
+      setPlatforms(previous);
+      setError(err instanceof Error ? err.message : "Failed to update platforms");
+    } finally {
+      setSavingGeneral(false);
+    }
   }
 
   async function toggleNotify() {
@@ -245,26 +319,39 @@ export function ProjectSettings() {
                 description="Name and platforms for this project."
               >
                 <Field label="Project name">
-                  <div className="flex h-9 items-center rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-ui text-[13px] text-[#171717]">
-                    {projectName}
-                  </div>
+                  <input
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onBlur={() => void saveName()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    disabled={savingGeneral}
+                    className="h-9 w-full rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-ui text-[13px] text-[#171717] outline-none focus:border-[#171717] disabled:opacity-60"
+                    placeholder="My app"
+                  />
                 </Field>
                 <div className="flex flex-wrap gap-2">
-                  {platforms.map((id) => (
-                    <span
-                      key={id}
-                      className="rounded-md border border-[#1717171F] bg-white px-2 py-1 font-ds-sans text-[13px] font-medium tracking-[-0.2px] text-[#171717]"
-                    >
-                      {PLATFORM_LABELS[id] || id}
-                    </span>
-                  ))}
-                  <button
-                    type="button"
-                    disabled
-                    className="cursor-not-allowed rounded-md border border-[#1717171F] bg-white px-3 py-1 font-ds-sans text-[13px] font-medium tracking-[-0.2px] text-[#A3A3A3]"
-                  >
-                    Add platform
-                  </button>
+                  {PLATFORM_OPTIONS.map((option) => {
+                    const selected = platforms.includes(option.id);
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        disabled={savingGeneral}
+                        onClick={() => void togglePlatform(option.id)}
+                        className={`cursor-pointer rounded-md border px-3 py-1 font-ds-sans text-[13px] font-medium tracking-[-0.2px] transition disabled:opacity-60 ${
+                          selected
+                            ? "border-[#171717] bg-[#FAFAFA] text-[#171717]"
+                            : "border-[#1717171F] bg-white text-[#A3A3A3] hover:text-[#171717]"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </SettingsSection>
 
