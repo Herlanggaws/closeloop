@@ -64,6 +64,7 @@ func (s *Server) Router() *gin.Engine {
 
 	ingest := r.Group("/v1/ingest")
 	{
+		ingest.GET("/config", s.ingestConfig)
 		ingest.POST("/reports", s.ingestReport)
 		ingest.PUT("/attachments/:id/upload", s.uploadAttachment)
 		ingest.POST("/reports/:id/complete", s.completeReport)
@@ -830,12 +831,28 @@ func (s *Server) projectFromKey(c *gin.Context) (application.Project, bool) {
 	if key == "" {
 		key = c.Query("key")
 	}
+	if key == "" {
+		writeErr(c, 401, "MISSING_KEY", "missing X-Closeloop-Key")
+		return application.Project{}, false
+	}
 	p, err := s.Store.ProjectByPublicKey(c.Request.Context(), key)
 	if err != nil {
 		mapErr(c, err)
 		return application.Project{}, false
 	}
 	return p, true
+}
+
+func (s *Server) ingestConfig(c *gin.Context) {
+	p, ok := s.projectFromKey(c)
+	if !ok {
+		return
+	}
+	selectors := p.SensitiveSelectors
+	if selectors == nil {
+		selectors = []string{}
+	}
+	c.JSON(200, gin.H{"sensitive_selectors": selectors})
 }
 
 func (s *Server) ingestReport(c *gin.Context) {

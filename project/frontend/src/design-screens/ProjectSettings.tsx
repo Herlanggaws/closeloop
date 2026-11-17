@@ -42,6 +42,9 @@ export function ProjectSettings() {
   const [publicKey, setPublicKey] = useState("");
   const [notifyEnabled, setNotifyEnabled] = useState(true);
   const [savingNotify, setSavingNotify] = useState(false);
+  const [selectors, setSelectors] = useState<string[]>([]);
+  const [selectorDraft, setSelectorDraft] = useState("");
+  const [savingSelectors, setSavingSelectors] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -66,6 +69,7 @@ export function ProjectSettings() {
         setMe(meRes);
         setPublicKey(projectRes.public_key);
         setNotifyEnabled(projectRes.project.notify_enabled);
+        setSelectors(projectRes.project.sensitive_selectors || []);
         localStorage.setItem("closeloop_public_key", projectRes.public_key);
         setError("");
       })
@@ -91,9 +95,6 @@ export function ProjectSettings() {
   const plan = me?.org.plan || "Indie";
   const email = me?.user.email || "";
   const platforms = project?.platforms?.length ? project.platforms : ["web"];
-  const selectors = project?.sensitive_selectors?.length
-    ? project.sensitive_selectors
-    : ["[data-closeloop-mask]"];
 
   async function copyPublicKey() {
     if (!publicKey) return;
@@ -122,6 +123,43 @@ export function ProjectSettings() {
     } finally {
       setSavingNotify(false);
     }
+  }
+
+  async function saveSelectors(next: string[]) {
+    if (!project || savingSelectors) return;
+    const previous = selectors;
+    setSelectors(next);
+    setSavingSelectors(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ sensitive_selectors: next }),
+      });
+      setProject(res.project);
+      setSelectors(res.project.sensitive_selectors || []);
+    } catch (err) {
+      setSelectors(previous);
+      setError(err instanceof Error ? err.message : "Failed to update selectors");
+    } finally {
+      setSavingSelectors(false);
+    }
+  }
+
+  function addSelector() {
+    const value = selectorDraft.trim();
+    if (!value || !project || savingSelectors) return;
+    if (selectors.includes(value)) {
+      setSelectorDraft("");
+      return;
+    }
+    setSelectorDraft("");
+    void saveSelectors([...selectors, value]);
+  }
+
+  function removeSelector(selector: string) {
+    if (!project || savingSelectors) return;
+    void saveSelectors(selectors.filter((item) => item !== selector));
   }
 
   return (
@@ -276,14 +314,47 @@ export function ProjectSettings() {
                     {selectors.map((selector) => (
                       <span
                         key={selector}
-                        className="rounded bg-[#F5F5F5] px-2 py-0.5 font-ds-mono text-[11.5px] text-[#171717]"
+                        className="inline-flex items-center gap-1 rounded bg-[#F5F5F5] px-2 py-0.5 font-ds-mono text-[11.5px] text-[#171717]"
                       >
                         {selector}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${selector}`}
+                          disabled={savingSelectors || !project}
+                          onClick={() => removeSelector(selector)}
+                          className="cursor-pointer text-[#A3A3A3] hover:text-[#171717] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          ×
+                        </button>
                       </span>
                     ))}
+                    <input
+                      type="text"
+                      value={selectorDraft}
+                      disabled={savingSelectors || !project}
+                      placeholder=".secret, #card, …"
+                      onChange={(e) => setSelectorDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addSelector();
+                        }
+                      }}
+                      className="min-w-[140px] flex-1 border-0 bg-transparent font-ds-mono text-[11.5px] text-[#171717] outline-none placeholder:text-[#A3A3A3] disabled:opacity-50"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingSelectors || !project || !selectorDraft.trim()}
+                      onClick={addSelector}
+                      className="cursor-pointer font-ds-ui text-[12px] font-medium text-[#171717] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {savingSelectors ? "Saving…" : "Add"}
+                    </button>
                   </div>
                   <p className="mt-1.5 font-ds-ui text-[12px] text-[#A3A3A3]">
-                    Editing selectors comes next — values already saved on the project are shown.
+                    CSS selectors blurred before screenshot.{" "}
+                    <code className="font-ds-mono text-[11px]">[data-closeloop-mask]</code> is always
+                    included.
                   </p>
                 </Field>
               </SettingsSection>

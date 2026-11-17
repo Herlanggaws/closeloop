@@ -41,7 +41,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed (notify enqueue); channel toggles visual |
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | Publish flags, roadmap columns |
-| S-12 Project settings | `/app/settings` | **Partial** general/keys/masking/notify/board/delete shell; notify + public key live |
+| S-12 Project settings | `/app/settings` | **Partial** general/keys/board/delete shell; notify + public key + masking selectors live |
 | S-13 Integrations | `/app/settings/integrations` | OAuth connects (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | Invite + roles (US-05) |
 | S-15 Billing & credits | `/app/settings/billing` | Manual plan now; MoR later |
@@ -69,7 +69,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F1** MCP token list / revoke / generate UI (`/app/mcp`)
 - [ ] **F1** Team invite + roles (US-05) — API + S-14
 - [ ] **F2** Widget: shadow DOM launcher, auto screenshot, masking, confirm (S-18…S-20) on CDN
-- [ ] **F2** Sensitive selectors from project settings applied before capture
+- [x] **F2** Sensitive selectors from project settings applied before capture
 - [x] **F4** Wire inbox to API (list, type/status filters, empty, test report) — detail still design
 - [x] **F4** Wire report detail (S-07) + mark fixed (S-09) to API
 - [x] **F4** Wire merge duplicates (S-08) — pick parent + POST merge; activity event
@@ -135,8 +135,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 ## Suggested next sprint (M1 wire-up)
 
-1. Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired (demo host `/demo.html?key=…`). Next: production **widget** polish (S-18…S-20) or settings masking save.
-2. Ship production **widget** (S-18…S-21) against ingest API + masking.
+1. Onboarding **S-03 → S-05** + inbox **S-06 → S-09** wired (demo host `/demo.html?key=…`). Next: production **widget** polish (S-18…S-20).
+2. Ship production **widget** (S-18…S-20) against ingest API + confirm UX (masking selectors already live).
 3. ~~Finish **F6** email (Resend) + in-app banner.~~
 4. Dogfood Closeloop on Bear Budget (MCP status page shipped).
 5. Start **M0** waitlist + 5 builder interviews in parallel.

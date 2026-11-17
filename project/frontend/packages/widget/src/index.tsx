@@ -23,6 +23,20 @@ function shortId(id: string) {
   return id.replace(/-/g, "").slice(0, 6);
 }
 
+function uniqueSelectors(...lists: string[][]) {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const list of lists) {
+    for (const raw of list) {
+      const sel = raw.trim();
+      if (!sel || seen.has(sel)) continue;
+      seen.add(sel);
+      out.push(sel);
+    }
+  }
+  return out;
+}
+
 function readConfig(): Config {
   const script = document.currentScript as HTMLScriptElement | null;
   const el =
@@ -34,14 +48,36 @@ function readConfig(): Config {
     userId: el?.dataset.userId,
     email: el?.dataset.email,
     appVersion: el?.dataset.appVersion,
-    selectors: (el?.dataset.mask || "").split(",").map((s) => s.trim()).filter(Boolean),
+    selectors: uniqueSelectors(
+      (el?.dataset.mask || "").split(",").map((s) => s.trim()).filter(Boolean),
+    ),
   };
+}
+
+async function fetchProjectSelectors(cfg: Config): Promise<string[]> {
+  if (!cfg.key) return [];
+  try {
+    const res = await fetch(`${cfg.api}/v1/ingest/config`, {
+      headers: { "X-Closeloop-Key": cfg.key },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const list = data?.sensitive_selectors;
+    if (!Array.isArray(list)) return [];
+    return list.filter((s: unknown): s is string => typeof s === "string" && s.trim() !== "");
+  } catch {
+    return [];
+  }
 }
 
 async function maskAndShot(selectors: string[]) {
   const nodes: HTMLElement[] = [];
   for (const sel of [".closeloop-mask", "[data-closeloop-mask]", ...selectors]) {
-    document.querySelectorAll(sel).forEach((n) => nodes.push(n as HTMLElement));
+    try {
+      document.querySelectorAll(sel).forEach((n) => nodes.push(n as HTMLElement));
+    } catch {
+      // ignore invalid selectors from project settings
+    }
   }
   const prev = nodes.map((n) => n.style.filter);
   nodes.forEach((n) => (n.style.filter = "blur(8px)"));
@@ -62,7 +98,9 @@ function dataURLtoBlob(dataUrl: string) {
 }
 
 async function submitReport(cfg: Config, payload: { type: string; message: string; email: string }) {
-  const screenshot = await maskAndShot(cfg.selectors);
+  const projectSelectors = await fetchProjectSelectors(cfg);
+  const selectors = uniqueSelectors(cfg.selectors, projectSelectors);
+  const screenshot = await maskAndShot(selectors);
   const res = await fetch(`${cfg.api}/v1/ingest/reports`, {
     method: "POST",
     headers: {
@@ -129,7 +167,11 @@ function Widget({ cfg }: { cfg: Config }) {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadUpdates() {
+    async function loadConfigAndUpdates() {
+      const projectSelectors = await fetchProjectSelectors(cfg);
+      if (!cancelled && projectSelectors.length) {
+        cfg.selectors = uniqueSelectors(cfg.selectors, projectSelectors);
+      }
       try {
         const update = await fetchUpdates(cfg);
         if (cancelled || !update) return;
@@ -140,9 +182,9 @@ function Widget({ cfg }: { cfg: Config }) {
       }
     }
 
-    loadUpdates();
+    loadConfigAndUpdates();
     const onIdentify = () => {
-      void loadUpdates();
+      void loadConfigAndUpdates();
     };
     document.addEventListener("closeloop:identify", onIdentify);
     return () => {
