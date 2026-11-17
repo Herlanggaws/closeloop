@@ -57,6 +57,8 @@ export function ProjectSettings() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -235,6 +237,37 @@ export function ProjectSettings() {
     if (!project || savingSelectors) return;
     void saveSelectors(selectors.filter((item) => item !== selector));
   }
+
+  async function deleteProject() {
+    if (!project || deleting) return;
+    if (deleteConfirmName.trim() !== project.name) {
+      setError("Type the project name exactly to confirm delete");
+      return;
+    }
+
+    setDeleting(true);
+    setError("");
+    try {
+      await api(`/api/projects/${project.id}`, { method: "DELETE" });
+      clearProjectSelection();
+      const remaining = await api<{ projects: ProjectInfo[] }>("/api/projects");
+      const next = remaining.projects?.[0];
+      if (next) {
+        localStorage.setItem("closeloop_project", next.id);
+        router.replace("/app/inbox");
+        return;
+      }
+      router.replace("/app/onboarding");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete project");
+      setDeleting(false);
+    }
+  }
+
+  const canDelete =
+    !!project &&
+    deleteConfirmName.trim() === project.name &&
+    !deleting;
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -501,14 +534,25 @@ export function ProjectSettings() {
 
               <SettingsSection
                 title="Delete project"
-                description="Removes reports, tokens, and keys for this project."
+                description="Soft-deletes this project now (keys and MCP tokens stop working). Reports and uploads are permanently removed after 30 days."
               >
+                <Field label={`Type “${projectName}” to confirm`}>
+                  <input
+                    type="text"
+                    value={deleteConfirmName}
+                    onChange={(e) => setDeleteConfirmName(e.target.value)}
+                    disabled={deleting || !project}
+                    placeholder={projectName}
+                    className="box-border h-9 w-full rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3] focus:border-[#17171766] disabled:opacity-50"
+                  />
+                </Field>
                 <button
                   type="button"
-                  disabled
-                  className="h-9 cursor-not-allowed rounded-md border border-[#DA314A33] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#DA314A] opacity-60"
+                  disabled={!canDelete}
+                  onClick={() => void deleteProject()}
+                  className="h-9 rounded-md border border-[#DA314A33] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#DA314A] enabled:cursor-pointer enabled:hover:bg-[#DA314A0A] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Delete project
+                  {deleting ? "Deleting…" : "Delete project"}
                 </button>
               </SettingsSection>
             </>

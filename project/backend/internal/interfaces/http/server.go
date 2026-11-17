@@ -52,6 +52,7 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/projects", s.authRequired(), s.createProject)
 		api.GET("/projects/:id", s.authRequired(), s.getProject)
 		api.PATCH("/projects/:id", s.authRequired(), s.patchProject)
+		api.DELETE("/projects/:id", s.authRequired(), s.deleteProject)
 		api.GET("/projects/:id/mcp-tokens", s.authRequired(), s.listMCPTokens)
 		api.POST("/projects/:id/mcp-tokens", s.authRequired(), s.createMCPToken)
 		api.DELETE("/projects/:id/mcp-tokens/:tokenId", s.authRequired(), s.deleteMCPToken)
@@ -668,6 +669,27 @@ func (s *Server) patchProject(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"project": p})
+}
+
+func (s *Server) deleteProject(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireProjectAccess(c, id) {
+		return
+	}
+	owner, err := s.Store.UserIsProjectOwner(c.Request.Context(), c.GetString("userID"), id)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if !owner {
+		writeErr(c, 403, "FORBIDDEN", "only owners can delete a project")
+		return
+	}
+	if err := s.Store.SoftDeleteProject(c.Request.Context(), id); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.Status(204)
 }
 
 func (s *Server) listMCPTokens(c *gin.Context) {

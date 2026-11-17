@@ -350,7 +350,7 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors
-		FROM projects WHERE org_id=$1 ORDER BY created_at`, orgID)
+		FROM projects WHERE org_id=$1 AND deleted_at IS NULL ORDER BY created_at`, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +373,7 @@ func (s *Store) ProjectByID(ctx context.Context, projectID string) (Project, err
 	var plats, sels StringArray
 	err := s.DB.QueryRowContext(ctx, `
 		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors
-		FROM projects WHERE id=$1`, projectID).
+		FROM projects WHERE id=$1 AND deleted_at IS NULL`, projectID).
 		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrNotFound
@@ -388,7 +388,7 @@ func (s *Store) ProjectByPublicKey(ctx context.Context, key string) (Project, er
 	err := s.DB.QueryRowContext(ctx, `
 		SELECT p.id, p.org_id, p.name, p.platforms, p.notify_enabled, p.sensitive_selectors
 		FROM project_keys pk JOIN projects p ON p.id=pk.project_id
-		WHERE pk.public_key=$1 AND pk.revoked_at IS NULL`, key).
+		WHERE pk.public_key=$1 AND pk.revoked_at IS NULL AND p.deleted_at IS NULL`, key).
 		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrUnauthorized
@@ -426,9 +426,92 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, nam
 		p.SensitiveSelectors = *selectors
 	}
 	_, err = s.DB.ExecContext(ctx, `
-		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, sensitive_selectors=$5 WHERE id=$1`,
+		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, sensitive_selectors=$5
+		WHERE id=$1 AND deleted_at IS NULL`,
 		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, asArray(p.SensitiveSelectors))
 	return err
+}
+
+func (s *Store) UserIsProjectOwner(ctx context.Context, userID, projectID string) (bool, error) {
+	var ok bool
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM projects p
+			JOIN memberships m ON m.org_id=p.org_id
+			WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2 AND m.role='owner'
+		)`, projectID, userID).Scan(&ok)
+	return ok, err
+}
+
+func (s *Store) SoftDeleteProject(ctx context.Context, projectID string) error {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.ExecContext(ctx, `
+		UPDATE projects SET deleted_at=now()
+		WHERE id=$1 AND deleted_at IS NULL`, projectID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE project_keys SET revoked_at=now()
+		WHERE project_id=$1 AND revoked_at IS NULL`, projectID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM mcp_tokens WHERE project_id=$1`, projectID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) ListProjectsDueForPurge(ctx context.Context, cutoff time.Time, limit int) ([]string, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id FROM projects
+		WHERE deleted_at IS NOT NULL AND deleted_at <= $1
+		ORDER BY deleted_at
+		LIMIT $2`, cutoff, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (s *Store) HardDeleteProject(ctx context.Context, projectID string) error {
+	res, err := s.DB.ExecContext(ctx, `DELETE FROM projects WHERE id=$1 AND deleted_at IS NOT NULL`, projectID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 type MCPClientSighting struct {
@@ -595,7 +678,7 @@ func (s *Store) MCPByToken(ctx context.Context, raw string) (projectID string, s
 		FROM mcp_tokens mt
 		JOIN projects p ON p.id=mt.project_id
 		JOIN organizations o ON o.id=p.org_id
-		WHERE mt.token_hash=$1`, auth.SHA256(raw)).
+		WHERE mt.token_hash=$1 AND p.deleted_at IS NULL`, auth.SHA256(raw)).
 		Scan(&projectID, &sc, &plan)
 	scopes = []string(sc)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -1128,7 +1211,7 @@ func (s *Store) UnseenUpdates(ctx context.Context, projectID, externalUID, email
 		JOIN reporters r ON r.id=n.reporter_id
 		JOIN tickets t ON t.id=n.ticket_id
 		JOIN projects p ON p.id=t.project_id
-		WHERE n.channel='in_app' AND n.seen_at IS NULL AND r.project_id=$1`
+		WHERE n.channel='in_app' AND n.seen_at IS NULL AND r.project_id=$1 AND p.deleted_at IS NULL`
 	args := []any{projectID}
 	if externalUID != "" {
 		q += " AND r.external_user_id=$2"
@@ -1177,7 +1260,7 @@ func (s *Store) UserCanAccessProject(ctx context.Context, userID, projectID stri
 		SELECT EXISTS(
 			SELECT 1 FROM projects p
 			JOIN memberships m ON m.org_id=p.org_id
-			WHERE p.id=$1 AND m.user_id=$2
+			WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2
 		)`, projectID, userID).Scan(&ok)
 	return ok, err
 }

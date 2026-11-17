@@ -10,13 +10,24 @@ import (
 	"github.com/closeloop/api/internal/infrastructure/email"
 )
 
+const projectRetention = 30 * 24 * time.Hour
+
 type MailSender interface {
 	Send(to, subject, html string) error
 }
 
-func RunWorker(ctx context.Context, store *Store, mail MailSender) {
+type ProjectFileCleaner interface {
+	RemoveProject(projectID string) error
+}
+
+func RunWorker(ctx context.Context, store *Store, mail MailSender, files ProjectFileCleaner) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
+	purgeTicker := time.NewTicker(time.Hour)
+	defer purgeTicker.Stop()
+
+	purgeDeletedProjects(ctx, store, files)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -33,7 +44,31 @@ func RunWorker(ctx context.Context, store *Store, mail MailSender) {
 					slog.Error("finish job", "err", finErr)
 				}
 			}
+		case <-purgeTicker.C:
+			purgeDeletedProjects(ctx, store, files)
 		}
+	}
+}
+
+func purgeDeletedProjects(ctx context.Context, store *Store, files ProjectFileCleaner) {
+	cutoff := time.Now().Add(-projectRetention)
+	ids, err := store.ListProjectsDueForPurge(ctx, cutoff, 50)
+	if err != nil {
+		slog.Error("list projects due for purge", "err", err)
+		return
+	}
+	for _, id := range ids {
+		if files != nil {
+			if err := files.RemoveProject(id); err != nil {
+				slog.Error("remove project files", "project_id", id, "err", err)
+				continue
+			}
+		}
+		if err := store.HardDeleteProject(ctx, id); err != nil {
+			slog.Error("hard delete project", "project_id", id, "err", err)
+			continue
+		}
+		slog.Info("purged deleted project", "project_id", id)
 	}
 }
 

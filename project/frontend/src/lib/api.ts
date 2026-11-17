@@ -99,7 +99,6 @@ export async function api<T>(
     headers,
     credentials: "include",
   });
-  const data = await res.json().catch(() => ({}));
 
   if (res.status === 401 && !retried && !isAuthPath(path)) {
     const refreshed = await refreshAccessToken();
@@ -107,6 +106,12 @@ export async function api<T>(
     redirectToLogin();
     throw new Error("Session expired");
   }
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
     const err = data as ApiError;
