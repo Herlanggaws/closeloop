@@ -16,12 +16,27 @@ import (
 var boardSlugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 type PublicIdea struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Type      string    `json:"type"`
-	Status    string    `json:"status"`
-	VoteCount int       `json:"vote_count"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Type        string    `json:"type"`
+	Status      string    `json:"status"`
+	VoteCount   int       `json:"vote_count"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+const publicIdeaDescriptionMax = 280
+
+func truncatePublicDescription(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= publicIdeaDescriptionMax {
+		return s
+	}
+	return strings.TrimSpace(string(runes[:publicIdeaDescriptionMax-1])) + "…"
 }
 
 type PublicBoard struct {
@@ -129,7 +144,13 @@ func (s *Store) PublicBoardBySlug(ctx context.Context, slug string) (PublicBoard
 
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT t.id, t.title, t.type, t.status, t.created_at,
-		  (SELECT COUNT(*) FROM idea_votes v WHERE v.ticket_id=t.id AND v.confirmed_at IS NOT NULL)
+		  (SELECT COUNT(*) FROM idea_votes v WHERE v.ticket_id=t.id AND v.confirmed_at IS NOT NULL),
+		  COALESCE((
+		    SELECT r.message FROM reports r
+		    WHERE r.ticket_id=t.id
+		    ORDER BY r.created_at ASC
+		    LIMIT 1
+		  ), '')
 		FROM tickets t
 		WHERE t.project_id=(SELECT id FROM projects WHERE board_slug=$1 AND deleted_at IS NULL)
 		  AND t.is_public=true
@@ -143,9 +164,11 @@ func (s *Store) PublicBoardBySlug(ctx context.Context, slug string) (PublicBoard
 	ideas := []PublicIdea{}
 	for rows.Next() {
 		var idea PublicIdea
-		if err := rows.Scan(&idea.ID, &idea.Title, &idea.Type, &idea.Status, &idea.CreatedAt, &idea.VoteCount); err != nil {
+		var rawDesc string
+		if err := rows.Scan(&idea.ID, &idea.Title, &idea.Type, &idea.Status, &idea.CreatedAt, &idea.VoteCount, &rawDesc); err != nil {
 			return PublicBoard{}, nil, err
 		}
+		idea.Description = truncatePublicDescription(rawDesc)
 		ideas = append(ideas, idea)
 	}
 	return board, ideas, rows.Err()
@@ -158,17 +181,28 @@ func (s *Store) PublicIdeaBySlug(ctx context.Context, slug, ticketID string) (Pu
 	}
 	var board PublicBoard
 	var idea PublicIdea
+	var rawDesc string
 	err = s.DB.QueryRowContext(ctx, `
 		SELECT p.name, p.board_slug, t.id, t.title, t.type, t.status, t.created_at,
-		  (SELECT COUNT(*) FROM idea_votes v WHERE v.ticket_id=t.id AND v.confirmed_at IS NOT NULL)
+		  (SELECT COUNT(*) FROM idea_votes v WHERE v.ticket_id=t.id AND v.confirmed_at IS NOT NULL),
+		  COALESCE((
+		    SELECT r.message FROM reports r
+		    WHERE r.ticket_id=t.id
+		    ORDER BY r.created_at ASC
+		    LIMIT 1
+		  ), '')
 		FROM projects p
 		JOIN tickets t ON t.project_id=p.id
 		WHERE p.board_slug=$1 AND p.deleted_at IS NULL
 		  AND t.id=$2 AND t.is_public=true AND t.status <> 'duplicate'`,
 		slug, ticketID).
-		Scan(&board.Name, &board.BoardSlug, &idea.ID, &idea.Title, &idea.Type, &idea.Status, &idea.CreatedAt, &idea.VoteCount)
+		Scan(&board.Name, &board.BoardSlug, &idea.ID, &idea.Title, &idea.Type, &idea.Status, &idea.CreatedAt, &idea.VoteCount, &rawDesc)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PublicBoard{}, PublicIdea{}, ErrNotFound
 	}
-	return board, idea, err
+	if err != nil {
+		return PublicBoard{}, PublicIdea{}, err
+	}
+	idea.Description = truncatePublicDescription(rawDesc)
+	return board, idea, nil
 }

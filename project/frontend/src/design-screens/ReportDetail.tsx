@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { api } from "@/lib/api";
 import {
@@ -437,90 +437,16 @@ export function ReportDetail() {
               </div>
 
               <div className="flex flex-col gap-2.5">
-                <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">GitHub</div>
-                <button
-                  type="button"
-                  disabled={githubIssueBusy || (!githubAppConnected && !githubIssueUrl)}
-                  title={
-                    githubAppConnected || githubIssueUrl
-                      ? undefined
-                      : "Connect GitHub App and pick a repo in Integrations"
-                  }
-                  onClick={() => {
-                    if (githubIssueUrl) {
-                      window.open(githubIssueUrl, "_blank", "noopener,noreferrer");
-                      return;
-                    }
-                    void createGitHubIssue();
-                  }}
-                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-xs font-medium text-[#171717] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {githubIssueBusy
-                    ? "Creating…"
-                    : githubIssueUrl
-                      ? "View GitHub Issue"
-                      : "Create GitHub Issue"}
-                </button>
-                {!githubAppConnected && !githubIssueUrl ? (
-                  <Link
-                    href="/app/settings/integrations"
-                    className="font-ds-ui text-[12px] text-[#737373] underline"
-                  >
-                    Connect GitHub App
-                  </Link>
-                ) : null}
-              </div>
-
-              <div className="flex flex-col gap-2.5">
-                <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Auto PR</div>
-                <button
-                  type="button"
-                  disabled={autoprBusy}
-                  onClick={() => void runAutopr()}
-                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md bg-[#171717] px-3 font-ds-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {autoprBusy ? "Starting…" : "Run Auto PR"}
-                </button>
-                {autoprMsg ? (
-                  <p className="font-ds-ui text-[12px] text-[#737373]">{autoprMsg}</p>
-                ) : null}
-                {latestAutopr ? (
-                  <p className="font-ds-ui text-[12px] text-[#737373]">
-                    Latest: {latestAutopr.status}
-                    {latestAutopr.pr_url ? (
-                      <>
-                        {" · "}
-                        <a
-                          href={latestAutopr.pr_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[#171717] underline"
-                        >
-                          Open PR
-                        </a>
-                      </>
-                    ) : null}
-                    {latestAutopr.error ? ` · ${latestAutopr.error}` : null}
-                  </p>
-                ) : null}
-                <Link
-                  href="/app/auto-pr"
-                  className="font-ds-ui text-[12px] text-[#737373] underline"
-                >
-                  View all runs
-                </Link>
-              </div>
-
-              <div className="flex flex-col gap-2.5">
                 <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Linked</div>
                 {sentryUrl ? (
-                  <LinkCard
+                  <LinkedRow
                     title="Sentry event"
-                    subtitle="Open related error"
+                    subtitle="Sentry · open related error"
+                    actionLabel="Open"
                     href={sentryUrl}
                   />
                 ) : (
-                  <StubCard
+                  <LinkedRow
                     title="Sentry"
                     subtitle={
                       hasSentryConfig
@@ -530,13 +456,14 @@ export function ReportDetail() {
                   />
                 )}
                 {posthogUrl ? (
-                  <LinkCard
-                    title="PostHog session"
-                    subtitle="Open session replay"
+                  <LinkedRow
+                    title="Session before report"
+                    subtitle="PostHog · open session replay"
+                    actionLabel="Play"
                     href={posthogUrl}
                   />
                 ) : (
-                  <StubCard
+                  <LinkedRow
                     title="Session before report"
                     subtitle={
                       hasPosthogConfig
@@ -545,6 +472,73 @@ export function ReportDetail() {
                     }
                   />
                 )}
+                <LinkedRow
+                  title={
+                    latestAutopr?.pr_url
+                      ? "Pull request ready"
+                      : latestAutopr
+                        ? `Auto PR · ${latestAutopr.status}`
+                        : "No pull request yet"
+                  }
+                  subtitle="Auto PR · 1 credit per run"
+                  actionLabel={autoprBusy ? "…" : "Run"}
+                  onAction={() => void runAutopr()}
+                  actionDisabled={autoprBusy}
+                  footer={
+                    <>
+                      {autoprMsg ? (
+                        <p className="mt-1 font-ds-ui text-[11px] text-[#737373]">{autoprMsg}</p>
+                      ) : null}
+                      {latestAutopr?.pr_url ? (
+                        <a
+                          href={latestAutopr.pr_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block font-ds-ui text-[11px] text-[#171717] underline"
+                        >
+                          Open PR
+                        </a>
+                      ) : null}
+                      {latestAutopr?.error ? (
+                        <p className="mt-1 font-ds-ui text-[11px] text-[#DA314A]">
+                          {latestAutopr.error}
+                        </p>
+                      ) : null}
+                      <Link
+                        href="/app/auto-pr"
+                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
+                      >
+                        View all runs
+                      </Link>
+                    </>
+                  }
+                />
+                <LinkedRow
+                  title={githubIssueUrl ? "GitHub Issue" : "No GitHub Issue yet"}
+                  subtitle="GitHub Issue · create from ticket"
+                  actionLabel={
+                    githubIssueBusy ? "…" : githubIssueUrl ? "View" : "Create"
+                  }
+                  href={githubIssueUrl || undefined}
+                  onAction={
+                    githubIssueUrl
+                      ? undefined
+                      : () => void createGitHubIssue()
+                  }
+                  actionDisabled={
+                    githubIssueBusy || (!githubAppConnected && !githubIssueUrl)
+                  }
+                  footer={
+                    !githubAppConnected && !githubIssueUrl ? (
+                      <Link
+                        href="/app/settings/integrations"
+                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
+                      >
+                        Connect GitHub App
+                      </Link>
+                    ) : null
+                  }
+                />
               </div>
 
               <div className="mt-auto flex flex-col gap-2 rounded-[10px] border border-[#1717171F] bg-white p-3">
@@ -650,39 +644,57 @@ function StatusSelect({
   );
 }
 
-function StubCard({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-[10px] border border-[#17171714] bg-white p-3">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#F5F5F5] font-ds-ui text-[10px] text-[#A3A3A3]">
-        ·
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-ds-ui text-[12.5px] font-medium text-[#171717]">
-          {title}
-        </div>
-        <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">{subtitle}</div>
-      </div>
-    </div>
-  );
-}
+function LinkedRow({
+  title,
+  subtitle,
+  actionLabel,
+  href,
+  onAction,
+  actionDisabled,
+  footer,
+}: {
+  title: string;
+  subtitle: string;
+  actionLabel?: string;
+  href?: string;
+  onAction?: () => void;
+  actionDisabled?: boolean;
+  footer?: ReactNode;
+}) {
+  const actionClass =
+    "inline-flex h-7 shrink-0 cursor-pointer items-center rounded-md bg-[#171717] px-2.5 font-ds-sans text-[11px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-50";
 
-function LinkCard({ title, subtitle, href }: { title: string; subtitle: string; href: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="flex items-center gap-2.5 rounded-[10px] border border-[#17171714] bg-white p-3 hover:border-[#17171733]"
-    >
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#EFF6FF] font-ds-ui text-[10px] text-[#266DF0]">
-        ↗
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-ds-ui text-[12.5px] font-medium text-[#171717]">
-          {title}
+    <div className="rounded-[10px] border border-[#17171714] bg-white p-3">
+      <div className="flex items-center gap-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-ds-ui text-[12.5px] font-medium text-[#171717]">
+            {title}
+          </div>
+          <div className="truncate font-ds-ui text-[11px] text-[#737373]">{subtitle}</div>
         </div>
-        <div className="truncate font-ds-ui text-[11px] text-[#737373]">{subtitle}</div>
+        {href && actionLabel ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className={actionClass}
+          >
+            {actionLabel}
+          </a>
+        ) : null}
+        {!href && actionLabel && onAction ? (
+          <button
+            type="button"
+            disabled={actionDisabled}
+            onClick={onAction}
+            className={actionClass}
+          >
+            {actionLabel}
+          </button>
+        ) : null}
       </div>
-    </a>
+      {footer}
+    </div>
   );
 }

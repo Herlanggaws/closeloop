@@ -35,7 +35,7 @@ const NOTIFY_CATALOG: CatalogItem[] = [
   {
     id: "slack",
     name: "Slack",
-    description: "Incoming webhook · new reports and status changes",
+    description: "New reports and status changes to your channel",
     icon: "Sl",
     iconBg: "#4A154B",
     action: "configure",
@@ -518,15 +518,29 @@ export function Integrations() {
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
               <IntegrationGroup title="Notify and track">
-                {NOTIFY_CATALOG.map((item) => (
-                  <IntegrationCard
-                    key={item.id}
-                    item={item}
-                    status={statusFor(item)}
-                    actionLabel={actionLabel(item)}
-                    onAction={() => onCardAction(item)}
-                  />
-                ))}
+                {NOTIFY_CATALOG.map((item) => {
+                  const cardItem =
+                    item.id === "github_issues" && githubRepo.trim()
+                      ? {
+                          ...item,
+                          description: `${githubRepo.trim()} · create issues from tickets`,
+                        }
+                      : item.id === "slack" && slackConnected
+                        ? {
+                            ...item,
+                            description: "New reports and status changes to your channel",
+                          }
+                        : item;
+                  return (
+                    <IntegrationCard
+                      key={item.id}
+                      item={cardItem}
+                      status={statusFor(item)}
+                      actionLabel={actionLabel(item)}
+                      onAction={() => onCardAction(item)}
+                    />
+                  );
+                })}
               </IntegrationGroup>
 
               <IntegrationGroup title="Debugging context">
