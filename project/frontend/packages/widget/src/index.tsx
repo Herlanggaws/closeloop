@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { domToPng } from "modern-screenshot";
+import { domToCanvas } from "modern-screenshot";
 import {
   compositeAnnotatedPng,
   drawStrokes,
@@ -141,11 +141,45 @@ async function maskAndShot(selectors: string[], maskTextInputs: boolean) {
   const prev = nodes.map((n) => n.style.filter);
   nodes.forEach((n) => (n.style.filter = "blur(8px)"));
   try {
-    return await domToPng(document.body, {
+    const fullCanvas = await domToCanvas(document.body, {
       scale: 1,
-      quality: 0.9,
       filter: (node) => !isCloseloopWidgetNode(node),
     });
+
+    const scrollX = Math.round(window.scrollX || window.pageXOffset || 0);
+    const scrollY = Math.round(window.scrollY || window.pageYOffset || 0);
+    const vw = Math.round(window.innerWidth || document.documentElement.clientWidth || 1024);
+    const vh = Math.round(window.innerHeight || document.documentElement.clientHeight || 768);
+
+    const sx = Math.max(0, Math.min(scrollX, fullCanvas.width - 1));
+    const sy = Math.max(0, Math.min(scrollY, fullCanvas.height - 1));
+    const sw = Math.max(1, Math.min(vw, fullCanvas.width - sx));
+    const sh = Math.max(1, Math.min(vh, fullCanvas.height - sy));
+
+    // Cap max dimensions so 4K / retina displays don't produce oversized images
+    const MAX_W = 1920;
+    const MAX_H = 1080;
+    let dw = sw;
+    let dh = sh;
+    if (dw > MAX_W || dh > MAX_H) {
+      const ratio = Math.min(MAX_W / dw, MAX_H / dh);
+      dw = Math.round(dw * ratio);
+      dh = Math.round(dh * ratio);
+    }
+
+    const crop = document.createElement("canvas");
+    crop.width = dw;
+    crop.height = dh;
+    const ctx = crop.getContext("2d");
+    if (!ctx) {
+      return fullCanvas.toDataURL("image/jpeg", 0.85);
+    }
+
+    // Fill white background in case the document body has a transparent backdrop
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, dw, dh);
+    ctx.drawImage(fullCanvas, sx, sy, sw, sh, 0, 0, dw, dh);
+    return crop.toDataURL("image/jpeg", 0.85);
   } finally {
     nodes.forEach((n, i) => (n.style.filter = prev[i]));
   }
