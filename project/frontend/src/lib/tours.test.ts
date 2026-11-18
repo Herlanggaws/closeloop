@@ -46,6 +46,15 @@ afterEach(() => {
   }
 });
 
+describe("tour side defaults", () => {
+  it("keeps MCP steps off the cramped right edge", async () => {
+    const { TOURS } = await import("./tours.ts");
+    assert.equal(TOURS.mcp.steps[0].side, "below");
+    assert.equal(TOURS.mcp.steps[1].side, "below");
+    assert.equal(TOURS.mcp.steps[2].side, "above");
+  });
+});
+
 describe("tourFooterLabels", () => {
   it("labels the first step of a multi-step tour", () => {
     const footer = tourFooterLabels(0, 3);

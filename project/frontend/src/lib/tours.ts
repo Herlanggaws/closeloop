@@ -60,21 +60,21 @@ export const TOURS: Record<string, TourDefinition> = {
     steps: [
       {
         target: "install-script",
-        side: "right",
+        side: "below",
         tag: "WEB WIDGET",
         title: "Paste one line and you're live",
         body: "Add this script before </body>. Your first report shows up in the panel on the right, usually within 5 minutes.",
       },
       {
         target: "install-mask",
-        side: "right",
+        side: "below",
         tag: "WEB WIDGET",
         title: "Mark what stays private",
         body: "Add data-closeloop-mask to balances, card numbers or anything personal. It's blurred on the device before the screenshot leaves it.",
       },
       {
         target: "install-first-report",
-        side: "left",
+        side: "below",
         tag: "WEB WIDGET",
         title: "Send a test report",
         body: "Open your app and report something. It lands here with browser, version and user, so you can see the setup worked.",
@@ -141,21 +141,21 @@ export const TOURS: Record<string, TourDefinition> = {
     steps: [
       {
         target: "mcp-token",
-        side: "right",
+        side: "below",
         tag: "MCP",
         title: "Create a token for your agent",
         body: "Each agent gets its own token, shown once. Name it after the machine so you can revoke it later.",
       },
       {
         target: "mcp-command",
-        side: "right",
+        side: "below",
         tag: "MCP",
         title: "Let your agent read the inbox",
         body: "Run this once in Claude Code, or paste it into .cursor/mcp.json. Then ask your agent to fix the open bugs. It reads each report and marks it fixed when done.",
       },
       {
         target: "mcp-test",
-        side: "right",
+        side: "above",
         tag: "MCP",
         title: "Check the connection",
         body: "Ask your agent to list open feedback. When it answers, this step turns green and you're done.",

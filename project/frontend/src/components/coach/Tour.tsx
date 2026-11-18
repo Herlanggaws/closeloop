@@ -71,78 +71,115 @@ function holeFromRect(rect: DOMRect) {
   };
 }
 
+function idealPosition(
+  side: TourSide,
+  hole: { x: number; y: number; w: number; h: number },
+  cardH: number,
+) {
+  if (side === "below") {
+    return { top: hole.y + hole.h + CARD_GAP, left: hole.x };
+  }
+  if (side === "above") {
+    return { top: hole.y - CARD_GAP - cardH, left: hole.x };
+  }
+  if (side === "right") {
+    return { top: hole.y + hole.h / 2 - cardH / 2, left: hole.x + hole.w + CARD_GAP };
+  }
+  return { top: hole.y + hole.h / 2 - cardH / 2, left: hole.x - CARD_GAP - CARD_WIDTH };
+}
+
+function clampToViewport(top: number, left: number, cardH: number) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const maxLeft = Math.max(VIEW_MARGIN, vw - CARD_WIDTH - VIEW_MARGIN);
+  const maxTop = Math.max(VIEW_MARGIN, vh - cardH - VIEW_MARGIN);
+  return {
+    left: Math.min(Math.max(left, VIEW_MARGIN), maxLeft),
+    top: Math.min(Math.max(top, VIEW_MARGIN), maxTop),
+  };
+}
+
+function rectsOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+  pad = 0,
+) {
+  return !(
+    a.x + a.w + pad <= b.x ||
+    b.x + b.w + pad <= a.x ||
+    a.y + a.h + pad <= b.y ||
+    b.y + b.h + pad <= a.y
+  );
+}
+
+function arrowOffsetFor(
+  side: TourSide,
+  hole: { x: number; y: number; w: number; h: number },
+  card: { top: number; left: number },
+  cardH: number,
+) {
+  const targetCenterX = hole.x + hole.w / 2;
+  const targetCenterY = hole.y + hole.h / 2;
+  if (side === "above" || side === "below") {
+    return Math.min(Math.max(targetCenterX - card.left - 8, 12), CARD_WIDTH - 28);
+  }
+  return Math.min(Math.max(targetCenterY - card.top - 4, 12), cardH - 28);
+}
+
 function placeCard(
   preferred: TourSide,
   hole: { x: number; y: number; w: number; h: number },
   cardH: number,
 ): Placement {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const sides: TourSide[] = [preferred, opposite(preferred), "below", "above", "right", "left"];
-  const tried = new Set<TourSide>();
+  const sides: TourSide[] = [preferred, opposite(preferred), "below", "above", "left", "right"];
+  const seen = new Set<TourSide>();
+  let fallback: Placement | null = null;
 
   for (const side of sides) {
-    if (tried.has(side)) continue;
-    tried.add(side);
+    if (seen.has(side)) continue;
+    seen.add(side);
 
-    let top = 0;
-    let left = 0;
-    if (side === "below") {
-      top = hole.y + hole.h + CARD_GAP;
-      left = hole.x;
-    } else if (side === "above") {
-      top = hole.y - CARD_GAP - cardH;
-      left = hole.x;
-    } else if (side === "right") {
-      top = hole.y;
-      left = hole.x + hole.w + CARD_GAP;
-    } else {
-      top = hole.y;
-      left = hole.x - CARD_GAP - CARD_WIDTH;
-    }
+    const ideal = idealPosition(side, hole, cardH);
+    const fitsUnclamped =
+      ideal.top >= VIEW_MARGIN &&
+      ideal.left >= VIEW_MARGIN &&
+      ideal.top + cardH <= window.innerHeight - VIEW_MARGIN &&
+      ideal.left + CARD_WIDTH <= window.innerWidth - VIEW_MARGIN;
 
-    const fits =
-      top >= VIEW_MARGIN &&
-      left >= VIEW_MARGIN &&
-      top + cardH <= vh - VIEW_MARGIN &&
-      left + CARD_WIDTH <= vw - VIEW_MARGIN;
+    const card = fitsUnclamped ? ideal : clampToViewport(ideal.top, ideal.left, cardH);
+    const cardRect = { x: card.left, y: card.top, w: CARD_WIDTH, h: cardH };
+    const overlapsTarget = rectsOverlap(cardRect, hole, CARD_GAP);
 
-    if (!fits && side !== preferred && tried.size < sides.length) continue;
-    if (!fits && side !== preferred) continue;
-
-    const clampedLeft = Math.min(
-      Math.max(left, VIEW_MARGIN),
-      Math.max(VIEW_MARGIN, vw - CARD_WIDTH - VIEW_MARGIN),
-    );
-    const clampedTop = Math.min(
-      Math.max(top, VIEW_MARGIN),
-      Math.max(VIEW_MARGIN, vh - cardH - VIEW_MARGIN),
-    );
-
-    const targetCenterX = hole.x + hole.w / 2;
-    const targetCenterY = hole.y + hole.h / 2;
-    let arrowOffset = ARROW_INSET;
-    if (side === "above" || side === "below") {
-      arrowOffset = Math.min(
-        Math.max(targetCenterX - clampedLeft - 8, 12),
-        CARD_WIDTH - 28,
-      );
-    } else {
-      arrowOffset = Math.min(Math.max(targetCenterY - clampedTop - 4, 12), cardH - 28);
-    }
-
-    return {
+    const placement: Placement = {
       side,
-      card: { top: clampedTop, left: clampedLeft },
-      arrowOffset,
+      card,
+      arrowOffset: arrowOffsetFor(side, hole, card, cardH),
       hole,
     };
+
+    if (!overlapsTarget && fitsUnclamped) {
+      return placement;
+    }
+    if (!overlapsTarget && !fallback) {
+      fallback = placement;
+    }
   }
 
+  if (fallback) return fallback;
+
+  // Last resort: park below the hole if possible, otherwise above, clear of the target.
+  const belowTop = hole.y + hole.h + CARD_GAP;
+  const aboveTop = hole.y - CARD_GAP - cardH;
+  const top =
+    belowTop + cardH <= window.innerHeight - VIEW_MARGIN
+      ? belowTop
+      : Math.max(VIEW_MARGIN, aboveTop);
+  const card = clampToViewport(top, hole.x, cardH);
+  const side: TourSide = card.top >= hole.y + hole.h ? "below" : "above";
   return {
-    side: preferred,
-    card: { top: VIEW_MARGIN, left: VIEW_MARGIN },
-    arrowOffset: ARROW_INSET,
+    side,
+    card,
+    arrowOffset: arrowOffsetFor(side, hole, card, cardH),
     hole,
   };
 }

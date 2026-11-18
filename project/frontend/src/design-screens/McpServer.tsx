@@ -290,15 +290,16 @@ export function McpServer() {
           <h1 className="font-ds-sans text-lg font-semibold tracking-[-0.36px] text-[#171717]">
             MCP server
           </h1>
-          <button
-            type="button"
-            data-tour="mcp-token"
-            disabled={creating || loading}
-            onClick={createToken}
-            className="h-8 cursor-pointer rounded-md bg-[#171717] px-4 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
-          >
-            {creating ? "Creating…" : connected ? "Generate new token" : "Generate token"}
-          </button>
+          <div data-tour="mcp-token" className="flex items-center">
+            <button
+              type="button"
+              disabled={creating || loading}
+              onClick={createToken}
+              className="h-8 cursor-pointer rounded-md bg-[#171717] px-4 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+            >
+              {creating ? "Creating…" : connected ? "Generate new token" : "Generate token"}
+            </button>
+          </div>
         </header>
 
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
