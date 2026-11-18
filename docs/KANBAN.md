@@ -40,7 +40,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed (notify enqueue); channel toggles visual |
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
-| S-11 Manage public board | `/app/board` | **Wired** slug + publish + comment moderation + roadmap DnD columns |
+| S-11 Manage public board | `/app/board` | **Wired** slug + publish + Ideas vote counts + comment moderation + roadmap DnD columns |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
 | S-13 Integrations | `/app/settings/integrations` | **Partial** pen-aligned catalog; Sentry/PostHog + Slack webhook wired; GitHub/Linear/Jira/App/Webhooks stubs (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
@@ -103,6 +103,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F9** Release emails to voters on mark fixed (S-27 released)
 - [x] **F9** Board comments + one-level replies + moderation hide
 - [x] **F9** Roadmap moderation DnD on `/app/board` (Planned / In progress / Released)
+- [x] **F9** Ideas tab live `vote_count` from confirmed votes (R-UI-15)
 - [ ] **F11** rrweb replay module, attach to ticket, default masking
 
 #### M4 · AI & Business (F10, F12)

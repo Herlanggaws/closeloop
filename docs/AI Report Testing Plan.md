@@ -186,6 +186,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-12 | Board comment | Publish idea | Comment composer → confirm token → idea | Comment body visible | S-25 comments |
 | R-UI-13 | Roadmap DnD | Publish idea | `/app/board` Roadmap → move to In progress | Card in column; status `in_progress` | S-11 roadmap |
 | R-UI-14 | Inbox live refresh | Open inbox | Ingest + `closeloop:submitted` | New row appears without reload | widget event + Inbox refetch |
+| R-UI-15 | Ideas vote count | Publish + confirm vote | Open `/app/board` Ideas | Votes column shows 1 | Ticket.vote_count |
 
 ---
 

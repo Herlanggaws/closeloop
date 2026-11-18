@@ -304,6 +304,54 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(page.getByText(/you voted as voter-ui@example.com/i)).toBeVisible();
   });
 
+  test("R-UI-15 board ideas tab shows vote count", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await applySession(page, session);
+
+    const title = "ideas tab vote count";
+    const { ticket_id: ticketId } = await ingestReport(request, session.publicKey, title, {
+      type: "idea",
+    });
+    const publish = await request.patch(`${API_URL}/api/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { is_public: true },
+    });
+    expect(publish.ok()).toBeTruthy();
+
+    const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    const slug = (await projectRes.json()).project.board_slug as string;
+    const voteReq = await request.post(
+      `${API_URL}/api/public/boards/${slug}/ideas/${ticketId}/votes`,
+      { data: { email: "ideas-tab-voter@example.com" } },
+    );
+    expect(voteReq.status()).toBe(202);
+
+    const { execFileSync } = await import("node:child_process");
+    const dbURL =
+      process.env.DATABASE_URL ||
+      `postgres://${process.env.USER || "postgres"}@localhost:5432/closeloop?sslmode=disable`;
+    const token = execFileSync(
+      "psql",
+      [
+        dbURL,
+        "-tAc",
+        "SELECT payload->>'raw_token' FROM jobs WHERE kind='notify_vote_verify' ORDER BY created_at DESC LIMIT 1",
+      ],
+      { encoding: "utf8" },
+    ).trim();
+    expect(token).toBeTruthy();
+    const confirm = await request.get(`${API_URL}/api/public/votes/confirm?t=${token}`);
+    expect(confirm.ok()).toBeTruthy();
+
+    await page.goto("/app/board");
+    await expect(page.getByRole("heading", { name: "Public board" })).toBeVisible();
+    await page.getByRole("button", { name: /^Ideas/i }).click();
+    await expect(page.getByText(title)).toBeVisible();
+    await expect(page.locator(`[data-vote-count="${ticketId}"]`)).toHaveText("1");
+  });
+
   test("R-UI-13 board roadmap drag status", async ({ page, request }) => {
     const session = await seedSession(request);
     await applySession(page, session);

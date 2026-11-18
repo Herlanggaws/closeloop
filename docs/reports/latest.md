@@ -1,15 +1,14 @@
-# Report test run — 2026-11-18T084803Z
+# Report test run — 2026-11-18T085255Z
 
-Branch: dev @ f1df159
+Branch: dev @ 6d60a11
 Result: PASS
-Duration: 16s
+Duration: 13s
 
 ## Summary
 
-- Suite: Playwright L3 report UI (`R-UI-01`…`R-UI-14`)
-- Base URL: `http://localhost:3000`
-- API: `http://localhost:8080`
-- Command: `pnpm test:reports:ui` / `bash scripts/test-reports-ui.sh`
+- Suite: `go test` report L0/L1/L2 (+ existing package tests)
+- Database: `closeloop_test`
+- Command: `pnpm test:reports` / `bash scripts/test-reports.sh`
 
 ## Next human action
 

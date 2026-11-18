@@ -122,10 +122,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [hasSession] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return Boolean(localStorage.getItem("closeloop_access"));
-  });
+  // Start false so SSR and the first client paint match; read localStorage after mount.
+  const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
     const err = searchParams?.get("error");
@@ -135,9 +133,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!hasSession) return;
+    if (!localStorage.getItem("closeloop_access")) return;
+    setHasSession(true);
     router.replace(safePostAuthPath(searchParams?.get("next")));
-  }, [hasSession, router, searchParams]);
+  }, [router, searchParams]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
