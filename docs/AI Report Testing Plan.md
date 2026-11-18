@@ -51,7 +51,7 @@ MCP: list_open_feedback → get_feedback_context → mark_fixed / update_status 
 - Sentry/PostHog deep links, rrweb, Slack/Linear, F10 auto-PR
 - Pixel match vs `closeloop.pen`
 
-**Related (bukan report loop):** waitlist — `W-01` / `W-02` / `W-03` in `waitlist_test.go` (send once on insert + `inserted`/`created_at`; invalid email no send; resend for existing email). S-27 vote verify: HTML unit tests in `vote_test.go`; board wire covered by `R-BOARD-05`/`06` + `R-UI-11`.
+**Related (bukan report loop):** waitlist — `W-01` / `W-02` / `W-03` in `waitlist_test.go` (send once on insert + `inserted`/`created_at`; invalid email no send; resend for existing email). S-27 vote verify/released: HTML in `vote_test.go`; board wire `R-BOARD-05`…`07` + `R-UI-11`.
 
 ---
 
@@ -156,6 +156,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-BOARD-04 | Idea detail 404 | Unpublished / wrong slug / unknown id | GET public idea | 404 | PublicIdeaBySlug |
 | R-BOARD-05 | Vote confirm | Publish + POST vote | Process job + GET confirm | vote_count=1; reuse 409 | RequestIdeaVote + ConfirmIdeaVote |
 | R-BOARD-06 | Vote guards | Unpublished / bad email | POST votes | 404 / 400 | PublicIdeaBySlug + NormalizeVoterEmail |
+| R-BOARD-07 | Vote released | Confirmed voter on public idea | Mark fixed + process jobs | VoteReleased mail to voter; skip if private/no votes | EnqueueVoteReleased + notify_vote_released |
 
 ### 4.5 MCP read path (F5 · SC-2)
 
@@ -274,7 +275,7 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…06 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…07 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
 - [x] Mail sink assert untuk R-FIX-03/04
 - [x] MCP JSON-RPC client helper
 

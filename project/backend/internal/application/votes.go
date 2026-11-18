@@ -211,3 +211,91 @@ func (s *Store) ideaVoteCount(ctx context.Context, ticketID string) (int, error)
 		WHERE ticket_id=$1 AND confirmed_at IS NOT NULL`, ticketID).Scan(&n)
 	return n, err
 }
+
+func (s *Store) ListConfirmedVoterEmails(ctx context.Context, ticketID string) ([]string, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT email FROM idea_votes
+		WHERE ticket_id=$1 AND confirmed_at IS NOT NULL
+		ORDER BY confirmed_at ASC`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var emails []string
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err != nil {
+			return nil, err
+		}
+		emails = append(emails, email)
+	}
+	return emails, rows.Err()
+}
+
+// EnqueueVoteReleased queues voter release mail when the ticket is public and has confirmed votes.
+func (s *Store) EnqueueVoteReleased(ctx context.Context, ticketID string) error {
+	t, err := s.GetTicket(ctx, ticketID)
+	if err != nil {
+		return err
+	}
+	if !t.IsPublic {
+		return nil
+	}
+	n, err := s.ideaVoteCount(ctx, ticketID)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return nil
+	}
+	_, err = s.DB.ExecContext(ctx, `
+		INSERT INTO jobs(kind, payload) VALUES ('notify_vote_released', $1)`,
+		mustJSON(map[string]any{"ticket_id": ticketID}))
+	return err
+}
+
+type VoteReleasedNotify struct {
+	Emails      []string
+	ProjectName string
+	BoardSlug   string
+	IdeaTitle   string
+	ReleaseNote string
+	VoteCount   int
+	ReportCount int
+	TicketID    string
+}
+
+func (s *Store) VoteReleasedNotifyData(ctx context.Context, ticketID string) (VoteReleasedNotify, error) {
+	t, err := s.GetTicket(ctx, ticketID)
+	if err != nil {
+		return VoteReleasedNotify{}, err
+	}
+	if !t.IsPublic {
+		return VoteReleasedNotify{}, nil
+	}
+	p, err := s.ProjectByID(ctx, t.ProjectID)
+	if err != nil {
+		return VoteReleasedNotify{}, err
+	}
+	emails, err := s.ListConfirmedVoterEmails(ctx, ticketID)
+	if err != nil {
+		return VoteReleasedNotify{}, err
+	}
+	if len(emails) == 0 {
+		return VoteReleasedNotify{}, nil
+	}
+	note := ""
+	if t.FixedNote.Valid {
+		note = t.FixedNote.String
+	}
+	return VoteReleasedNotify{
+		Emails:      emails,
+		ProjectName: p.Name,
+		BoardSlug:   p.BoardSlug,
+		IdeaTitle:   t.Title,
+		ReleaseNote: note,
+		VoteCount:   len(emails),
+		ReportCount: t.ReportCount,
+		TicketID:    t.ID,
+	}, nil
+}

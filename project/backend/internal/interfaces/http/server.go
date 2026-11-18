@@ -984,6 +984,7 @@ func (s *Server) patchTicket(c *gin.Context) {
 		}
 		if status == "fixed" {
 			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID)
+			_ = s.Store.EnqueueVoteReleased(c.Request.Context(), t.ID)
 		}
 		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
 			TicketID: t.ID,
