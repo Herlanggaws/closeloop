@@ -1,22 +1,38 @@
 ---
-description: Feature UI must follow closeloop.pen S-* frames via Pencil MCP
+description: User-facing UI must match closeloop.pen S-* frames via Pencil MCP before coding
 alwaysApply: true
 ---
 
 # Pen design is the UI source of truth
 
-When implementing or changing **user-facing UI** (app screens, public board, settings, widget chrome):
+`closeloop.pen` (Pencil / pen.dev) is the **only** source of truth for user-facing UI. Code, `/preview` dumps, and `design-screens/*` follow the pen — never the reverse.
 
-1. **Source of truth:** `closeloop.pen` screen frames (`S-*`), not ad-hoc layouts.
-2. **Before coding UI:** open the matching frame in Pencil MCP (`get_app_state` / `Get` / `TakeScreenshot`). If the file is not open, ask the user to open `closeloop.pen`.
-3. **Implement:** match structure (sections, grids, tabs, panels), hierarchy, and product copy from the pen. Wire live data into that shell.
-4. **Do not** replace a designed screen with a minimal form-only page when a pen frame exists.
-5. **Unwired providers/features:** keep pen cards/sections visible as Coming soon / Upgrade / disabled stubs — do not omit them.
-6. **Exports:** `/preview` dumps and `design-screens/*` pen exports are helpers; if they disagree with the current pen frame, **follow the pen**.
-7. **No pen frame yet:** use existing Saidloop design-system / `AppSidebar` patterns; do not invent a new visual language.
-8. **Skip:** pure backend/API/worker/docs/rules with no user-facing surface.
+## When this applies
+
+App screens, public board, settings, widget chrome, marketing pages with a matching `S-*` frame. Skip for pure backend/API/worker/docs/rules with no UI surface.
+
+## Mandatory workflow (before writing UI code)
+
+1. Confirm `closeloop.pen` is open in the editor. If not → ask the user to open it; do not invent layout.
+2. Via Pencil MCP (`user-highagency.pencildev-extension-pencil`):
+   - `get_app_state` — active file / selection
+   - `execute` — `Get` / find the matching `S-*` screen frame
+   - Prefer `TakeScreenshot` on that frame before implementing
+3. Match **structure** (sections, grids, tabs, panels), **hierarchy**, **spacing/typography cues**, and **product copy** from the frame.
+4. Wire live data into that shell. Do not ship a minimal form-only page when a pen frame exists.
+5. Unwired providers/features: keep pen cards/sections visible as Coming soon / Upgrade / disabled stubs — never omit designed chrome.
+6. No matching `S-*` frame yet: reuse Saidloop design-system / `AppSidebar` patterns; do not invent a new visual language. Suggest adding a pen frame if the screen is net-new.
+
+## Conflicts
+
+| Source | Priority |
+|--------|----------|
+| Current `closeloop.pen` `S-*` frame | **1 — win** |
+| `design-screens/*` / `/preview` export | Helper only; discard if stale |
+| Ad-hoc agent layout | Never |
 
 ```text
-❌ Feature ships a reinvented form that drops pen cards/sections
-✅ Pen layout + Configure expands to wired fields; other cards stay as designed stubs
+❌ Code a reinvented form and skip reading the pen
+❌ Drop designed cards/sections because they are not wired yet
+✅ Open pen → screenshot S-* → implement that shell → stub unwired parts
 ```
