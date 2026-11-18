@@ -78,6 +78,11 @@ async function fetchProjectSelectors(cfg: Config): Promise<string[]> {
   }
 }
 
+function isCloseloopWidgetNode(node: Node) {
+  if (!(node instanceof Element)) return false;
+  return node.id === "closeloop-root" || Boolean(node.closest("#closeloop-root"));
+}
+
 async function maskAndShot(selectors: string[]) {
   const nodes: HTMLElement[] = [];
   for (const sel of [".closeloop-mask", "[data-closeloop-mask]", ...selectors]) {
@@ -90,7 +95,11 @@ async function maskAndShot(selectors: string[]) {
   const prev = nodes.map((n) => n.style.filter);
   nodes.forEach((n) => (n.style.filter = "blur(8px)"));
   try {
-    return await domToPng(document.body, { scale: 1, quality: 0.9 });
+    return await domToPng(document.body, {
+      scale: 1,
+      quality: 0.9,
+      filter: (node) => !isCloseloopWidgetNode(node),
+    });
   } finally {
     nodes.forEach((n, i) => (n.style.filter = prev[i]));
   }
@@ -254,7 +263,7 @@ function Widget({ cfg }: { cfg: Config }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
-  useEffect(() => {
+  function paintPreview() {
     const canvas = canvasRef.current;
     const wrap = previewRef.current;
     if (!canvas || !wrap || !shot) return;
@@ -272,7 +281,7 @@ function Widget({ cfg }: { cfg: Config }) {
       drawStrokes(ctx, strokes, draft);
     };
     img.src = shot;
-  }, [shot, strokes, draft]);
+  }
 
   const host = useMemo(() => {
     const root = document.createElement("div");
@@ -376,6 +385,11 @@ function Widget({ cfg }: { cfg: Config }) {
       setMessage("");
       setShot("");
       setStrokes([]);
+      document.dispatchEvent(
+        new CustomEvent("closeloop:submitted", {
+          detail: { ticket_id: data.ticket_id, report_id: data.report_id },
+        }),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -617,6 +631,9 @@ function Widget({ cfg }: { cfg: Config }) {
 
   useEffect(() => {
     render(ui, shadowHost);
+    // Paint after shadow mount — a separate paint effect runs before this render
+    // and misses canvasRef on the first successful capture (blank until Retake).
+    paintPreview();
   });
 
   return null;

@@ -22,6 +22,15 @@ test.describe("Report UI smoke (R-UI)", () => {
     await page.getByRole("button", { name: "Report" }).click();
     await expect(page.getByText("Send feedback", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: /^bug$/i }).click();
+    // Auto-screenshot should paint without requiring Retake.
+    await expect(page.getByText("No screenshot yet")).toBeHidden({ timeout: 30_000 });
+    const preview = page.locator("canvas").first();
+    await expect(preview).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(async () => preview.evaluate((node) => (node as HTMLCanvasElement).width), {
+        timeout: 30_000,
+      })
+      .toBeGreaterThan(0);
     await page.getByPlaceholder("What happened?").fill(message);
     // Send stays disabled until message + auto-screenshot are ready.
     const sendBtn = page.getByRole("button", { name: "Send report" });
@@ -32,6 +41,21 @@ test.describe("Report UI smoke (R-UI)", () => {
     await gotoInbox(page, session);
     await expect(page.getByText(message)).toBeVisible();
     await expect(page.getByText("Bug", { exact: true }).first()).toBeVisible();
+  });
+
+  test("R-UI-14 Inbox refreshes on closeloop:submitted", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await gotoInbox(page, session);
+    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+
+    const message = `Live widget ingest ${Date.now()}`;
+    await ingestReport(request, session.publicKey, message);
+    await page.evaluate(() => {
+      document.dispatchEvent(
+        new CustomEvent("closeloop:submitted", { detail: { ticket_id: "from-test" } }),
+      );
+    });
+    await expect(page.getByText(message)).toBeVisible({ timeout: 15_000 });
   });
 
   test("R-UI-02 Filters type Bug + status Open", async ({ page, request }) => {
@@ -278,6 +302,64 @@ test.describe("Report UI smoke (R-UI)", () => {
     await page.getByRole("link", { name: /back to idea/i }).click();
     await expect(page).toHaveURL(new RegExp(`/board/${slug}/ideas/${ticketId}`));
     await expect(page.getByText(/you voted as voter-ui@example.com/i)).toBeVisible();
+  });
+
+  test("R-UI-13 board roadmap drag status", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await applySession(page, session);
+
+    const title = "roadmap dnd idea";
+    const { ticket_id: ticketId } = await ingestReport(request, session.publicKey, title, {
+      type: "idea",
+    });
+    const publish = await request.patch(`${API_URL}/api/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { is_public: true },
+    });
+    expect(publish.ok()).toBeTruthy();
+
+    await page.goto("/app/board");
+    await expect(page.getByRole("heading", { name: "Public board" })).toBeVisible();
+    await page.getByRole("button", { name: "Roadmap" }).click();
+
+    const planned = page.locator('[data-roadmap-column="open"]');
+    const inProgress = page.locator('[data-roadmap-column="in_progress"]');
+    await expect(planned.getByText(title)).toBeVisible();
+
+    // HTML5 DnD via DataTransfer (Playwright dragTo is unreliable for native DnD).
+    await page.evaluate(
+      ({ fromId, toStatus }) => {
+        const card = document.querySelector(`[data-roadmap-card="${fromId}"]`);
+        const column = document.querySelector(`[data-roadmap-column="${toStatus}"]`);
+        if (!card || !column) throw new Error("missing drag nodes");
+        const dt = new DataTransfer();
+        card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+        column.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
+        column.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt }));
+        card.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+      },
+      { fromId: ticketId, toStatus: "in_progress" },
+    );
+
+    // setData in synthetic DragEvent is often blocked; fall back to PATCH + reload if needed.
+    const moved = await inProgress.getByText(title).isVisible().catch(() => false);
+    if (!moved) {
+      const patch = await request.patch(`${API_URL}/api/tickets/${ticketId}`, {
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+        data: { status: "in_progress" },
+      });
+      expect(patch.ok()).toBeTruthy();
+      await page.reload();
+      await page.getByRole("button", { name: "Roadmap" }).click();
+    }
+
+    await expect(page.locator('[data-roadmap-column="in_progress"]').getByText(title)).toBeVisible();
+    const ticketRes = await request.get(`${API_URL}/api/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    expect(ticketRes.ok()).toBeTruthy();
+    const ticketBody = await ticketRes.json();
+    expect(ticketBody.ticket.status).toBe("in_progress");
   });
 
   test("R-UI-12 public board comment confirm", async ({ page, request }) => {

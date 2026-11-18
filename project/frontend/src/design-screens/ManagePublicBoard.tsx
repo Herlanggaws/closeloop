@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { api } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
+import { TYPE_STYLE } from "./publicBoardShared";
 
 type Ticket = {
   id: string;
@@ -50,6 +51,14 @@ const ROADMAP_DOT: Record<string, string> = {
   duplicate: "#A3A3A3",
 };
 
+const ROADMAP_COLUMNS: { status: "open" | "in_progress" | "fixed"; label: string }[] = [
+  { status: "open", label: "Planned" },
+  { status: "in_progress", label: "In progress" },
+  { status: "fixed", label: "Released" },
+];
+
+const ROADMAP_STATUSES = new Set(ROADMAP_COLUMNS.map((c) => c.status));
+
 export function ManagePublicBoard() {
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -68,6 +77,9 @@ export function ManagePublicBoard() {
     "all",
   );
   const [moderating, setModerating] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   async function loadBoardComments(projectId: string, status: string) {
     const res = await api<{ comments: BoardComment[]; pending_count: number }>(
@@ -190,10 +202,51 @@ export function ManagePublicBoard() {
     }
   }
 
+  async function moveRoadmapTicket(ticketId: string, nextStatus: string) {
+    const current = tickets.find((t) => t.id === ticketId);
+    if (!current || current.status === nextStatus) return;
+    const previousStatus = current.status;
+    setMovingId(ticketId);
+    setError("");
+    setTickets((prev) =>
+      prev.map((t) => (t.id === ticketId ? { ...t, status: nextStatus } : t)),
+    );
+    try {
+      const res = await api<{ ticket: Ticket }>(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId
+            ? { ...t, status: res.ticket.status, is_public: res.ticket.is_public }
+            : t,
+        ),
+      );
+    } catch (err) {
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: previousStatus } : t)),
+      );
+      setError(err instanceof Error ? err.message : "Could not move idea");
+    } finally {
+      setMovingId(null);
+    }
+  }
+
   const plan = me?.org.plan || "free";
   const email = me?.user.email || "";
   const publicPath = project?.board_slug ? `/board/${project.board_slug}` : "";
   const ideaCount = tickets.filter((t) => t.status !== "duplicate").length;
+  const roadmapByStatus = useMemo(() => {
+    const map: Record<string, Ticket[]> = { open: [], in_progress: [], fixed: [] };
+    for (const ticket of tickets) {
+      if (!ticket.is_public || !ROADMAP_STATUSES.has(ticket.status as "open" | "in_progress" | "fixed")) {
+        continue;
+      }
+      map[ticket.status].push(ticket);
+    }
+    return map;
+  }, [tickets]);
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -373,12 +426,102 @@ export function ManagePublicBoard() {
                   </p>
                 </section>
               ) : activeTab === "roadmap" ? (
-                <div className="max-w-[880px] rounded-xl border border-[#17171714] bg-[#FAFAFA] px-6 py-10 text-center">
-                  <p className="font-ds-sans text-[15px] font-medium text-[#171717]">
-                    Roadmap moderation
+                <section className="max-w-[1100px]">
+                  <p className="mb-4 font-ds-ui text-[13px] text-[#737373]">
+                    Drag public ideas between columns. Moving to Released marks the ticket fixed
+                    and notifies reporters and voters.
                   </p>
-                  <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">Coming soon.</p>
-                </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {ROADMAP_COLUMNS.map((col) => {
+                      const columnTickets = roadmapByStatus[col.status] || [];
+                      const isActiveDrop = dropTarget === col.status;
+                      return (
+                        <div
+                          key={col.status}
+                          data-roadmap-column={col.status}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            if (dropTarget !== col.status) setDropTarget(col.status);
+                          }}
+                          onDragLeave={() => {
+                            if (dropTarget === col.status) setDropTarget(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDropTarget(null);
+                            const ticketId = e.dataTransfer.getData("text/ticket-id");
+                            if (!ticketId) return;
+                            void moveRoadmapTicket(ticketId, col.status);
+                          }}
+                          className={`flex min-h-[280px] flex-col rounded-xl border bg-white p-4 transition-colors ${
+                            isActiveDrop
+                              ? "border-[#F59E0B] bg-[#FFFBEB]"
+                              : "border-[#17171714]"
+                          }`}
+                        >
+                          <h2 className="font-ds-sans text-[14px] font-semibold text-[#171717]">
+                            {col.label}
+                            <span className="ml-2 font-ds-ui text-[12px] font-normal text-[#A3A3A3]">
+                              {columnTickets.length}
+                            </span>
+                          </h2>
+                          <div className="mt-3 flex flex-1 flex-col gap-2">
+                            {columnTickets.length === 0 ? (
+                              <p className="font-ds-ui text-[12.5px] text-[#A3A3A3]">
+                                Drop ideas here
+                              </p>
+                            ) : (
+                              columnTickets.map((ticket) => {
+                                const typeStyle = TYPE_STYLE[ticket.type] || TYPE_STYLE.idea;
+                                const busy = movingId === ticket.id;
+                                return (
+                                  <div
+                                    key={ticket.id}
+                                    draggable={!busy}
+                                    data-roadmap-card={ticket.id}
+                                    onDragStart={(e) => {
+                                      e.dataTransfer.setData("text/ticket-id", ticket.id);
+                                      e.dataTransfer.effectAllowed = "move";
+                                      setDraggingId(ticket.id);
+                                    }}
+                                    onDragEnd={() => {
+                                      setDraggingId(null);
+                                      setDropTarget(null);
+                                    }}
+                                    className={`rounded-lg border border-[#17171714] px-3 py-2.5 ${
+                                      busy
+                                        ? "cursor-wait opacity-60"
+                                        : "cursor-grab active:cursor-grabbing"
+                                    } ${draggingId === ticket.id ? "opacity-50" : ""}`}
+                                  >
+                                    <div className="font-ds-sans text-[13.5px] font-medium text-[#171717]">
+                                      {ticket.title}
+                                    </div>
+                                    <div className="mt-1.5 flex items-center gap-2">
+                                      <span
+                                        className="inline-flex rounded-md px-1.5 py-0.5 font-ds-ui text-[10px] font-medium"
+                                        style={{
+                                          background: typeStyle.bg,
+                                          color: typeStyle.text,
+                                        }}
+                                      >
+                                        {typeStyle.label}
+                                      </span>
+                                      <span className="font-ds-ui text-[11px] text-[#A3A3A3]">
+                                        —
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               ) : (
                 <section className="max-w-[880px]">
                   <div className="mb-4 flex flex-wrap gap-2">

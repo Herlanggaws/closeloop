@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { subscribeWidgetSubmitted } from "@/lib/widget-events";
 import { AppSidebar } from "@/components/AppSidebar";
 import { API_URL, api, clearProjectSelection } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
@@ -107,6 +108,7 @@ export function Inbox() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -148,6 +150,12 @@ export function Inbox() {
   }, [router]);
 
   useEffect(() => {
+    return subscribeWidgetSubmitted(() => {
+      setRefreshNonce((n) => n + 1);
+    });
+  }, []);
+
+  useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
     if (!projectId) return;
 
@@ -184,7 +192,7 @@ export function Inbox() {
     return () => {
       cancelled = true;
     };
-  }, [statusFilter, platformFilter, router]);
+  }, [statusFilter, platformFilter, refreshNonce, router]);
 
   const filtered = useMemo(() => {
     let list = tickets;
