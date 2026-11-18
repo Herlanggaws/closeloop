@@ -303,17 +303,8 @@ export function Inbox() {
         avatarUrl={me?.user?.avatar_url}
         active="inbox"
         inboxCount={filtered.length}
-        afterSwitcher={
-          <label className="mt-2 flex h-8 items-center gap-2 rounded-md border border-[#1717171F] bg-white px-2.5 shadow-[0_1px_2px_#0000000A]">
-            <span className="text-[13px] text-[#A3A3A3]">⌕</span>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search reports"
-              className="min-w-0 flex-1 bg-transparent font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3]"
-            />
-          </label>
-        }
+        searchValue={search}
+        onSearchChange={setSearch}
       />
 
       <main className="flex min-h-screen min-w-0 flex-1 flex-col">
