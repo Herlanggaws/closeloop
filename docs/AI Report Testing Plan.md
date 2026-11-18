@@ -145,6 +145,14 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-SLACK-04 | Mark fixed note | Slack saved | MCP mark_fixed + note | POST includes fixed + note | mcp mark_fixed enqueue |
 | R-SLACK-05 | Same status no-op | Slack saved; ticket open | PATCH status=open | No slack job/post | from==to guard |
 
+### 4.4c Public board (F9 · S-11 / S-24)
+
+| ID | Case | Given | When | Then | Fix hint |
+| --- | --- | --- | --- | --- | --- |
+| R-BOARD-01 | Publish appears | Project has `board_slug` | PATCH `is_public=true` + GET public board | Idea listed with title | SetTicketPublic + PublicBoardBySlug |
+| R-BOARD-02 | Unpublished / bad slug | Ticket not public / unknown slug | GET public board | Empty list / 404 | is_public filter |
+| R-BOARD-03 | No private fields | Published ticket with email/context | GET public board + idea | Payload has no message/context/email/attachments | PublicIdea DTO |
+
 ### 4.5 MCP read path (F5 · SC-2)
 
 | ID | Case | Given | When | Then | Fix hint |
@@ -163,7 +171,8 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-03 | Merge flow | Multi-select → `/app/inbox/merge` → confirm | Parent detail shows merged count |
 | R-UI-04 | Mark fixed UI | Detail → fixed → submit note | Status Fixed; activity updated |
 | R-UI-05 | Banner payload | After fix + identify | `/v1/ingest/updates` non-empty (widget banner assert light) |
-| R-UI-06 | M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | No Auto PR/Public board links; both routes redirect to inbox |
+| R-UI-06 | Post-M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | Public board link + page live; Auto PR still hidden/redirect |
+| R-UI-07 | Public board | Publish idea via API | Open `/board/{slug}` | Published title visible |
 
 ---
 
@@ -258,13 +267,13 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…03 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
 - [x] Mail sink assert untuk R-FIX-03/04
 - [x] MCP JSON-RPC client helper
 
 ### Phase C — L3 UI + agent UX
 
-- [x] Playwright scaffold; R-UI-01…06 (`frontend/e2e/reports.spec.ts`, `pnpm test:reports:ui`)
+- [x] Playwright scaffold; R-UI-01…07 (`frontend/e2e/reports.spec.ts`, `pnpm test:reports:ui`)
 - [x] AGENTS.md section: report test loop pointing ke dokumen ini
 - [ ] Optional: Closeloop MCP tool `run_report_tests` yang nge-wrap script + return summary
 

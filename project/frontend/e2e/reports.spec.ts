@@ -152,21 +152,49 @@ test.describe("Report UI smoke (R-UI)", () => {
     expect(secondBody.updates || []).toHaveLength(0);
   });
 
-  test("R-UI-06 M1 nav hide + post-M1 redirects", async ({ page, request }) => {
+  test("R-UI-06 post-M1 nav: board live, Auto PR still hidden", async ({ page, request }) => {
     const session = await seedSession(request);
     await gotoInbox(page, session);
 
     const nav = page.locator("aside nav");
     await expect(nav.getByRole("link", { name: "Inbox" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Public board" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Auto PR runs" })).toHaveCount(0);
-    await expect(nav.getByRole("link", { name: "Public board" })).toHaveCount(0);
 
     await page.goto("/app/auto-pr");
     await expect(page).toHaveURL(/\/app\/inbox/);
     await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
 
     await page.goto("/app/board");
-    await expect(page).toHaveURL(/\/app\/inbox/);
-    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+    await expect(page).toHaveURL(/\/app\/board/);
+    await expect(page.getByRole("heading", { name: "Public board" })).toBeVisible();
+  });
+
+  test("R-UI-07 public board shows published idea", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    expect(projectRes.ok()).toBeTruthy();
+    const projectBody = await projectRes.json();
+    const slug = projectBody.project.board_slug as string;
+    expect(slug).toBeTruthy();
+
+    const { ticket_id: ticketId } = await ingestReport(
+      request,
+      session.publicKey,
+      "public board smoke idea",
+      { type: "idea" },
+    );
+
+    const publish = await request.patch(`${API_URL}/api/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { is_public: true },
+    });
+    expect(publish.ok()).toBeTruthy();
+
+    await page.goto(`/board/${slug}`);
+    await expect(page.getByRole("heading", { name: "Ideas" })).toBeVisible();
+    await expect(page.getByText("public board smoke idea")).toBeVisible();
   });
 });

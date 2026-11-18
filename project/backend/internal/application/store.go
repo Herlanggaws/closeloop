@@ -48,6 +48,7 @@ type Project struct {
 	Platforms          []string `json:"platforms"`
 	NotifyEnabled      bool     `json:"notify_enabled"`
 	SensitiveSelectors []string `json:"sensitive_selectors"`
+	BoardSlug          string   `json:"board_slug"`
 }
 
 type Ticket struct {
@@ -57,6 +58,7 @@ type Ticket struct {
 	Status      string         `json:"status"`
 	Title       string         `json:"title"`
 	ReportCount int            `json:"report_count"`
+	IsPublic    bool           `json:"is_public"`
 	FixedAt     sql.NullTime   `json:"-"`
 	FixedNote   sql.NullString `json:"-"`
 	CreatedAt   time.Time      `json:"created_at"`
@@ -79,6 +81,7 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 		"status":       t.Status,
 		"title":        t.Title,
 		"report_count": t.ReportCount,
+		"is_public":    t.IsPublic,
 		"fixed_at":     fixedAt,
 		"fixed_note":   fixedNote,
 		"created_at":   t.CreatedAt,
@@ -342,13 +345,17 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 		return Project{}, "", ErrPlanRequired
 	}
 
+	slug, err := s.allocateBoardSlug(ctx, tx, name)
+	if err != nil {
+		return Project{}, "", err
+	}
 	var p Project
 	var plats, sels StringArray
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO projects(org_id, name, platforms) VALUES ($1,$2,$3)
-		RETURNING id, org_id, name, platforms, notify_enabled, sensitive_selectors`,
-		orgID, name, asArray(platforms)).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels)
+		INSERT INTO projects(org_id, name, platforms, board_slug) VALUES ($1,$2,$3,$4)
+		RETURNING id, org_id, name, platforms, notify_enabled, sensitive_selectors, COALESCE(board_slug,'')`,
+		orgID, name, asArray(platforms), slug).
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels, &p.BoardSlug)
 	if err != nil {
 		return Project{}, "", err
 	}
@@ -366,7 +373,7 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 
 func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors
+		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors, COALESCE(board_slug,'')
 		FROM projects WHERE org_id=$1 AND deleted_at IS NULL ORDER BY created_at`, orgID)
 	if err != nil {
 		return nil, err
@@ -376,7 +383,7 @@ func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, erro
 	for rows.Next() {
 		var p Project
 		var plats, sels StringArray
-		if err := rows.Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels); err != nil {
+		if err := rows.Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels, &p.BoardSlug); err != nil {
 			return nil, err
 		}
 		p.Platforms, p.SensitiveSelectors = []string(plats), []string(sels)
@@ -389,9 +396,9 @@ func (s *Store) ProjectByID(ctx context.Context, projectID string) (Project, err
 	var p Project
 	var plats, sels StringArray
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors
+		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors, COALESCE(board_slug,'')
 		FROM projects WHERE id=$1 AND deleted_at IS NULL`, projectID).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels)
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels, &p.BoardSlug)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrNotFound
 	}
@@ -403,10 +410,10 @@ func (s *Store) ProjectByPublicKey(ctx context.Context, key string) (Project, er
 	var p Project
 	var plats, sels StringArray
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT p.id, p.org_id, p.name, p.platforms, p.notify_enabled, p.sensitive_selectors
+		SELECT p.id, p.org_id, p.name, p.platforms, p.notify_enabled, p.sensitive_selectors, COALESCE(p.board_slug,'')
 		FROM project_keys pk JOIN projects p ON p.id=pk.project_id
 		WHERE pk.public_key=$1 AND pk.revoked_at IS NULL AND p.deleted_at IS NULL`, key).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels)
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels, &p.BoardSlug)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrUnauthorized
 	}
@@ -425,7 +432,7 @@ func (s *Store) PublicKeyForProject(ctx context.Context, projectID string) (stri
 	return key, err
 }
 
-func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, name *string, platforms *[]string, notify *bool, selectors *[]string) error {
+func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, name *string, platforms *[]string, notify *bool, selectors *[]string, boardSlug *string) error {
 	p, err := s.ProjectByID(ctx, projectID)
 	if err != nil {
 		return err
@@ -442,11 +449,35 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, nam
 	if selectors != nil {
 		p.SensitiveSelectors = *selectors
 	}
+	if boardSlug != nil {
+		slug, err := NormalizeBoardSlug(*boardSlug)
+		if err != nil {
+			return err
+		}
+		var taken bool
+		if err := s.DB.QueryRowContext(ctx, `
+			SELECT EXISTS(
+				SELECT 1 FROM projects WHERE board_slug=$1 AND id<>$2 AND deleted_at IS NULL
+			)`, slug, projectID).Scan(&taken); err != nil {
+			return err
+		}
+		if taken {
+			return ErrConflict
+		}
+		p.BoardSlug = slug
+	}
 	_, err = s.DB.ExecContext(ctx, `
-		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, sensitive_selectors=$5
+		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, sensitive_selectors=$5, board_slug=$6
 		WHERE id=$1 AND deleted_at IS NULL`,
-		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, asArray(p.SensitiveSelectors))
+		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, asArray(p.SensitiveSelectors), nullEmpty(p.BoardSlug))
 	return err
+}
+
+func nullEmpty(s string) any {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	return s
 }
 
 func (s *Store) UserIsProjectOwner(ctx context.Context, userID, projectID string) (bool, error) {
@@ -841,7 +872,7 @@ func (s *Store) AttachmentForUpload(ctx context.Context, attachmentID, token str
 }
 
 func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platform string) ([]Ticket, error) {
-	q := `SELECT id, project_id, type, status, title, report_count, fixed_at, fixed_note, created_at, updated_at
+	q := `SELECT id, project_id, type, status, title, report_count, is_public, fixed_at, fixed_note, created_at, updated_at
 		FROM tickets WHERE project_id=$1
 		AND EXISTS (
 			SELECT 1 FROM reports r
@@ -876,7 +907,7 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 	var out []Ticket
 	for rows.Next() {
 		var t Ticket
-		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -887,9 +918,9 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 func (s *Store) GetTicket(ctx context.Context, ticketID string) (Ticket, error) {
 	var t Ticket
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT id, project_id, type, status, title, report_count, fixed_at, fixed_note, created_at, updated_at
+		SELECT id, project_id, type, status, title, report_count, is_public, fixed_at, fixed_note, created_at, updated_at
 		FROM tickets WHERE id=$1`, ticketID).
-		Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt)
+		Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Ticket{}, ErrNotFound
 	}
