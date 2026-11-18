@@ -101,7 +101,7 @@ Duration: ${DURATION}
 
 ## Summary
 
-- Suite: Playwright L3 report UI (\`R-UI-01\`…\`R-UI-13\`)
+- Suite: Playwright L3 report UI (\`R-UI-01\`…\`R-UI-14\`)
 - Base URL: \`${PLAYWRIGHT_BASE_URL}\`
 - API: \`${NEXT_PUBLIC_API_URL}\`
 - Command: \`pnpm test:reports:ui\` / \`bash scripts/test-reports-ui.sh\`

@@ -22,6 +22,15 @@ test.describe("Report UI smoke (R-UI)", () => {
     await page.getByRole("button", { name: "Report" }).click();
     await expect(page.getByText("Send feedback", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: /^bug$/i }).click();
+    // Auto-screenshot should paint without requiring Retake.
+    await expect(page.getByText("No screenshot yet")).toBeHidden({ timeout: 30_000 });
+    const preview = page.locator("canvas").first();
+    await expect(preview).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(async () => preview.evaluate((node) => (node as HTMLCanvasElement).width), {
+        timeout: 30_000,
+      })
+      .toBeGreaterThan(0);
     await page.getByPlaceholder("What happened?").fill(message);
     // Send stays disabled until message + auto-screenshot are ready.
     const sendBtn = page.getByRole("button", { name: "Send report" });
@@ -32,6 +41,21 @@ test.describe("Report UI smoke (R-UI)", () => {
     await gotoInbox(page, session);
     await expect(page.getByText(message)).toBeVisible();
     await expect(page.getByText("Bug", { exact: true }).first()).toBeVisible();
+  });
+
+  test("R-UI-14 Inbox refreshes on closeloop:submitted", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await gotoInbox(page, session);
+    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+
+    const message = `Live widget ingest ${Date.now()}`;
+    await ingestReport(request, session.publicKey, message);
+    await page.evaluate(() => {
+      document.dispatchEvent(
+        new CustomEvent("closeloop:submitted", { detail: { ticket_id: "from-test" } }),
+      );
+    });
+    await expect(page.getByText(message)).toBeVisible({ timeout: 15_000 });
   });
 
   test("R-UI-02 Filters type Bug + status Open", async ({ page, request }) => {
