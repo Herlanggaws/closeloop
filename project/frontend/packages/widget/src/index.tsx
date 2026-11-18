@@ -748,6 +748,8 @@ function Widget({ cfg }: { cfg: Config }) {
       font-size:12px; font-weight:500; color:#171717;
     }
     .powered { margin-top:12px; text-align:center; color:#a3a3a3; font-size:11px; }
+    .powered a { color:#737373; text-decoration:none; font-weight:500; }
+    .powered a:hover { color:#171717; text-decoration:underline; }
     .banner {
       position:fixed; left:50%; top:24px; transform:translateX(-50%);
       display:flex; align-items:center; gap:14px;
@@ -875,7 +877,12 @@ function Widget({ cfg }: { cfg: Config }) {
                 Cancel
               </button>
             </div>
-            <div class="powered">Powered by Saidloop</div>
+            <div class="powered">
+              Powered by{" "}
+              <a href="https://saidloop.com" target="_blank" rel="noopener noreferrer">
+                Saidloop
+              </a>
+            </div>
           </div>
         </>
       )}
@@ -893,7 +900,12 @@ function Widget({ cfg }: { cfg: Config }) {
           >
             Done
           </button>
-          <div class="powered">Powered by Saidloop</div>
+          <div class="powered">
+            Powered by{" "}
+            <a href="https://saidloop.com" target="_blank" rel="noopener noreferrer">
+              Saidloop
+            </a>
+          </div>
         </div>
       )}
       {state === "banner" && banner && (
