@@ -1009,13 +1009,15 @@ func (s *Server) patchTicket(c *gin.Context) {
 			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID, channels)
 			_ = s.Store.EnqueueVoteReleased(c.Request.Context(), t.ID)
 		}
-		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
+		slackEv := application.SlackNotifyEvent{
 			TicketID: t.ID,
 			Event:    "status_changed",
 			From:     fromStatus,
 			To:       status,
 			Note:     body.Note,
-		})
+		}
+		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, slackEv)
+		_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), t.ProjectID, slackEv)
 	}
 	t, _ = s.Store.GetTicket(c.Request.Context(), t.ID)
 	c.JSON(200, gin.H{"ticket": t})
@@ -1335,10 +1337,12 @@ func (s *Server) ingestReport(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), p.ID, application.SlackNotifyEvent{
+	createdEv := application.SlackNotifyEvent{
 		TicketID: ticketID,
 		Event:    "new_report",
-	})
+	}
+	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), p.ID, createdEv)
+	_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), p.ID, createdEv)
 	c.JSON(201, gin.H{
 		"ticket_id":     ticketID,
 		"report_id":     reportID,

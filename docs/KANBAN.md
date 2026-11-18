@@ -42,7 +42,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + Ideas vote counts + comment moderation + roadmap DnD columns |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + email/banner/voter notify kill switches + public key + mask-all-text-inputs + soft-delete (30d purge) live; board domain shell |
-| S-13 Integrations | `/app/settings/integrations` | **Partial** pen-aligned catalog; Sentry/PostHog + Slack webhook wired; GitHub/Linear/Jira/App/Webhooks stubs (F8/F10) |
+| S-13 Integrations | `/app/settings/integrations` | **Partial** pen-aligned catalog; Sentry/PostHog + Slack + outbound Webhooks wired; GitHub/Linear/Jira/App stubs (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
@@ -98,6 +98,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F8** Slack new-report via Incoming Webhook (Settings → Integrations)
 - [x] **F8** Slack status notifications (same webhook; OAuth channel picker later)
 - [x] **F8** Slack event filters (new bug / idea / status / marked fixed)
+- [x] **F8** Outbound Webhooks (HTTPS + HMAC, ticket.created / status_changed / fixed)
 - [ ] **F8** Slack OAuth channel picker
 - [ ] **F8** GitHub Issues / Linear / Jira create + bi-directional status
 - [x] **F9** Builder publish controls + public ideas list (`/app/board`, `/board/[slug]`)

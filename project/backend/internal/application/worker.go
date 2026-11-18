@@ -10,6 +10,7 @@ import (
 
 	"github.com/closeloop/api/internal/infrastructure/email"
 	"github.com/closeloop/api/internal/infrastructure/slack"
+	"github.com/closeloop/api/internal/infrastructure/webhook"
 )
 
 const projectRetention = 30 * 24 * time.Hour
@@ -23,16 +24,17 @@ type ProjectFileCleaner interface {
 }
 
 type WorkerDeps struct {
-	Mail   MailSender
-	Slack  slack.Poster
-	WebURL string
+	Mail     MailSender
+	Slack    slack.Poster
+	Webhook  webhook.Poster
+	WebURL   string
 }
 
 func RunWorker(ctx context.Context, store *Store, mail MailSender, files ProjectFileCleaner, webURL string, slackPoster slack.Poster) {
 	if slackPoster == nil {
 		slackPoster = slack.NewClient()
 	}
-	deps := WorkerDeps{Mail: mail, Slack: slackPoster, WebURL: webURL}
+	deps := WorkerDeps{Mail: mail, Slack: slackPoster, Webhook: webhook.NewClient(), WebURL: webURL}
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	purgeTicker := time.NewTicker(time.Hour)
@@ -147,6 +149,18 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 			return err
 		}
 		return notifySlack(ctx, store, deps, p.TicketID, p.Event, p.From, p.To, p.Note)
+	case "notify_webhook":
+		var p struct {
+			TicketID string `json:"ticket_id"`
+			Event    string `json:"event"`
+			From     string `json:"from"`
+			To       string `json:"to"`
+			Note     string `json:"note"`
+		}
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return err
+		}
+		return notifyOutboundWebhook(ctx, store, deps, p.TicketID, p.Event, p.From, p.To, p.Note)
 	case "notify_vote_verify":
 		var p struct {
 			TicketID    string `json:"ticket_id"`
@@ -295,4 +309,50 @@ func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID, e
 		body = slack.NewReportPayload(project.Name, ticket.Type, ticket.Title, ticketURL)
 	}
 	return deps.Slack.PostWebhook(ctx, webhookURL, body)
+}
+
+func notifyOutboundWebhook(ctx context.Context, store *Store, deps WorkerDeps, ticketID, event, from, to, note string) error {
+	if deps.Webhook == nil {
+		return nil
+	}
+	if event == "" {
+		event = "ticket.created"
+	}
+	ticket, err := store.GetTicket(ctx, ticketID)
+	if err != nil {
+		if err == ErrNotFound || err == ErrPlanRequired {
+			return nil
+		}
+		return err
+	}
+	url, secret, err := store.OutboundWebhookConfig(ctx, ticket.ProjectID)
+	if err != nil {
+		return err
+	}
+	if url == "" || secret == "" {
+		return nil
+	}
+	ticketURL := ""
+	if base := strings.TrimRight(deps.WebURL, "/"); base != "" {
+		ticketURL = base + "/app/tickets/" + ticket.ID
+	}
+	body := map[string]any{
+		"event":      event,
+		"ticket_id":  ticket.ID,
+		"project_id": ticket.ProjectID,
+		"type":       ticket.Type,
+		"title":      ticket.Title,
+		"status":     ticket.Status,
+		"url":        ticketURL,
+	}
+	if from != "" {
+		body["from"] = from
+	}
+	if to != "" {
+		body["to"] = to
+	}
+	if strings.TrimSpace(note) != "" {
+		body["note"] = strings.TrimSpace(note)
+	}
+	return deps.Webhook.PostSigned(ctx, url, secret, body)
 }

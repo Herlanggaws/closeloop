@@ -146,6 +146,9 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-SLACK-02 | No Slack config | No slack integration | Ingest + ProcessJobsOnce | No `notify_slack` job / no POST | EnqueueSlackNotify guard |
 | R-SLACK-03 | Status change | Slack saved; ticket open | PATCH status=in_progress | POST with from/to | patchTicket → status_changed |
 | R-SLACK-04 | Mark fixed note | Slack saved | MCP mark_fixed + note | POST includes fixed + note | mcp mark_fixed enqueue |
+| R-HOOK-01 | Outbound created | Webhooks URL + secret | Ingest bug | Signed POST `ticket.created` | EnqueueOutboundWebhook |
+| R-HOOK-02 | Event filter + auto secret | events=`ticket.fixed` only | Ingest then mark fixed | Create skipped; fixed posts; secret generated | normalizeOutboundEvents |
+| R-HOOK-03 | Reject HTTP URL | `http://…` | PUT webhooks | 400 | UpsertIntegration |
 | R-SLACK-05 | Same status no-op | Slack saved; ticket open | PATCH status=open | No slack job/post | from==to guard |
 
 ### 4.4c Public board (F9 · S-11 / S-24)

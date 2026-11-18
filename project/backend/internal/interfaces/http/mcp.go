@@ -192,12 +192,14 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID, application.DefaultNotifyChannels())
 			_ = s.Store.EnqueueVoteReleased(c.Request.Context(), t.ID)
 		}
-		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
+		statusEv := application.SlackNotifyEvent{
 			TicketID: t.ID,
 			Event:    "status_changed",
 			From:     fromStatus,
 			To:       toStatus,
-		})
+		}
+		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, statusEv)
+		_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), t.ProjectID, statusEv)
 		return s.Store.GetTicket(c.Request.Context(), t.ID)
 	case "add_note":
 		if !canWrite {
@@ -234,13 +236,15 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 			return nil, err
 		}
 		_ = s.Store.EnqueueVoteReleased(c.Request.Context(), t.ID)
-		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
+		fixedEv := application.SlackNotifyEvent{
 			TicketID: t.ID,
 			Event:    "status_changed",
 			From:     fromStatus,
 			To:       "fixed",
 			Note:     note,
-		})
+		}
+		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, fixedEv)
+		_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), t.ProjectID, fixedEv)
 		return map[string]any{"queued": true, "ticket_id": t.ID}, nil
 	default:
 		return nil, application.ErrNotFound

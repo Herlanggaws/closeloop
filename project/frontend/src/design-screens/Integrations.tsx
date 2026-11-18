@@ -18,7 +18,7 @@ type IntegrationRow = {
   config: Record<string, unknown> | string;
 };
 
-type WiredProvider = "sentry" | "posthog" | "slack";
+type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks";
 
 type CatalogItem = {
   id: string;
@@ -101,13 +101,22 @@ const DEBUG_CATALOG: CatalogItem[] = [
     description: "POST every report event to your endpoint",
     icon: "Wh",
     iconBg: "#EA6C0C",
-    action: "coming_soon",
+    action: "configure",
+    wired: "webhooks",
   },
 ];
 
 const SLACK_EVENT_KEYS = ["new_bug", "new_idea", "status_changed", "marked_fixed"] as const;
 type SlackEventKey = (typeof SLACK_EVENT_KEYS)[number];
 type SlackEventsState = Record<SlackEventKey, boolean>;
+
+const WEBHOOK_EVENT_KEYS = [
+  "ticket.created",
+  "ticket.status_changed",
+  "ticket.fixed",
+] as const;
+type WebhookEventKey = (typeof WEBHOOK_EVENT_KEYS)[number];
+type WebhookEventsState = Record<WebhookEventKey, boolean>;
 
 function parseConfigObject(raw: IntegrationRow["config"]): Record<string, unknown> {
   if (typeof raw === "string") {
@@ -150,6 +159,25 @@ function slackEventsFromConfig(raw: IntegrationRow["config"]): SlackEventsState 
   return out;
 }
 
+function webhookEventsFromConfig(raw: IntegrationRow["config"]): WebhookEventsState {
+  const defaults: WebhookEventsState = {
+    "ticket.created": true,
+    "ticket.status_changed": true,
+    "ticket.fixed": true,
+  };
+  const obj = parseConfigObject(raw);
+  const list = obj.events;
+  if (!Array.isArray(list) || list.length === 0) return defaults;
+  const enabled = new Set(
+    list.filter((item): item is string => typeof item === "string" && item.trim() !== ""),
+  );
+  const out = { ...defaults };
+  for (const key of WEBHOOK_EVENT_KEYS) {
+    out[key] = enabled.has(key);
+  }
+  return out;
+}
+
 export function Integrations() {
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -171,6 +199,13 @@ export function Integrations() {
     new_idea: true,
     status_changed: true,
     marked_fixed: true,
+  });
+  const [webhookURL, setWebhookURL] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [webhookEvents, setWebhookEvents] = useState<WebhookEventsState>({
+    "ticket.created": true,
+    "ticket.status_changed": true,
+    "ticket.fixed": true,
   });
 
   useEffect(() => {
@@ -212,6 +247,13 @@ export function Integrations() {
           const row = (integRes.integrations || []).find((i) => i.provider === "slack");
           if (row) setSlackEvents(slackEventsFromConfig(row.config));
         }
+        const hooks = list.find((i) => i.provider === "webhooks");
+        if (hooks) {
+          setWebhookURL(hooks.config.url || "");
+          setWebhookSecret(hooks.config.secret || "");
+          const row = (integRes.integrations || []).find((i) => i.provider === "webhooks");
+          if (row) setWebhookEvents(webhookEventsFromConfig(row.config));
+        }
         setError("");
       })
       .catch((err) => {
@@ -234,10 +276,18 @@ export function Integrations() {
     setSaving(provider);
     setError("");
     try {
-      await api(`/api/projects/${projectId}/integrations/${provider}`, {
+      const res = await api<{
+        integration: { config: Record<string, unknown> | string };
+      }>(`/api/projects/${projectId}/integrations/${provider}`, {
         method: "PUT",
         body: JSON.stringify({ config }),
       });
+      if (provider === "webhooks") {
+        const saved = asConfig(res.integration.config);
+        setWebhookURL(saved.url || webhookURL);
+        setWebhookSecret(saved.secret || "");
+        setWebhookEvents(webhookEventsFromConfig(res.integration.config));
+      }
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
@@ -261,8 +311,16 @@ export function Integrations() {
       } else if (provider === "posthog") {
         setPosthogHost("https://us.posthog.com");
         setPosthogProject("");
-      } else {
+      } else if (provider === "slack") {
         setSlackWebhook("");
+      } else if (provider === "webhooks") {
+        setWebhookURL("");
+        setWebhookSecret("");
+        setWebhookEvents({
+          "ticket.created": true,
+          "ticket.status_changed": true,
+          "ticket.fixed": true,
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not disconnect");
@@ -276,11 +334,13 @@ export function Integrations() {
   const sentryConnected = Boolean(sentryOrg.trim());
   const posthogConnected = Boolean(posthogHost.trim() && posthogProject.trim());
   const slackConnected = Boolean(slackWebhook.trim());
+  const webhooksConnected = Boolean(webhookURL.trim());
 
   function statusFor(item: CatalogItem): "connected" | "none" {
     if (item.wired === "sentry") return sentryConnected ? "connected" : "none";
     if (item.wired === "posthog") return posthogConnected ? "connected" : "none";
     if (item.wired === "slack") return slackConnected ? "connected" : "none";
+    if (item.wired === "webhooks") return webhooksConnected ? "connected" : "none";
     return "none";
   }
 
@@ -482,6 +542,122 @@ export function Integrations() {
                             className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
                           >
                             {saving === "slack" ? "Saving…" : "Save Slack"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {configureModal === "webhooks" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              Outbound webhooks
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              We POST signed JSON to your HTTPS endpoint. Header{" "}
+                              <code className="font-ds-mono text-[11px]">X-Saidloop-Signature</code>{" "}
+                              is HMAC-SHA256 of the body.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {webhooksConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "webhooks"}
+                            onClick={() => void clearProvider("webhooks")}
+                            className="mt-3 cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 grid gap-3">
+                          {(
+                            [
+                              ["ticket.created", "Ticket created"],
+                              ["ticket.status_changed", "Status changed"],
+                              ["ticket.fixed", "Marked fixed"],
+                            ] as const
+                          ).map(([key, label]) => (
+                            <label
+                              key={key}
+                              className="flex cursor-pointer items-center justify-between rounded-lg border border-[#17171714] bg-[#FAFAFA] px-3 py-2.5"
+                            >
+                              <span className="font-ds-ui text-[13px] text-[#171717]">{label}</span>
+                              <input
+                                type="checkbox"
+                                checked={webhookEvents[key]}
+                                onChange={(e) =>
+                                  setWebhookEvents((prev) => ({
+                                    ...prev,
+                                    [key]: e.target.checked,
+                                  }))
+                                }
+                                className="h-4 w-4 accent-[#16A34A]"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-4">
+                          <Field
+                            label="Endpoint URL"
+                            value={webhookURL}
+                            onChange={setWebhookURL}
+                            placeholder="https://example.com/hooks/saidloop"
+                          />
+                        </div>
+                        {webhookSecret ? (
+                          <div className="mt-3 rounded-lg border border-[#17171714] bg-[#FAFAFA] px-3 py-2.5">
+                            <div className="font-ds-ui text-[11px] font-medium text-[#737373]">
+                              Signing secret
+                            </div>
+                            <code className="mt-1 block break-all font-ds-mono text-[12px] text-[#171717]">
+                              {webhookSecret}
+                            </code>
+                          </div>
+                        ) : (
+                          <p className="mt-3 font-ds-ui text-[12px] text-[#A3A3A3]">
+                            A signing secret is generated on save if you leave it blank.
+                          </p>
+                        )}
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              saving === "webhooks" ||
+                              !webhookURL.trim().startsWith("https://") ||
+                              webhookURL.trim().startsWith("https://hooks.slack.com/")
+                            }
+                            onClick={() =>
+                              void saveAndClose("webhooks", {
+                                url: webhookURL.trim(),
+                                ...(webhookSecret.trim()
+                                  ? { secret: webhookSecret.trim() }
+                                  : {}),
+                                events: WEBHOOK_EVENT_KEYS.filter((key) => webhookEvents[key]),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "webhooks" ? "Saving…" : "Save webhooks"}
                           </button>
                         </div>
                       </>

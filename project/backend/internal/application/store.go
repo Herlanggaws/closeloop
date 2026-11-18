@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1347,6 +1349,75 @@ func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID string, ev Sla
 	return err
 }
 
+func (s *Store) EnqueueOutboundWebhook(ctx context.Context, projectID string, ev SlackNotifyEvent) error {
+	if ev.Event == "" {
+		ev.Event = "new_report"
+	}
+	if ev.Event == "status_changed" && ev.From == ev.To {
+		return nil
+	}
+	eventKey := outboundEventKey(ev)
+	if eventKey == "" {
+		return nil
+	}
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
+	}
+	if !outboundEventsEnabled(cfg)[eventKey] {
+		return nil
+	}
+	url, _ := cfg["url"].(string)
+	if !strings.HasPrefix(strings.TrimSpace(url), "https://") {
+		return nil
+	}
+	payload := map[string]any{
+		"ticket_id": ev.TicketID,
+		"event":     eventKey,
+	}
+	if ev.Event == "status_changed" {
+		payload["from"] = ev.From
+		payload["to"] = ev.To
+		if strings.TrimSpace(ev.Note) != "" {
+			payload["note"] = strings.TrimSpace(ev.Note)
+		}
+	}
+	_, err = s.DB.ExecContext(ctx, `
+		INSERT INTO jobs(kind, payload) VALUES ('notify_webhook', $1)`,
+		mustJSON(payload))
+	return err
+}
+
+func (s *Store) OutboundWebhookConfig(ctx context.Context, projectID string) (url, secret string, err error) {
+	var raw json.RawMessage
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", nil
+	}
+	if err != nil {
+		return "", "", err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return "", "", err
+	}
+	url, _ = cfg["url"].(string)
+	secret, _ = cfg["secret"].(string)
+	return strings.TrimSpace(url), strings.TrimSpace(secret), nil
+}
+
 func (s *Store) ClaimJobs(ctx context.Context, limit int) ([]struct {
 	ID      string
 	Kind    string
@@ -1582,9 +1653,119 @@ func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integ
 	return out, rows.Err()
 }
 
+var outboundEventKeys = []string{"ticket.created", "ticket.status_changed", "ticket.fixed"}
+
+func normalizeOutboundEvents(raw any) ([]string, error) {
+	if raw == nil {
+		return append([]string(nil), outboundEventKeys...), nil
+	}
+	var items []string
+	switch v := raw.(type) {
+	case []string:
+		items = append(items, v...)
+	case []any:
+		for _, item := range v {
+			s, ok := item.(string)
+			if !ok {
+				return nil, ErrInvalidInput
+			}
+			items = append(items, s)
+		}
+	default:
+		return nil, ErrInvalidInput
+	}
+	if len(items) == 0 {
+		return append([]string(nil), outboundEventKeys...), nil
+	}
+	allowed := map[string]struct{}{}
+	for _, k := range outboundEventKeys {
+		allowed[k] = struct{}{}
+	}
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(items))
+	for _, s := range items {
+		s = strings.TrimSpace(s)
+		if _, ok := allowed[s]; !ok {
+			return nil, ErrInvalidInput
+		}
+		if _, dup := seen[s]; dup {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+func outboundEventsEnabled(cfg map[string]any) map[string]bool {
+	enabled := map[string]bool{}
+	raw, ok := cfg["events"]
+	if !ok || raw == nil {
+		for _, k := range outboundEventKeys {
+			enabled[k] = true
+		}
+		return enabled
+	}
+	list, err := normalizeOutboundEvents(raw)
+	if err != nil {
+		for _, k := range outboundEventKeys {
+			enabled[k] = true
+		}
+		return enabled
+	}
+	for _, k := range outboundEventKeys {
+		enabled[k] = false
+	}
+	for _, k := range list {
+		enabled[k] = true
+	}
+	return enabled
+}
+
+func outboundEventKey(ev SlackNotifyEvent) string {
+	switch ev.Event {
+	case "", "new_report":
+		return "ticket.created"
+	case "status_changed":
+		if ev.To == "fixed" {
+			return "ticket.fixed"
+		}
+		return "ticket.status_changed"
+	default:
+		return ""
+	}
+}
+
+func generateWebhookSecret() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(buf), nil
+}
+
+func (s *Store) existingWebhookSecret(ctx context.Context, projectID string) (string, error) {
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return "", err
+	}
+	secret, _ := cfg["secret"].(string)
+	return strings.TrimSpace(secret), nil
+}
+
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
-	if provider != "sentry" && provider != "posthog" && provider != "slack" {
+	if provider != "sentry" && provider != "posthog" && provider != "slack" && provider != "webhooks" {
 		return Integration{}, ErrInvalidInput
 	}
 	if config == nil {
@@ -1614,6 +1795,32 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 			return Integration{}, err
 		}
 		cleaned = map[string]any{"webhook_url": url, "events": events}
+	}
+	if provider == "webhooks" {
+		url, _ := cleaned["url"].(string)
+		if !strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "https://hooks.slack.com/") {
+			return Integration{}, ErrInvalidInput
+		}
+		events, err := normalizeOutboundEvents(cleaned["events"])
+		if err != nil {
+			return Integration{}, err
+		}
+		secret, _ := cleaned["secret"].(string)
+		secret = strings.TrimSpace(secret)
+		if secret == "" {
+			existing, err := s.existingWebhookSecret(ctx, projectID)
+			if err != nil {
+				return Integration{}, err
+			}
+			secret = existing
+		}
+		if secret == "" {
+			secret, err = generateWebhookSecret()
+			if err != nil {
+				return Integration{}, err
+			}
+		}
+		cleaned = map[string]any{"url": url, "secret": secret, "events": events}
 	}
 	body, err := json.Marshal(cleaned)
 	if err != nil {
