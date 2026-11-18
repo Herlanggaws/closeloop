@@ -377,23 +377,24 @@ export function Tour({ id, ready = true }: { id: string; ready?: boolean }) {
 
   if (!mounted || !active) return null;
 
-  const step = active.steps[active.index];
+  const current = active;
+  const step = current.steps[current.index];
   if (!step) return null;
-  const footer = tourFooterLabels(active.index, active.steps.length);
+  const footer = tourFooterLabels(current.index, current.steps.length);
   const hole = placement?.hole;
 
   function goNext() {
-    if (active.index >= active.steps.length - 1) {
+    if (current.index >= current.steps.length - 1) {
       endTour({ markSeen: true });
       return;
     }
-    const nextIndex = active.index + 1;
-    setActive({ ...active, index: nextIndex });
+    const nextIndex = current.index + 1;
+    setActive({ ...current, index: nextIndex });
   }
 
   function goBack() {
-    if (active.index <= 0) return;
-    setActive({ ...active, index: active.index - 1 });
+    if (current.index <= 0) return;
+    setActive({ ...current, index: current.index - 1 });
   }
 
   function onSecondary() {
@@ -426,7 +427,7 @@ export function Tour({ id, ready = true }: { id: string; ready?: boolean }) {
           aria-hidden
         >
           <defs>
-            <mask id={`tour-mask-${active.tourId}`}>
+            <mask id={`tour-mask-${current.tourId}`}>
               <rect x="0" y="0" width="100%" height="100%" fill="white" />
               <rect
                 x={hole.x}
@@ -445,7 +446,7 @@ export function Tour({ id, ready = true }: { id: string; ready?: boolean }) {
             width="100%"
             height="100%"
             fill="#0A0A0A8C"
-            mask={`url(#tour-mask-${active.tourId})`}
+            mask={`url(#tour-mask-${current.tourId})`}
           />
           <rect
             x={hole.x}
