@@ -699,10 +699,6 @@ function Widget({ cfg }: { cfg: Config }) {
       border-radius: 2px;
       animation: shotPop 0.2s ease-out;
     }
-    @keyframes scanline {
-      0% { transform: translateY(-100%); }
-      100% { transform: translateY(400%); }
-    }
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
@@ -725,11 +721,6 @@ function Widget({ cfg }: { cfg: Config }) {
       width:22px; height:22px; border:2px solid #d4d4d4;
       border-top-color:#171717; border-radius:50%;
       animation:spin 0.75s linear infinite;
-    }
-    .preview-loading-bar {
-      position:absolute; left:0; right:0; height:2px;
-      background:linear-gradient(90deg, transparent, #2563eb, transparent);
-      animation:scanline 1.6s ease-in-out infinite;
     }
     .preview canvas {
       display:block; width:100%; height:auto;
@@ -824,7 +815,6 @@ function Widget({ cfg }: { cfg: Config }) {
             <div class="preview" ref={previewRef}>
               {capturing && (
                 <div class="preview-loading">
-                  <div class="preview-loading-bar" />
                   <div class="preview-loading-spinner" />
                   <span>Processing capture…</span>
                 </div>
