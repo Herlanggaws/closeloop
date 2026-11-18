@@ -194,3 +194,72 @@ func TestR_FIX_06_FreePlanMCPWriteGated(t *testing.T) {
 		t.Fatalf("unexpected error text: %s", text)
 	}
 }
+
+func TestR_FIX_07_PerActionChannelToggles(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	h.do(http.MethodPost, "/v1/ingest/identify", map[string]any{
+		"user_id": "chan", "email": "chan@example.com",
+	}, h.keyHeaders(seed.PublicKey))
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "bug", "message": "channel toggle", "platform": "web",
+		"email": "chan@example.com", "user_id": "chan",
+	})
+	code, body := h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "fixed",
+		"note":   "banner only",
+		"notify": map[string]any{"email": false, "in_app": true},
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch: %d %v", code, body)
+	}
+	_ = h.drainNotifyJobs()
+	if len(h.mailer.Sent()) != 0 {
+		t.Fatalf("expected no email when notify.email=false, got %d", len(h.mailer.Sent()))
+	}
+	code, updates := h.do(http.MethodGet, "/v1/ingest/updates?user_id=chan", nil, h.keyHeaders(seed.PublicKey))
+	if code != 200 {
+		t.Fatalf("updates: %d %v", code, updates)
+	}
+	list, _ := updates["updates"].([]any)
+	if len(list) < 1 {
+		t.Fatal("expected in-app banner when notify.in_app=true")
+	}
+}
+
+func TestR_FIX_08_BannerKillSwitch(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	off := false
+	code, _ := h.do(http.MethodPatch, "/api/projects/"+seed.ProjectID, map[string]any{
+		"banner_enabled": off,
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch project: %d", code)
+	}
+	h.do(http.MethodPost, "/v1/ingest/identify", map[string]any{
+		"user_id": "banner", "email": "banner@example.com",
+	}, h.keyHeaders(seed.PublicKey))
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "bug", "message": "no banner", "platform": "web",
+		"email": "banner@example.com", "user_id": "banner",
+	})
+	code, body := h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "fixed", "note": "email still ok",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch: %d %v", code, body)
+	}
+	_ = h.drainNotifyJobs()
+	if len(h.mailer.Sent()) == 0 {
+		t.Fatal("expected email when only banner_enabled=false")
+	}
+	code, updates := h.do(http.MethodGet, "/v1/ingest/updates?user_id=banner", nil, h.keyHeaders(seed.PublicKey))
+	if code != 200 {
+		t.Fatalf("updates: %d %v", code, updates)
+	}
+	list, _ := updates["updates"].([]any)
+	if len(list) != 0 {
+		t.Fatalf("expected no in-app banner when banner_enabled=false, got %v", list)
+	}
+}

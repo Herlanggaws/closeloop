@@ -98,7 +98,6 @@ export function AppSidebar({
           label="Auto PR runs"
           active={active === "auto-pr"}
           icon={<IconPullRequest />}
-          comingSoon
         />
         <NavItem
           href="/app/board"
@@ -170,7 +169,11 @@ export function AppSidebar({
                 style={{ width: `${reportsPct}%` }}
               />
             </div>
-            <div className="font-ds-ui text-[11px] text-[#A3A3A3]">Auto PR credits · coming soon</div>
+            <div className="font-ds-ui text-[11px] text-[#A3A3A3]">
+              {typeof usage.auto_pr_credits === "number"
+                ? `${usage.auto_pr_credits} auto PR credit${usage.auto_pr_credits === 1 ? "" : "s"} left`
+                : "Auto PR credits"}
+            </div>
           </div>
         )}
 

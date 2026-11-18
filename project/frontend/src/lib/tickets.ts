@@ -165,6 +165,14 @@ export function eventDescription(event: TicketEvent) {
       : "merged duplicates into this ticket";
   }
   if (event.kind === "created") return "reported this";
+  if (event.kind === "github_issue_created") {
+    const number = typeof payload.number === "number" ? payload.number : null;
+    const url = typeof payload.html_url === "string" ? payload.html_url : "";
+    if (number != null && url) {
+      return `created GitHub issue #${number}`;
+    }
+    return "created a GitHub issue";
+  }
   return event.kind.replace(/_/g, " ");
 }
 

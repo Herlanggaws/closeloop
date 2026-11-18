@@ -43,7 +43,7 @@ echo "Running report suite…"
 set +e
 (
   cd "$ROOT/backend"
-  go test ./internal/interfaces/http/ ./internal/infrastructure/email/ ./internal/infrastructure/slack/ ./internal/application/ \
+  go test ./internal/interfaces/http/ ./internal/infrastructure/email/ ./internal/infrastructure/slack/ ./internal/infrastructure/webhook/ ./internal/infrastructure/githubapp/ ./internal/application/ \
     -count=1 \
     -parallel 1 \
     -p 1 \

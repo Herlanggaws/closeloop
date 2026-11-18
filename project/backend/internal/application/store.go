@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,6 +50,9 @@ type Project struct {
 	Name               string   `json:"name"`
 	Platforms          []string `json:"platforms"`
 	NotifyEnabled      bool     `json:"notify_enabled"`
+	BannerEnabled      bool     `json:"banner_enabled"`
+	MaskTextInputs     bool     `json:"mask_text_inputs"`
+	VoterNotifyEnabled bool     `json:"voter_notify_enabled"`
 	SensitiveSelectors []string `json:"sensitive_selectors"`
 	BoardSlug          string   `json:"board_slug"`
 }
@@ -356,9 +361,9 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 	var plats, sels StringArray
 	err = tx.QueryRowContext(ctx, `
 		INSERT INTO projects(org_id, name, platforms, board_slug) VALUES ($1,$2,$3,$4)
-		RETURNING id, org_id, name, platforms, notify_enabled, sensitive_selectors, COALESCE(board_slug,'')`,
+		RETURNING id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, voter_notify_enabled, sensitive_selectors, COALESCE(board_slug,'')`,
 		orgID, name, asArray(platforms), slug).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels, &p.BoardSlug)
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &p.VoterNotifyEnabled, &sels, &p.BoardSlug)
 	if err != nil {
 		return Project{}, "", err
 	}
@@ -376,7 +381,7 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 
 func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors, COALESCE(board_slug,'')
+		SELECT id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, voter_notify_enabled, sensitive_selectors, COALESCE(board_slug,'')
 		FROM projects WHERE org_id=$1 AND deleted_at IS NULL ORDER BY created_at`, orgID)
 	if err != nil {
 		return nil, err
@@ -386,7 +391,7 @@ func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, erro
 	for rows.Next() {
 		var p Project
 		var plats, sels StringArray
-		if err := rows.Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels, &p.BoardSlug); err != nil {
+		if err := rows.Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &p.VoterNotifyEnabled, &sels, &p.BoardSlug); err != nil {
 			return nil, err
 		}
 		p.Platforms, p.SensitiveSelectors = []string(plats), []string(sels)
@@ -399,9 +404,9 @@ func (s *Store) ProjectByID(ctx context.Context, projectID string) (Project, err
 	var p Project
 	var plats, sels StringArray
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT id, org_id, name, platforms, notify_enabled, sensitive_selectors, COALESCE(board_slug,'')
+		SELECT id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, voter_notify_enabled, sensitive_selectors, COALESCE(board_slug,'')
 		FROM projects WHERE id=$1 AND deleted_at IS NULL`, projectID).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels, &p.BoardSlug)
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &p.VoterNotifyEnabled, &sels, &p.BoardSlug)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrNotFound
 	}
@@ -413,10 +418,10 @@ func (s *Store) ProjectByPublicKey(ctx context.Context, key string) (Project, er
 	var p Project
 	var plats, sels StringArray
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT p.id, p.org_id, p.name, p.platforms, p.notify_enabled, p.sensitive_selectors, COALESCE(p.board_slug,'')
+		SELECT p.id, p.org_id, p.name, p.platforms, p.notify_enabled, p.banner_enabled, p.mask_text_inputs, p.voter_notify_enabled, p.sensitive_selectors, COALESCE(p.board_slug,'')
 		FROM project_keys pk JOIN projects p ON p.id=pk.project_id
 		WHERE pk.public_key=$1 AND pk.revoked_at IS NULL AND p.deleted_at IS NULL`, key).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &sels, &p.BoardSlug)
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &p.VoterNotifyEnabled, &sels, &p.BoardSlug)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrUnauthorized
 	}
@@ -435,7 +440,7 @@ func (s *Store) PublicKeyForProject(ctx context.Context, projectID string) (stri
 	return key, err
 }
 
-func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, name *string, platforms *[]string, notify *bool, selectors *[]string, boardSlug *string) error {
+func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, name *string, platforms *[]string, notify *bool, banner *bool, maskText *bool, voterNotify *bool, selectors *[]string, boardSlug *string) error {
 	p, err := s.ProjectByID(ctx, projectID)
 	if err != nil {
 		return err
@@ -448,6 +453,15 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, nam
 	}
 	if notify != nil {
 		p.NotifyEnabled = *notify
+	}
+	if banner != nil {
+		p.BannerEnabled = *banner
+	}
+	if maskText != nil {
+		p.MaskTextInputs = *maskText
+	}
+	if voterNotify != nil {
+		p.VoterNotifyEnabled = *voterNotify
 	}
 	if selectors != nil {
 		p.SensitiveSelectors = *selectors
@@ -470,9 +484,9 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, nam
 		p.BoardSlug = slug
 	}
 	_, err = s.DB.ExecContext(ctx, `
-		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, sensitive_selectors=$5, board_slug=$6
+		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, banner_enabled=$5, mask_text_inputs=$6, voter_notify_enabled=$7, sensitive_selectors=$8, board_slug=$9
 		WHERE id=$1 AND deleted_at IS NULL`,
-		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, asArray(p.SensitiveSelectors), nullEmpty(p.BoardSlug))
+		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, p.BannerEnabled, p.MaskTextInputs, p.VoterNotifyEnabled, asArray(p.SensitiveSelectors), nullEmpty(p.BoardSlug))
 	return err
 }
 
@@ -1166,10 +1180,25 @@ func (s *Store) MergeTickets(ctx context.Context, parentID, actor string, childI
 	return tx.Commit()
 }
 
-func (s *Store) EnqueueNotify(ctx context.Context, ticketID string) error {
+type NotifyChannels struct {
+	Email bool
+	InApp bool
+}
+
+func DefaultNotifyChannels() NotifyChannels {
+	return NotifyChannels{Email: true, InApp: true}
+}
+
+func (s *Store) EnqueueNotify(ctx context.Context, ticketID string, channels NotifyChannels) error {
 	_, err := s.DB.ExecContext(ctx, `
 		INSERT INTO jobs(kind, payload) VALUES ('notify_reporters', $1)`,
-		mustJSON(map[string]any{"ticket_id": ticketID}))
+		mustJSON(map[string]any{
+			"ticket_id": ticketID,
+			"notify": map[string]any{
+				"email":  channels.Email,
+				"in_app": channels.InApp,
+			},
+		}))
 	return err
 }
 
@@ -1181,6 +1210,92 @@ type SlackNotifyEvent struct {
 	Note     string
 }
 
+var slackEventKeys = []string{"new_bug", "new_idea", "status_changed", "marked_fixed"}
+
+func normalizeSlackEvents(raw any) ([]string, error) {
+	if raw == nil {
+		return append([]string(nil), slackEventKeys...), nil
+	}
+	var items []string
+	switch v := raw.(type) {
+	case []string:
+		items = append(items, v...)
+	case []any:
+		for _, item := range v {
+			s, ok := item.(string)
+			if !ok {
+				return nil, ErrInvalidInput
+			}
+			items = append(items, s)
+		}
+	default:
+		return nil, ErrInvalidInput
+	}
+	if len(items) == 0 {
+		return append([]string(nil), slackEventKeys...), nil
+	}
+	allowed := map[string]struct{}{}
+	for _, k := range slackEventKeys {
+		allowed[k] = struct{}{}
+	}
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(items))
+	for _, s := range items {
+		s = strings.TrimSpace(s)
+		if _, ok := allowed[s]; !ok {
+			return nil, ErrInvalidInput
+		}
+		if _, dup := seen[s]; dup {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+func slackEventsEnabled(cfg map[string]any) map[string]bool {
+	enabled := map[string]bool{}
+	raw, ok := cfg["events"]
+	if !ok || raw == nil {
+		for _, k := range slackEventKeys {
+			enabled[k] = true
+		}
+		return enabled
+	}
+	list, err := normalizeSlackEvents(raw)
+	if err != nil {
+		for _, k := range slackEventKeys {
+			enabled[k] = true
+		}
+		return enabled
+	}
+	for _, k := range slackEventKeys {
+		enabled[k] = false
+	}
+	for _, k := range list {
+		enabled[k] = true
+	}
+	return enabled
+}
+
+func slackFilterKey(ev SlackNotifyEvent, ticketType string) string {
+	switch ev.Event {
+	case "new_report":
+		if ticketType == "idea" {
+			return "new_idea"
+		}
+		return "new_bug"
+	case "status_changed":
+		if ev.To == "fixed" {
+			return "marked_fixed"
+		}
+		return "status_changed"
+	default:
+		return ""
+	}
+}
+
 func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID string, ev SlackNotifyEvent) error {
 	if ev.Event == "" {
 		ev.Event = "new_report"
@@ -1188,13 +1303,33 @@ func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID string, ev Sla
 	if ev.Event == "status_changed" && ev.From == ev.To {
 		return nil
 	}
-	var n int
-	if err := s.DB.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM integrations
-		WHERE project_id=$1 AND provider='slack'`, projectID).Scan(&n); err != nil {
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='slack'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
-	if n == 0 {
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
+	}
+	ticketType := ""
+	if ev.TicketID != "" {
+		t, getErr := s.GetTicket(ctx, ev.TicketID)
+		if getErr != nil {
+			return getErr
+		}
+		ticketType = t.Type
+	}
+	filter := slackFilterKey(ev, ticketType)
+	if filter == "" {
+		return nil
+	}
+	if !slackEventsEnabled(cfg)[filter] {
 		return nil
 	}
 	payload := map[string]any{
@@ -1208,10 +1343,79 @@ func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID string, ev Sla
 			payload["note"] = strings.TrimSpace(ev.Note)
 		}
 	}
-	_, err := s.DB.ExecContext(ctx, `
+	_, err = s.DB.ExecContext(ctx, `
 		INSERT INTO jobs(kind, payload) VALUES ('notify_slack', $1)`,
 		mustJSON(payload))
 	return err
+}
+
+func (s *Store) EnqueueOutboundWebhook(ctx context.Context, projectID string, ev SlackNotifyEvent) error {
+	if ev.Event == "" {
+		ev.Event = "new_report"
+	}
+	if ev.Event == "status_changed" && ev.From == ev.To {
+		return nil
+	}
+	eventKey := outboundEventKey(ev)
+	if eventKey == "" {
+		return nil
+	}
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
+	}
+	if !outboundEventsEnabled(cfg)[eventKey] {
+		return nil
+	}
+	url, _ := cfg["url"].(string)
+	if !strings.HasPrefix(strings.TrimSpace(url), "https://") {
+		return nil
+	}
+	payload := map[string]any{
+		"ticket_id": ev.TicketID,
+		"event":     eventKey,
+	}
+	if ev.Event == "status_changed" {
+		payload["from"] = ev.From
+		payload["to"] = ev.To
+		if strings.TrimSpace(ev.Note) != "" {
+			payload["note"] = strings.TrimSpace(ev.Note)
+		}
+	}
+	_, err = s.DB.ExecContext(ctx, `
+		INSERT INTO jobs(kind, payload) VALUES ('notify_webhook', $1)`,
+		mustJSON(payload))
+	return err
+}
+
+func (s *Store) OutboundWebhookConfig(ctx context.Context, projectID string) (url, secret string, err error) {
+	var raw json.RawMessage
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", nil
+	}
+	if err != nil {
+		return "", "", err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return "", "", err
+	}
+	url, _ = cfg["url"].(string)
+	secret, _ = cfg["secret"].(string)
+	return strings.TrimSpace(url), strings.TrimSpace(secret), nil
 }
 
 func (s *Store) ClaimJobs(ctx context.Context, limit int) ([]struct {
@@ -1282,7 +1486,7 @@ type ReporterNotifyMail struct {
 	AppVersion  string
 }
 
-func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int, []ReporterNotifyMail, error) {
+func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string, wantEmail, wantInApp bool) (int, []ReporterNotifyMail, error) {
 	t, err := s.GetTicket(ctx, ticketID)
 	if err != nil {
 		return 0, nil, err
@@ -1291,7 +1495,9 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 	if err != nil {
 		return 0, nil, err
 	}
-	if !p.NotifyEnabled {
+	sendEmail := wantEmail && p.NotifyEnabled
+	sendInApp := wantInApp && p.BannerEnabled
+	if !sendEmail && !sendInApp {
 		return 0, nil, nil
 	}
 	rows, err := s.DB.QueryContext(ctx, `
@@ -1325,10 +1531,12 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string) (int
 		if err := rows.Scan(&rid, &email, &message, &reportedAt, &appVersion); err != nil {
 			return 0, nil, err
 		}
-		_, _ = s.DB.ExecContext(ctx, `
-			INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
-			VALUES ($1,$2,'in_app',$3,now())`, ticketID, rid, body)
-		if email.Valid && email.String != "" {
+		if sendInApp {
+			_, _ = s.DB.ExecContext(ctx, `
+				INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
+				VALUES ($1,$2,'in_app',$3,now())`, ticketID, rid, body)
+		}
+		if sendEmail && email.Valid && email.String != "" {
 			_, _ = s.DB.ExecContext(ctx, `
 				INSERT INTO notifications(ticket_id, reporter_id, channel, body, sent_at)
 				VALUES ($1,$2,'email',$3,now())`, ticketID, rid, body)
@@ -1420,6 +1628,22 @@ type Integration struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
+func (s *Store) GetIntegrationConfig(ctx context.Context, projectID, provider string) (json.RawMessage, error) {
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations WHERE project_id=$1 AND provider=$2`, projectID, provider).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) == 0 {
+		raw = json.RawMessage(`{}`)
+	}
+	return raw, nil
+}
+
 func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integration, error) {
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT id, project_id, provider, config, updated_at
@@ -1445,9 +1669,119 @@ func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integ
 	return out, rows.Err()
 }
 
+var outboundEventKeys = []string{"ticket.created", "ticket.status_changed", "ticket.fixed"}
+
+func normalizeOutboundEvents(raw any) ([]string, error) {
+	if raw == nil {
+		return append([]string(nil), outboundEventKeys...), nil
+	}
+	var items []string
+	switch v := raw.(type) {
+	case []string:
+		items = append(items, v...)
+	case []any:
+		for _, item := range v {
+			s, ok := item.(string)
+			if !ok {
+				return nil, ErrInvalidInput
+			}
+			items = append(items, s)
+		}
+	default:
+		return nil, ErrInvalidInput
+	}
+	if len(items) == 0 {
+		return append([]string(nil), outboundEventKeys...), nil
+	}
+	allowed := map[string]struct{}{}
+	for _, k := range outboundEventKeys {
+		allowed[k] = struct{}{}
+	}
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(items))
+	for _, s := range items {
+		s = strings.TrimSpace(s)
+		if _, ok := allowed[s]; !ok {
+			return nil, ErrInvalidInput
+		}
+		if _, dup := seen[s]; dup {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+func outboundEventsEnabled(cfg map[string]any) map[string]bool {
+	enabled := map[string]bool{}
+	raw, ok := cfg["events"]
+	if !ok || raw == nil {
+		for _, k := range outboundEventKeys {
+			enabled[k] = true
+		}
+		return enabled
+	}
+	list, err := normalizeOutboundEvents(raw)
+	if err != nil {
+		for _, k := range outboundEventKeys {
+			enabled[k] = true
+		}
+		return enabled
+	}
+	for _, k := range outboundEventKeys {
+		enabled[k] = false
+	}
+	for _, k := range list {
+		enabled[k] = true
+	}
+	return enabled
+}
+
+func outboundEventKey(ev SlackNotifyEvent) string {
+	switch ev.Event {
+	case "", "new_report":
+		return "ticket.created"
+	case "status_changed":
+		if ev.To == "fixed" {
+			return "ticket.fixed"
+		}
+		return "ticket.status_changed"
+	default:
+		return ""
+	}
+}
+
+func generateWebhookSecret() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(buf), nil
+}
+
+func (s *Store) existingWebhookSecret(ctx context.Context, projectID string) (string, error) {
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return "", err
+	}
+	secret, _ := cfg["secret"].(string)
+	return strings.TrimSpace(secret), nil
+}
+
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
-	if provider != "sentry" && provider != "posthog" && provider != "slack" {
+	if provider != "sentry" && provider != "posthog" && provider != "slack" && provider != "webhooks" && provider != "github_app" {
 		return Integration{}, ErrInvalidInput
 	}
 	if config == nil {
@@ -1472,7 +1806,44 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		if !strings.HasPrefix(url, "https://hooks.slack.com/") {
 			return Integration{}, ErrInvalidInput
 		}
-		cleaned = map[string]any{"webhook_url": url}
+		events, err := normalizeSlackEvents(cleaned["events"])
+		if err != nil {
+			return Integration{}, err
+		}
+		cleaned = map[string]any{"webhook_url": url, "events": events}
+	}
+	if provider == "webhooks" {
+		url, _ := cleaned["url"].(string)
+		if !strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "https://hooks.slack.com/") {
+			return Integration{}, ErrInvalidInput
+		}
+		events, err := normalizeOutboundEvents(cleaned["events"])
+		if err != nil {
+			return Integration{}, err
+		}
+		secret, _ := cleaned["secret"].(string)
+		secret = strings.TrimSpace(secret)
+		if secret == "" {
+			existing, err := s.existingWebhookSecret(ctx, projectID)
+			if err != nil {
+				return Integration{}, err
+			}
+			secret = existing
+		}
+		if secret == "" {
+			secret, err = generateWebhookSecret()
+			if err != nil {
+				return Integration{}, err
+			}
+		}
+		cleaned = map[string]any{"url": url, "secret": secret, "events": events}
+	}
+	if provider == "github_app" {
+		cfg, err := normalizeGitHubAppConfig(cleaned)
+		if err != nil {
+			return Integration{}, err
+		}
+		cleaned = cfg
 	}
 	body, err := json.Marshal(cleaned)
 	if err != nil {
@@ -1536,16 +1907,18 @@ type UsageCounter struct {
 }
 
 type OrgUsage struct {
-	Plan        string       `json:"plan"`
-	Projects    UsageCounter `json:"projects"`
-	Reports     UsageCounter `json:"reports"`
-	Seats       UsageCounter `json:"seats"`
-	PeriodStart time.Time    `json:"period_start"`
+	Plan           string       `json:"plan"`
+	Projects       UsageCounter `json:"projects"`
+	Reports        UsageCounter `json:"reports"`
+	Seats          UsageCounter `json:"seats"`
+	AutoPRCredits  int          `json:"auto_pr_credits"`
+	PeriodStart    time.Time    `json:"period_start"`
 }
 
 func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
 	var plan string
-	if err := s.DB.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1`, orgID).Scan(&plan); err != nil {
+	var credits int
+	if err := s.DB.QueryRowContext(ctx, `SELECT plan, auto_pr_credits FROM organizations WHERE id=$1`, orgID).Scan(&plan, &credits); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return OrgUsage{}, ErrNotFound
 		}
@@ -1580,11 +1953,12 @@ func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
 	}
 
 	return OrgUsage{
-		Plan:        plan,
-		Projects:    UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
-		Reports:     UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
-		Seats:       UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},
-		PeriodStart: periodStart,
+		Plan:          plan,
+		Projects:      UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
+		Reports:       UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
+		Seats:         UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},
+		AutoPRCredits: credits,
+		PeriodStart:   periodStart,
 	}, nil
 }
 
@@ -1602,6 +1976,16 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 		return Org{}, err
 	}
 	defer tx.Rollback()
+
+	var prevPlan string
+	var prevCredits int
+	if err := tx.QueryRowContext(ctx, `SELECT plan, auto_pr_credits FROM organizations WHERE id=$1`, orgID).
+		Scan(&prevPlan, &prevCredits); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Org{}, ErrNotFound
+		}
+		return Org{}, err
+	}
 
 	var org Org
 	err = tx.QueryRowContext(ctx, `
@@ -1624,10 +2008,59 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 		return Org{}, err
 	}
 
+	// Seed starter Auto PR credits once when moving free → paid with empty balance.
+	seed := StarterCreditsForPlan(plan)
+	if seed > 0 && NormalizePlan(prevPlan) == "free" && prevCredits == 0 {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE organizations SET auto_pr_credits = $2 WHERE id=$1`, orgID, seed); err != nil {
+			return Org{}, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO credit_ledger(org_id, delta, reason) VALUES ($1,$2,'plan_upgrade_seed')`,
+			orgID, seed); err != nil {
+			return Org{}, err
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return Org{}, err
 	}
 	return org, nil
+}
+
+func normalizeGitHubAppConfig(cleaned map[string]any) (map[string]any, error) {
+	var installationID int64
+	switch v := cleaned["installation_id"].(type) {
+	case float64:
+		installationID = int64(v)
+	case int64:
+		installationID = v
+	case int:
+		installationID = int64(v)
+	case string:
+		fmt.Sscan(strings.TrimSpace(v), &installationID)
+	case json.Number:
+		n, _ := v.Int64()
+		installationID = n
+	}
+	if installationID == 0 {
+		return nil, ErrInvalidInput
+	}
+	account, _ := cleaned["account_login"].(string)
+	repo, _ := cleaned["repo_full_name"].(string)
+	branch, _ := cleaned["default_branch"].(string)
+	account = strings.TrimSpace(account)
+	repo = strings.TrimSpace(repo)
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		branch = "main"
+	}
+	return map[string]any{
+		"installation_id": installationID,
+		"account_login":   account,
+		"repo_full_name":  repo,
+		"default_branch":  branch,
+	}, nil
 }
 
 func normalizeWaitlistEmail(email string) (string, error) {

@@ -1,15 +1,17 @@
-# Report test run — 2026-11-18T085255Z
+# Report test run — 2026-11-18T124531Z
 
-Branch: dev @ 6d60a11
+Branch: dev @ 6cd5a37
 Result: PASS
-Duration: 13s
+Duration: 26s
 
 ## Summary
 
-- Suite: `go test` report L0/L1/L2 (+ existing package tests)
-- Database: `closeloop_test`
-- Command: `pnpm test:reports` / `bash scripts/test-reports.sh`
+- Suite: Playwright L3 report UI (`R-UI-01`…`R-UI-16`) green
+- Go: `R-GHISSUE-01`…`03` + githubapp CreateIssue unit tests green via `pnpm test:reports`
+- Base URL: `http://localhost:3000`
+- API: `http://localhost:8080`
+- Command: `pnpm test:reports` + `pnpm test:reports:ui`
 
 ## Next human action
 
-- None
+- Confirm GitHub App has **Issues: Read and write**, then Create GitHub Issue from a ticket

@@ -135,6 +135,8 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-FIX-04 | Kill switch | `notify_enabled=false` | mark_fixed | No email; ticket still fixed | worker guard |
 | R-FIX-05 | In-app updates | Reporter identified | `GET /v1/ingest/updates?reporter=` | Fixed payload once; second poll empty/seen | ingestUpdates |
 | R-FIX-06 | Free plan MCP write | Free plan read-only token | mark_fixed via MCP | Rejected / gated; UI badge path not required in L1 | scope gate |
+| R-FIX-07 | Per-action channels | PATCH `notify: {email:false,in_app:true}` | mark fixed | No mail; banner still via updates | EnqueueNotify payload |
+| R-FIX-08 | Banner kill switch | `banner_enabled=false` | mark fixed | Email still sent; no in-app updates | NotifyReporters gate |
 
 ### 4.4b Slack notify (F8 · S-13)
 
@@ -144,7 +146,13 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-SLACK-02 | No Slack config | No slack integration | Ingest + ProcessJobsOnce | No `notify_slack` job / no POST | EnqueueSlackNotify guard |
 | R-SLACK-03 | Status change | Slack saved; ticket open | PATCH status=in_progress | POST with from/to | patchTicket → status_changed |
 | R-SLACK-04 | Mark fixed note | Slack saved | MCP mark_fixed + note | POST includes fixed + note | mcp mark_fixed enqueue |
+| R-HOOK-01 | Outbound created | Webhooks URL + secret | Ingest bug | Signed POST `ticket.created` | EnqueueOutboundWebhook |
+| R-HOOK-02 | Event filter + auto secret | events=`ticket.fixed` only | Ingest then mark fixed | Create skipped; fixed posts; secret generated | normalizeOutboundEvents |
+| R-HOOK-03 | Reject HTTP URL | `http://…` | PUT webhooks | 400 | UpsertIntegration |
 | R-SLACK-05 | Same status no-op | Slack saved; ticket open | PATCH status=open | No slack job/post | from==to guard |
+| R-GHISSUE-01 | Issues needs App | No github_app | POST github-issue | 400 | CreateGitHubIssueForTicket |
+| R-GHISSUE-02 | Create + idempotent | github_app + fake creator | POST twice | 201 then 200 existing; one upstream call | ticket_events github_issue_created |
+| R-GHISSUE-03 | Upstream error | Fake creator fails | POST github-issue | 502 | UPSTREAM_ERROR |
 
 ### 4.4c Public board (F9 · S-11 / S-24)
 
@@ -157,8 +165,11 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-BOARD-05 | Vote confirm | Publish + POST vote | Process job + GET confirm | vote_count=1; reuse 409 | RequestIdeaVote + ConfirmIdeaVote |
 | R-BOARD-06 | Vote guards | Unpublished / bad email | POST votes | 404 / 400 | PublicIdeaBySlug + NormalizeVoterEmail |
 | R-BOARD-07 | Vote released | Confirmed voter on public idea | Mark fixed + process jobs | VoteReleased mail to voter; skip if private/no votes | EnqueueVoteReleased + notify_vote_released |
+| R-BOARD-10 | Voter notify kill switch | `voter_notify_enabled=false` + confirmed vote | Mark fixed | No `notify_vote_released` job/mail | EnqueueVoteReleased gate |
 | R-BOARD-08 | Comment confirm + reply | Publish idea | POST comment → confirm → reply + team + hide | Public list/replies; hidden excluded | RequestIdeaComment + SetCommentHidden |
 | R-BOARD-09 | Comment guards | Unpublished / bad email / empty / bad parent | POST comments | 404 / 400 | PublicIdeaBySlug + normalize |
+| R-BOARD-11 | Suggest confirm | Valid board slug | POST suggest → confirm | Private `idea` ticket in inbox; not on public list; reuse 409 | RequestIdeaSuggest + ConfirmIdeaSuggest |
+| R-BOARD-12 | Suggest guards | Empty title / bad email / unknown slug | POST suggest | 400 / 400 / 404 | normalize + PublicBoardBySlug |
 
 ### 4.5 MCP read path (F5 · SC-2)
 
@@ -178,7 +189,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-03 | Merge flow | Multi-select → `/app/inbox/merge` → confirm | Parent detail shows merged count |
 | R-UI-04 | Mark fixed UI | Detail → fixed → submit note | Status Fixed; activity updated |
 | R-UI-05 | Banner payload | After fix + identify | `/v1/ingest/updates` non-empty (widget banner assert light) |
-| R-UI-06 | Post-M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | Public board link + page live; Auto PR still hidden/redirect |
+| R-UI-06 | Post-M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | Public board + Auto PR runs links live; `/app/auto-pr` shows runs heading |
 | R-UI-07 | Public board | Publish idea via API | Open `/board/{slug}` | Published title visible |
 | R-UI-08 | Idea detail | Publish idea via API | Open list → click idea | Detail title + back to list |
 | R-UI-10 | Integrations catalog | Seed session | Open `/app/settings/integrations` | Notify/Debugging sections + Slack Configure webhook field |
@@ -187,6 +198,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-13 | Roadmap DnD | Publish idea | `/app/board` Roadmap → move to In progress | Card in column; status `in_progress` | S-11 roadmap |
 | R-UI-14 | Inbox live refresh | Open inbox | Ingest + `closeloop:submitted` | New row appears without reload | widget event + Inbox refetch |
 | R-UI-15 | Ideas vote count | Publish + confirm vote | Open `/app/board` Ideas | Votes column shows 1 | Ticket.vote_count |
+| R-UI-16 | Suggest idea | Open public board | Suggest modal → confirm token | Private idea in inbox; not on public list | S-24 moderated |
 
 ---
 
@@ -281,7 +293,7 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…09 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…12 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
 - [x] Mail sink assert untuk R-FIX-03/04
 - [x] MCP JSON-RPC client helper
 

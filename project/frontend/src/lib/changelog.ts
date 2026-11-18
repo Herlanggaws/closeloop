@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
-    title: "Public board publish + Slack webhooks",
-    body: "Publish tickets to a public `/board/[slug]` ideas list, idea detail, and roadmap — visitors can vote and comment with email confirmation (one-level replies), builders can hide comments, see live vote counts, and drag public ideas across roadmap columns on `/app/board`, and confirmed voters get a release email when the idea is marked fixed. Integrations shows the full catalog; Configure opens a modal for Slack, Sentry, and PostHog. Same day: app sidebar matches the pen (icons, ⌘K search, Auto PR soon stub, usage progress), Slack status notifications, landing yearly pricing and mobile pricing polish, logged-in visits to /login or /signup now skip straight into the app without a hydration mismatch, widget screenshot uploads send bare base64 JSON (DNSCloud WAF blocks raw images and any body containing the literal image/png), the report form paints the auto-screenshot without a Retake, and the inbox refreshes when a dogfood widget report lands.",
+    title: "GitHub App, Auto PR, Issues, public board, Slack & webhooks",
+    body: "Connect the Saidloop GitHub App from Integrations, pick a repo, run Auto PR, or create a GitHub Issue from a ticket in one click (same App install; Issues deep-link on the ticket). Credits show in the sidebar and Billing; agents open PRs only and never merge. Same day: public `/board/[slug]` with votes/comments and moderated Suggest an idea, voter release email on mark fixed, outbound Webhooks plus Slack/Sentry/PostHog, mask-all-text-inputs, notify channel toggles, and sidebar polish.",
   },
   {
     date: "2026-11-17",

@@ -23,6 +23,8 @@ export function MarkFixed() {
   const [error, setError] = useState("");
   const [emailOn, setEmailOn] = useState(true);
   const [bannerOn, setBannerOn] = useState(true);
+  const [emailAllowed, setEmailAllowed] = useState(true);
+  const [bannerAllowed, setBannerAllowed] = useState(true);
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -38,11 +40,22 @@ export function MarkFixed() {
 
     let cancelled = false;
 
-    api<TicketDetailResponse>(`/api/tickets/${ticketId}`)
-      .then((detail) => {
+    Promise.all([
+      api<TicketDetailResponse>(`/api/tickets/${ticketId}`),
+      api<{
+        project: { notify_enabled: boolean; banner_enabled: boolean };
+      }>(`/api/projects/${projectId}`),
+    ])
+      .then(([detail, projectRes]) => {
         if (cancelled) return;
         setData(detail);
         setNote(detail.ticket.fixed_note || "");
+        const allowEmail = projectRes.project.notify_enabled !== false;
+        const allowBanner = projectRes.project.banner_enabled !== false;
+        setEmailAllowed(allowEmail);
+        setBannerAllowed(allowBanner);
+        setEmailOn(allowEmail);
+        setBannerOn(allowBanner);
         setError("");
       })
       .catch((err) => {
@@ -73,7 +86,11 @@ export function MarkFixed() {
     try {
       await api(`/api/tickets/${ticketId}`, {
         method: "PATCH",
-        body: JSON.stringify({ status: "fixed", note: body }),
+        body: JSON.stringify({
+          status: "fixed",
+          note: body,
+          notify: { email: emailOn, in_app: bannerOn },
+        }),
       });
       router.push("/app/inbox");
     } catch (err) {
@@ -169,21 +186,27 @@ export function MarkFixed() {
               <ChannelToggle
                 title="Email"
                 subtitle={
-                  reporters.with_email > 0
-                    ? `${reporters.with_email} reporter${reporters.with_email === 1 ? "" : "s"} left an email`
-                    : "No reporter emails yet"
+                  !emailAllowed
+                    ? "Disabled in project settings"
+                    : reporters.with_email > 0
+                      ? `${reporters.with_email} reporter${reporters.with_email === 1 ? "" : "s"} left an email`
+                      : "No reporter emails yet"
                 }
                 on={emailOn}
+                disabled={!emailAllowed}
                 onToggle={() => setEmailOn((v) => !v)}
               />
               <ChannelToggle
                 title="In-app banner"
                 subtitle={
-                  reporters.total > 0
-                    ? `${reporters.total} reporter${reporters.total === 1 ? "" : "s"} will see it`
-                    : "No reporters linked yet"
+                  !bannerAllowed
+                    ? "Disabled in project settings"
+                    : reporters.total > 0
+                      ? `${reporters.total} reporter${reporters.total === 1 ? "" : "s"} will see it`
+                      : "No reporters linked yet"
                 }
                 on={bannerOn}
+                disabled={!bannerAllowed}
                 onToggle={() => setBannerOn((v) => !v)}
               />
             </div>
@@ -243,17 +266,20 @@ function ChannelToggle({
   subtitle,
   on,
   onToggle,
+  disabled = false,
 }: {
   title: string;
   subtitle: string;
   on: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className="flex flex-1 cursor-pointer items-center gap-2.5 rounded-[10px] border border-[#1717171F] bg-white p-3 text-left"
+      disabled={disabled}
+      className="flex flex-1 cursor-pointer items-center gap-2.5 rounded-[10px] border border-[#1717171F] bg-white p-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
     >
       <div className="min-w-0 flex-1">
         <div className="font-ds-ui text-[13px] font-medium text-[#171717]">{title}</div>

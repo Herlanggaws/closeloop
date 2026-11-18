@@ -1,0 +1,20 @@
+---
+description: Frontend UI files must implement closeloop.pen frames, not ad-hoc layouts
+globs: project/frontend/**/*.{tsx,ts,css}
+alwaysApply: false
+---
+
+# Frontend follows closeloop.pen
+
+When editing frontend UI under `project/frontend/`:
+
+1. **Identify the screen** — map the route/component to a `S-*` frame in `closeloop.pen`.
+2. **Read the pen first** — Pencil MCP `get_app_state` + `execute` (`Get` / screenshot). If the pen is closed, stop and ask the user to open `closeloop.pen`.
+3. **Implement the shell** — same sections, order, labels, and empty/loading states as the frame.
+4. **`design-screens/*`** — use only as a starting export; if it disagrees with the live pen frame, update code to the pen (and refresh the export later if needed).
+5. **Partial wire-up** — leave unwired designed blocks as stubs; do not delete them to “simplify”.
+
+```text
+❌ Rewrite PublicBoard / settings / inbox from memory
+✅ Match S-* frame structure, then bind API data
+```

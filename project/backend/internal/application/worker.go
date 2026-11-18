@@ -10,6 +10,7 @@ import (
 
 	"github.com/closeloop/api/internal/infrastructure/email"
 	"github.com/closeloop/api/internal/infrastructure/slack"
+	"github.com/closeloop/api/internal/infrastructure/webhook"
 )
 
 const projectRetention = 30 * 24 * time.Hour
@@ -23,16 +24,18 @@ type ProjectFileCleaner interface {
 }
 
 type WorkerDeps struct {
-	Mail   MailSender
-	Slack  slack.Poster
-	WebURL string
+	Mail     MailSender
+	Slack    slack.Poster
+	Webhook  webhook.Poster
+	WebURL   string
+	Autopr   AutoprExecutor
 }
 
-func RunWorker(ctx context.Context, store *Store, mail MailSender, files ProjectFileCleaner, webURL string, slackPoster slack.Poster) {
+func RunWorker(ctx context.Context, store *Store, mail MailSender, files ProjectFileCleaner, webURL string, slackPoster slack.Poster, autopr AutoprExecutor) {
 	if slackPoster == nil {
 		slackPoster = slack.NewClient()
 	}
-	deps := WorkerDeps{Mail: mail, Slack: slackPoster, WebURL: webURL}
+	deps := WorkerDeps{Mail: mail, Slack: slackPoster, Webhook: webhook.NewClient(), WebURL: webURL, Autopr: autopr}
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	purgeTicker := time.NewTicker(time.Hour)
@@ -96,11 +99,24 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 	case "notify_reporters":
 		var p struct {
 			TicketID string `json:"ticket_id"`
+			Notify   *struct {
+				Email *bool `json:"email"`
+				InApp *bool `json:"in_app"`
+			} `json:"notify"`
 		}
 		if err := json.Unmarshal(payload, &p); err != nil {
 			return err
 		}
-		_, mails, err := store.NotifyReporters(ctx, p.TicketID, "")
+		channels := DefaultNotifyChannels()
+		if p.Notify != nil {
+			if p.Notify.Email != nil {
+				channels.Email = *p.Notify.Email
+			}
+			if p.Notify.InApp != nil {
+				channels.InApp = *p.Notify.InApp
+			}
+		}
+		_, mails, err := store.NotifyReporters(ctx, p.TicketID, "", channels.Email, channels.InApp)
 		if err != nil {
 			return err
 		}
@@ -134,6 +150,18 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 			return err
 		}
 		return notifySlack(ctx, store, deps, p.TicketID, p.Event, p.From, p.To, p.Note)
+	case "notify_webhook":
+		var p struct {
+			TicketID string `json:"ticket_id"`
+			Event    string `json:"event"`
+			From     string `json:"from"`
+			To       string `json:"to"`
+			Note     string `json:"note"`
+		}
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return err
+		}
+		return notifyOutboundWebhook(ctx, store, deps, p.TicketID, p.Event, p.From, p.To, p.Note)
 	case "notify_vote_verify":
 		var p struct {
 			TicketID    string `json:"ticket_id"`
@@ -238,6 +266,42 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 			slog.Error("send comment verify mail", "err", err, "to", p.Email)
 		}
 		return nil
+	case "notify_suggest_verify":
+		var p struct {
+			Email       string `json:"email"`
+			RawToken    string `json:"raw_token"`
+			ProjectName string `json:"project_name"`
+			IdeaTitle   string `json:"idea_title"`
+			BoardSlug   string `json:"board_slug"`
+		}
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return err
+		}
+		if deps.Mail == nil || p.Email == "" || p.RawToken == "" {
+			return nil
+		}
+		confirmURL := strings.TrimRight(deps.WebURL, "/") + "/suggest/confirm?t=" + p.RawToken
+		mail := email.SuggestVerifyMail{
+			To:           p.Email,
+			ProjectName:  p.ProjectName,
+			IdeaTitle:    p.IdeaTitle,
+			ConfirmURL:   confirmURL,
+			GreetingName: email.GreetingFromEmail(p.Email),
+		}
+		subject := email.SuggestVerifySubject(mail.ProjectName)
+		html := email.RenderSuggestVerifyHTML(mail)
+		if err := deps.Mail.Send(p.Email, subject, html); err != nil {
+			slog.Error("send suggest verify mail", "err", err, "to", p.Email)
+		}
+		return nil
+	case "autopr_run":
+		var p struct {
+			RunID string `json:"run_id"`
+		}
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return err
+		}
+		return ProcessAutoprRun(ctx, store, deps.Autopr, deps.WebURL, p.RunID)
 	default:
 		return fmt.Errorf("unknown job %s", kind)
 	}
@@ -282,4 +346,50 @@ func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID, e
 		body = slack.NewReportPayload(project.Name, ticket.Type, ticket.Title, ticketURL)
 	}
 	return deps.Slack.PostWebhook(ctx, webhookURL, body)
+}
+
+func notifyOutboundWebhook(ctx context.Context, store *Store, deps WorkerDeps, ticketID, event, from, to, note string) error {
+	if deps.Webhook == nil {
+		return nil
+	}
+	if event == "" {
+		event = "ticket.created"
+	}
+	ticket, err := store.GetTicket(ctx, ticketID)
+	if err != nil {
+		if err == ErrNotFound || err == ErrPlanRequired {
+			return nil
+		}
+		return err
+	}
+	url, secret, err := store.OutboundWebhookConfig(ctx, ticket.ProjectID)
+	if err != nil {
+		return err
+	}
+	if url == "" || secret == "" {
+		return nil
+	}
+	ticketURL := ""
+	if base := strings.TrimRight(deps.WebURL, "/"); base != "" {
+		ticketURL = base + "/app/tickets/" + ticket.ID
+	}
+	body := map[string]any{
+		"event":      event,
+		"ticket_id":  ticket.ID,
+		"project_id": ticket.ProjectID,
+		"type":       ticket.Type,
+		"title":      ticket.Title,
+		"status":     ticket.Status,
+		"url":        ticketURL,
+	}
+	if from != "" {
+		body["from"] = from
+	}
+	if to != "" {
+		body["to"] = to
+	}
+	if strings.TrimSpace(note) != "" {
+		body["note"] = strings.TrimSpace(note)
+	}
+	return deps.Webhook.PostSigned(ctx, url, secret, body)
 }

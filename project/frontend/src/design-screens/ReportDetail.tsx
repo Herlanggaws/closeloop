@@ -39,6 +39,16 @@ export function ReportDetail() {
   const [note, setNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [autoprBusy, setAutoprBusy] = useState(false);
+  const [autoprMsg, setAutoprMsg] = useState("");
+  const [latestAutopr, setLatestAutopr] = useState<{
+    status: string;
+    pr_url?: string;
+    error?: string;
+  } | null>(null);
+  const [githubIssueBusy, setGithubIssueBusy] = useState(false);
+  const [githubIssueUrl, setGithubIssueUrl] = useState("");
+  const [githubAppConnected, setGithubAppConnected] = useState(false);
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -57,15 +67,45 @@ export function ReportDetail() {
     async function load() {
       setLoading(true);
       try {
-        const [projectRes, meRes, detail] = await Promise.all([
+        const [projectRes, meRes, detail, autoprRes, integRes] = await Promise.all([
           api<{ project: ProjectInfo }>(`/api/projects/${projectId}`),
           api<MeResponse>("/api/me"),
           api<TicketDetailResponse>(`/api/tickets/${ticketId}`),
+          api<{ runs: { status: string; pr_url?: string; error?: string }[] }>(
+            `/api/tickets/${ticketId}/autopr`,
+          ).catch(() => ({ runs: [] })),
+          api<{
+            integrations: { provider: string; config: Record<string, unknown> | string }[];
+          }>(`/api/projects/${projectId}/integrations`).catch(() => ({ integrations: [] })),
         ]);
         if (cancelled) return;
         setProject(projectRes.project);
         setMe(meRes);
         setData(detail);
+        setLatestAutopr(autoprRes.runs?.[0] || null);
+        const gh = (integRes.integrations || []).find((i) => i.provider === "github_app");
+        let ghCfg: Record<string, unknown> = {};
+        if (gh) {
+          ghCfg =
+            typeof gh.config === "string"
+              ? (JSON.parse(gh.config) as Record<string, unknown>)
+              : gh.config || {};
+        }
+        setGithubAppConnected(
+          Boolean(ghCfg.installation_id) && Boolean(String(ghCfg.repo_full_name || "").trim()),
+        );
+        const issueEv = [...(detail.events || [])]
+          .reverse()
+          .find((e) => e.kind === "github_issue_created");
+        if (issueEv) {
+          const payload =
+            typeof issueEv.payload === "string"
+              ? (JSON.parse(issueEv.payload) as { html_url?: string })
+              : (issueEv.payload as { html_url?: string });
+          setGithubIssueUrl(payload?.html_url || "");
+        } else {
+          setGithubIssueUrl("");
+        }
         setError("");
       } catch (err) {
         if (!cancelled) {
@@ -105,6 +145,47 @@ export function ReportDetail() {
       setError(err instanceof Error ? err.message : "Failed to add note");
     } finally {
       setSavingNote(false);
+    }
+  }
+
+  async function runAutopr() {
+    if (!ticketId || autoprBusy) return;
+    setAutoprBusy(true);
+    setAutoprMsg("");
+    setError("");
+    try {
+      const res = await api<{ run: { status: string; pr_url?: string; error?: string } }>(
+        `/api/tickets/${ticketId}/autopr`,
+        { method: "POST", body: "{}" },
+      );
+      setLatestAutopr(res.run);
+      setAutoprMsg(
+        res.run.status === "queued" || res.run.status === "running"
+          ? "Auto PR queued — watch progress under Auto PR runs."
+          : `Auto PR ${res.run.status}`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start Auto PR");
+    } finally {
+      setAutoprBusy(false);
+    }
+  }
+
+  async function createGitHubIssue() {
+    if (!ticketId || githubIssueBusy) return;
+    setGithubIssueBusy(true);
+    setError("");
+    try {
+      const res = await api<{ issue: { html_url: string; number: number }; existing?: boolean }>(
+        `/api/tickets/${ticketId}/github-issue`,
+        { method: "POST", body: "{}" },
+      );
+      setGithubIssueUrl(res.issue.html_url);
+      await reloadDetail();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create GitHub issue");
+    } finally {
+      setGithubIssueBusy(false);
     }
   }
 
@@ -353,6 +434,81 @@ export function ReportDetail() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">GitHub</div>
+                <button
+                  type="button"
+                  disabled={githubIssueBusy || (!githubAppConnected && !githubIssueUrl)}
+                  title={
+                    githubAppConnected || githubIssueUrl
+                      ? undefined
+                      : "Connect GitHub App and pick a repo in Integrations"
+                  }
+                  onClick={() => {
+                    if (githubIssueUrl) {
+                      window.open(githubIssueUrl, "_blank", "noopener,noreferrer");
+                      return;
+                    }
+                    void createGitHubIssue();
+                  }}
+                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-xs font-medium text-[#171717] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {githubIssueBusy
+                    ? "Creating…"
+                    : githubIssueUrl
+                      ? "View GitHub Issue"
+                      : "Create GitHub Issue"}
+                </button>
+                {!githubAppConnected && !githubIssueUrl ? (
+                  <Link
+                    href="/app/settings/integrations"
+                    className="font-ds-ui text-[12px] text-[#737373] underline"
+                  >
+                    Connect GitHub App
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Auto PR</div>
+                <button
+                  type="button"
+                  disabled={autoprBusy}
+                  onClick={() => void runAutopr()}
+                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md bg-[#171717] px-3 font-ds-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {autoprBusy ? "Starting…" : "Run Auto PR"}
+                </button>
+                {autoprMsg ? (
+                  <p className="font-ds-ui text-[12px] text-[#737373]">{autoprMsg}</p>
+                ) : null}
+                {latestAutopr ? (
+                  <p className="font-ds-ui text-[12px] text-[#737373]">
+                    Latest: {latestAutopr.status}
+                    {latestAutopr.pr_url ? (
+                      <>
+                        {" · "}
+                        <a
+                          href={latestAutopr.pr_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#171717] underline"
+                        >
+                          Open PR
+                        </a>
+                      </>
+                    ) : null}
+                    {latestAutopr.error ? ` · ${latestAutopr.error}` : null}
+                  </p>
+                ) : null}
+                <Link
+                  href="/app/auto-pr"
+                  className="font-ds-ui text-[12px] text-[#737373] underline"
+                >
+                  View all runs
+                </Link>
               </div>
 
               <div className="flex flex-col gap-2.5">

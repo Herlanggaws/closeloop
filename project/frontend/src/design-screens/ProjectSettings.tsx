@@ -12,6 +12,9 @@ type ProjectInfo = {
   name: string;
   platforms?: string[];
   notify_enabled: boolean;
+  banner_enabled: boolean;
+  mask_text_inputs: boolean;
+  voter_notify_enabled: boolean;
   sensitive_selectors?: string[];
 };
 
@@ -41,7 +44,13 @@ export function ProjectSettings() {
   const [nameDraft, setNameDraft] = useState("");
   const [platforms, setPlatforms] = useState<string[]>(["web"]);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
+  const [bannerEnabled, setBannerEnabled] = useState(true);
+  const [maskTextInputs, setMaskTextInputs] = useState(true);
+  const [voterNotifyEnabled, setVoterNotifyEnabled] = useState(true);
   const [savingNotify, setSavingNotify] = useState(false);
+  const [savingBanner, setSavingBanner] = useState(false);
+  const [savingMask, setSavingMask] = useState(false);
+  const [savingVoterNotify, setSavingVoterNotify] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [selectors, setSelectors] = useState<string[]>([]);
   const [selectorDraft, setSelectorDraft] = useState("");
@@ -75,6 +84,9 @@ export function ProjectSettings() {
         const nextPlatforms = normalizePlatforms(projectRes.project.platforms);
         setPlatforms(nextPlatforms);
         setNotifyEnabled(projectRes.project.notify_enabled);
+        setBannerEnabled(projectRes.project.banner_enabled !== false);
+        setMaskTextInputs(projectRes.project.mask_text_inputs !== false);
+        setVoterNotifyEnabled(projectRes.project.voter_notify_enabled !== false);
         setSelectors(projectRes.project.sensitive_selectors || []);
         localStorage.setItem("closeloop_public_key", projectRes.public_key);
         localStorage.setItem(
@@ -190,6 +202,72 @@ export function ProjectSettings() {
       setError(err instanceof Error ? err.message : "Failed to update notifications");
     } finally {
       setSavingNotify(false);
+    }
+  }
+
+  async function toggleBanner() {
+    if (!project || savingBanner) return;
+    const next = !bannerEnabled;
+    const previous = bannerEnabled;
+    setBannerEnabled(next);
+    setSavingBanner(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ banner_enabled: next }),
+      });
+      setProject(res.project);
+      setBannerEnabled(res.project.banner_enabled);
+    } catch (err) {
+      setBannerEnabled(previous);
+      setError(err instanceof Error ? err.message : "Failed to update banner setting");
+    } finally {
+      setSavingBanner(false);
+    }
+  }
+
+  async function toggleMaskTextInputs() {
+    if (!project || savingMask) return;
+    const next = !maskTextInputs;
+    const previous = maskTextInputs;
+    setMaskTextInputs(next);
+    setSavingMask(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ mask_text_inputs: next }),
+      });
+      setProject(res.project);
+      setMaskTextInputs(res.project.mask_text_inputs);
+    } catch (err) {
+      setMaskTextInputs(previous);
+      setError(err instanceof Error ? err.message : "Failed to update masking");
+    } finally {
+      setSavingMask(false);
+    }
+  }
+
+  async function toggleVoterNotify() {
+    if (!project || savingVoterNotify) return;
+    const next = !voterNotifyEnabled;
+    const previous = voterNotifyEnabled;
+    setVoterNotifyEnabled(next);
+    setSavingVoterNotify(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ voter_notify_enabled: next }),
+      });
+      setProject(res.project);
+      setVoterNotifyEnabled(res.project.voter_notify_enabled);
+    } catch (err) {
+      setVoterNotifyEnabled(previous);
+      setError(err instanceof Error ? err.message : "Failed to update voter notifications");
+    } finally {
+      setSavingVoterNotify(false);
     }
   }
 
@@ -384,8 +462,9 @@ export function ProjectSettings() {
                 <ToggleRow
                   title="Mask all text inputs"
                   description="Passwords and card fields are always masked"
-                  checked
-                  disabled
+                  checked={maskTextInputs}
+                  disabled={savingMask || !project}
+                  onToggle={toggleMaskTextInputs}
                 />
                 <Field label="Also mask these selectors">
                   <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-[#1717171F] p-2">
@@ -450,9 +529,17 @@ export function ProjectSettings() {
                 />
                 <ToggleRow
                   title="Show an in-app banner"
-                  description="Coming later — shown once the next time they open your app"
-                  checked={false}
-                  disabled
+                  description="Shown once the next time they open your app"
+                  checked={bannerEnabled}
+                  disabled={savingBanner || !project}
+                  onToggle={toggleBanner}
+                />
+                <ToggleRow
+                  title="Email voters when an idea is released"
+                  description="Confirmed public-board voters get a release note on mark fixed"
+                  checked={voterNotifyEnabled}
+                  disabled={savingVoterNotify || !project}
+                  onToggle={toggleVoterNotify}
                 />
               </SettingsSection>
 

@@ -5,6 +5,7 @@ export type OrgUsage = {
   projects: UsageCounter;
   reports: UsageCounter;
   seats?: UsageCounter;
+  auto_pr_credits?: number;
   period_start: string;
 };
 
