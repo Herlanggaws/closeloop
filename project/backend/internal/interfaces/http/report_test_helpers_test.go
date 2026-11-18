@@ -273,10 +273,10 @@ func (h *reportHarness) uploadScreenshot(attachmentID, uploadToken string, data 
 	}
 }
 
-func (h *reportHarness) uploadScreenshotDataURL(attachmentID, uploadToken, dataURL string) {
+func (h *reportHarness) uploadScreenshotJSON(attachmentID, uploadToken string, payload map[string]string) {
 	h.t.Helper()
 	path := fmt.Sprintf("/v1/ingest/attachments/%s/upload?token=%s", attachmentID, uploadToken)
-	body, _ := json.Marshal(map[string]string{"data_url": dataURL})
+	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

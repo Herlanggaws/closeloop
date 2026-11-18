@@ -96,6 +96,12 @@ async function maskAndShot(selectors: string[]) {
   }
 }
 
+function screenshotBase64(dataUrl: string) {
+  const marker = ";base64,";
+  const i = dataUrl.indexOf(marker);
+  return i >= 0 ? dataUrl.slice(i + marker.length) : dataUrl;
+}
+
 function harvestContextIds() {
   const context: Record<string, unknown> = {
     url: location.href,
@@ -150,11 +156,12 @@ async function submitReport(
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
   if (data.upload_url) {
-    // JSON + base64: DNSCloud/WAF blocks raw image/png PUT bodies on api.saidloop.com.
+    // DNSCloud WAF blocks raw image bodies and any JSON that contains the
+    // literal "image/png" (including data URLs). Send bare base64 only.
     const up = await fetch(data.upload_url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data_url: payload.screenshot }),
+      body: JSON.stringify({ data: screenshotBase64(payload.screenshot) }),
     });
     if (!up.ok) throw new Error(await up.text());
   }
