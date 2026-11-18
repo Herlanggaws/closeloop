@@ -737,6 +737,7 @@ func (s *Server) patchProject(c *gin.Context) {
 		NotifyEnabled      *bool     `json:"notify_enabled"`
 		BannerEnabled      *bool     `json:"banner_enabled"`
 		MaskTextInputs     *bool     `json:"mask_text_inputs"`
+		VoterNotifyEnabled *bool     `json:"voter_notify_enabled"`
 		SensitiveSelectors *[]string `json:"sensitive_selectors"`
 		BoardSlug          *string   `json:"board_slug"`
 	}
@@ -769,7 +770,7 @@ func (s *Server) patchProject(c *gin.Context) {
 		trimmed := strings.TrimSpace(*body.BoardSlug)
 		body.BoardSlug = &trimmed
 	}
-	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.BannerEnabled, body.MaskTextInputs, body.SensitiveSelectors, body.BoardSlug); err != nil {
+	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.BannerEnabled, body.MaskTextInputs, body.VoterNotifyEnabled, body.SensitiveSelectors, body.BoardSlug); err != nil {
 		mapErr(c, err)
 		return
 	}

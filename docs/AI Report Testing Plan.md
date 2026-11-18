@@ -159,6 +159,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-BOARD-05 | Vote confirm | Publish + POST vote | Process job + GET confirm | vote_count=1; reuse 409 | RequestIdeaVote + ConfirmIdeaVote |
 | R-BOARD-06 | Vote guards | Unpublished / bad email | POST votes | 404 / 400 | PublicIdeaBySlug + NormalizeVoterEmail |
 | R-BOARD-07 | Vote released | Confirmed voter on public idea | Mark fixed + process jobs | VoteReleased mail to voter; skip if private/no votes | EnqueueVoteReleased + notify_vote_released |
+| R-BOARD-10 | Voter notify kill switch | `voter_notify_enabled=false` + confirmed vote | Mark fixed | No `notify_vote_released` job/mail | EnqueueVoteReleased gate |
 | R-BOARD-08 | Comment confirm + reply | Publish idea | POST comment → confirm → reply + team + hide | Public list/replies; hidden excluded | RequestIdeaComment + SetCommentHidden |
 | R-BOARD-09 | Comment guards | Unpublished / bad email / empty / bad parent | POST comments | 404 / 400 | PublicIdeaBySlug + normalize |
 

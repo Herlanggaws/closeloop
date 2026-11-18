@@ -380,6 +380,76 @@ func TestR_BOARD_07_VoteReleasedOnMarkFixed(t *testing.T) {
 	}
 }
 
+func TestR_BOARD_10_VoterNotifyKillSwitch(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+
+	off := false
+	code, body := h.do(http.MethodPatch, "/api/projects/"+seed.ProjectID, map[string]any{
+		"voter_notify_enabled": off,
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch project: %d %v", code, body)
+	}
+
+	code, projectBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("get project: %d %v", code, projectBody)
+	}
+	slug := projectBody["project"].(map[string]any)["board_slug"].(string)
+	if projectBody["project"].(map[string]any)["voter_notify_enabled"] != false {
+		t.Fatalf("voter_notify_enabled=%v", projectBody["project"].(map[string]any)["voter_notify_enabled"])
+	}
+
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "killed voter mail", "platform": "web",
+	})
+	h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "open", "is_public": true,
+	}, h.authHeaders(seed.AccessToken))
+
+	h.mailer.Reset()
+	code, _ = h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/votes", map[string]any{
+		"email": "voter-kill@example.com",
+	}, nil)
+	if code != 202 {
+		t.Fatalf("request vote: %d", code)
+	}
+	if h.drainNotifyJobs() < 1 {
+		t.Fatal("expected vote verify job")
+	}
+	sent := h.mailer.Sent()
+	if len(sent) != 1 {
+		t.Fatalf("want verify mail, got %d", len(sent))
+	}
+	token := extractVoteToken(sent[0].HTML)
+	code, _ = h.do(http.MethodGet, "/api/public/votes/confirm?t="+token, nil, nil)
+	if code != 200 {
+		t.Fatalf("confirm: %d", code)
+	}
+
+	h.mailer.Reset()
+	code, _ = h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "fixed", "note": "shipped quietly",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("mark fixed: %d", code)
+	}
+	var releasedPending int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM jobs WHERE kind='notify_vote_released' AND status='pending'`).Scan(&releasedPending); err != nil {
+		t.Fatalf("count jobs: %v", err)
+	}
+	if releasedPending != 0 {
+		t.Fatalf("kill switch should skip vote released job, got %d", releasedPending)
+	}
+	_ = h.drainNotifyJobs()
+	for _, mail := range h.mailer.Sent() {
+		if strings.Contains(mail.Subject, "An idea you voted for just shipped") {
+			t.Fatalf("unexpected vote released mail: %#v", mail)
+		}
+	}
+}
+
 func TestR_BOARD_06_VoteUnpublishedAndBadEmail(t *testing.T) {
 	h := newReportHarness(t)
 	seed := h.seedUserProject("indie")

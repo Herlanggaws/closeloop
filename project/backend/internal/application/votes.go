@@ -241,6 +241,13 @@ func (s *Store) EnqueueVoteReleased(ctx context.Context, ticketID string) error 
 	if !t.IsPublic {
 		return nil
 	}
+	p, err := s.ProjectByID(ctx, t.ProjectID)
+	if err != nil {
+		return err
+	}
+	if !p.VoterNotifyEnabled {
+		return nil
+	}
 	n, err := s.ideaVoteCount(ctx, ticketID)
 	if err != nil {
 		return err

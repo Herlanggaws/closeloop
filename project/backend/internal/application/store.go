@@ -50,6 +50,7 @@ type Project struct {
 	NotifyEnabled      bool     `json:"notify_enabled"`
 	BannerEnabled      bool     `json:"banner_enabled"`
 	MaskTextInputs     bool     `json:"mask_text_inputs"`
+	VoterNotifyEnabled bool     `json:"voter_notify_enabled"`
 	SensitiveSelectors []string `json:"sensitive_selectors"`
 	BoardSlug          string   `json:"board_slug"`
 }
@@ -358,9 +359,9 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 	var plats, sels StringArray
 	err = tx.QueryRowContext(ctx, `
 		INSERT INTO projects(org_id, name, platforms, board_slug) VALUES ($1,$2,$3,$4)
-		RETURNING id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, sensitive_selectors, COALESCE(board_slug,'')`,
+		RETURNING id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, voter_notify_enabled, sensitive_selectors, COALESCE(board_slug,'')`,
 		orgID, name, asArray(platforms), slug).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &sels, &p.BoardSlug)
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &p.VoterNotifyEnabled, &sels, &p.BoardSlug)
 	if err != nil {
 		return Project{}, "", err
 	}
@@ -378,7 +379,7 @@ func (s *Store) CreateProject(ctx context.Context, orgID, name string, platforms
 
 func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, sensitive_selectors, COALESCE(board_slug,'')
+		SELECT id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, voter_notify_enabled, sensitive_selectors, COALESCE(board_slug,'')
 		FROM projects WHERE org_id=$1 AND deleted_at IS NULL ORDER BY created_at`, orgID)
 	if err != nil {
 		return nil, err
@@ -388,7 +389,7 @@ func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, erro
 	for rows.Next() {
 		var p Project
 		var plats, sels StringArray
-		if err := rows.Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &sels, &p.BoardSlug); err != nil {
+		if err := rows.Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &p.VoterNotifyEnabled, &sels, &p.BoardSlug); err != nil {
 			return nil, err
 		}
 		p.Platforms, p.SensitiveSelectors = []string(plats), []string(sels)
@@ -401,9 +402,9 @@ func (s *Store) ProjectByID(ctx context.Context, projectID string) (Project, err
 	var p Project
 	var plats, sels StringArray
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, sensitive_selectors, COALESCE(board_slug,'')
+		SELECT id, org_id, name, platforms, notify_enabled, banner_enabled, mask_text_inputs, voter_notify_enabled, sensitive_selectors, COALESCE(board_slug,'')
 		FROM projects WHERE id=$1 AND deleted_at IS NULL`, projectID).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &sels, &p.BoardSlug)
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &p.VoterNotifyEnabled, &sels, &p.BoardSlug)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrNotFound
 	}
@@ -415,10 +416,10 @@ func (s *Store) ProjectByPublicKey(ctx context.Context, key string) (Project, er
 	var p Project
 	var plats, sels StringArray
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT p.id, p.org_id, p.name, p.platforms, p.notify_enabled, p.banner_enabled, p.mask_text_inputs, p.sensitive_selectors, COALESCE(p.board_slug,'')
+		SELECT p.id, p.org_id, p.name, p.platforms, p.notify_enabled, p.banner_enabled, p.mask_text_inputs, p.voter_notify_enabled, p.sensitive_selectors, COALESCE(p.board_slug,'')
 		FROM project_keys pk JOIN projects p ON p.id=pk.project_id
 		WHERE pk.public_key=$1 AND pk.revoked_at IS NULL AND p.deleted_at IS NULL`, key).
-		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &sels, &p.BoardSlug)
+		Scan(&p.ID, &p.OrgID, &p.Name, &plats, &p.NotifyEnabled, &p.BannerEnabled, &p.MaskTextInputs, &p.VoterNotifyEnabled, &sels, &p.BoardSlug)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Project{}, ErrUnauthorized
 	}
@@ -437,7 +438,7 @@ func (s *Store) PublicKeyForProject(ctx context.Context, projectID string) (stri
 	return key, err
 }
 
-func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, name *string, platforms *[]string, notify *bool, banner *bool, maskText *bool, selectors *[]string, boardSlug *string) error {
+func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, name *string, platforms *[]string, notify *bool, banner *bool, maskText *bool, voterNotify *bool, selectors *[]string, boardSlug *string) error {
 	p, err := s.ProjectByID(ctx, projectID)
 	if err != nil {
 		return err
@@ -456,6 +457,9 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, nam
 	}
 	if maskText != nil {
 		p.MaskTextInputs = *maskText
+	}
+	if voterNotify != nil {
+		p.VoterNotifyEnabled = *voterNotify
 	}
 	if selectors != nil {
 		p.SensitiveSelectors = *selectors
@@ -478,9 +482,9 @@ func (s *Store) UpdateProjectSettings(ctx context.Context, projectID string, nam
 		p.BoardSlug = slug
 	}
 	_, err = s.DB.ExecContext(ctx, `
-		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, banner_enabled=$5, mask_text_inputs=$6, sensitive_selectors=$7, board_slug=$8
+		UPDATE projects SET name=$2, platforms=$3, notify_enabled=$4, banner_enabled=$5, mask_text_inputs=$6, voter_notify_enabled=$7, sensitive_selectors=$8, board_slug=$9
 		WHERE id=$1 AND deleted_at IS NULL`,
-		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, p.BannerEnabled, p.MaskTextInputs, asArray(p.SensitiveSelectors), nullEmpty(p.BoardSlug))
+		projectID, p.Name, asArray(p.Platforms), p.NotifyEnabled, p.BannerEnabled, p.MaskTextInputs, p.VoterNotifyEnabled, asArray(p.SensitiveSelectors), nullEmpty(p.BoardSlug))
 	return err
 }
 

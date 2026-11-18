@@ -14,6 +14,7 @@ type ProjectInfo = {
   notify_enabled: boolean;
   banner_enabled: boolean;
   mask_text_inputs: boolean;
+  voter_notify_enabled: boolean;
   sensitive_selectors?: string[];
 };
 
@@ -45,9 +46,11 @@ export function ProjectSettings() {
   const [notifyEnabled, setNotifyEnabled] = useState(true);
   const [bannerEnabled, setBannerEnabled] = useState(true);
   const [maskTextInputs, setMaskTextInputs] = useState(true);
+  const [voterNotifyEnabled, setVoterNotifyEnabled] = useState(true);
   const [savingNotify, setSavingNotify] = useState(false);
   const [savingBanner, setSavingBanner] = useState(false);
   const [savingMask, setSavingMask] = useState(false);
+  const [savingVoterNotify, setSavingVoterNotify] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [selectors, setSelectors] = useState<string[]>([]);
   const [selectorDraft, setSelectorDraft] = useState("");
@@ -83,6 +86,7 @@ export function ProjectSettings() {
         setNotifyEnabled(projectRes.project.notify_enabled);
         setBannerEnabled(projectRes.project.banner_enabled !== false);
         setMaskTextInputs(projectRes.project.mask_text_inputs !== false);
+        setVoterNotifyEnabled(projectRes.project.voter_notify_enabled !== false);
         setSelectors(projectRes.project.sensitive_selectors || []);
         localStorage.setItem("closeloop_public_key", projectRes.public_key);
         localStorage.setItem(
@@ -242,6 +246,28 @@ export function ProjectSettings() {
       setError(err instanceof Error ? err.message : "Failed to update masking");
     } finally {
       setSavingMask(false);
+    }
+  }
+
+  async function toggleVoterNotify() {
+    if (!project || savingVoterNotify) return;
+    const next = !voterNotifyEnabled;
+    const previous = voterNotifyEnabled;
+    setVoterNotifyEnabled(next);
+    setSavingVoterNotify(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ voter_notify_enabled: next }),
+      });
+      setProject(res.project);
+      setVoterNotifyEnabled(res.project.voter_notify_enabled);
+    } catch (err) {
+      setVoterNotifyEnabled(previous);
+      setError(err instanceof Error ? err.message : "Failed to update voter notifications");
+    } finally {
+      setSavingVoterNotify(false);
     }
   }
 
@@ -507,6 +533,13 @@ export function ProjectSettings() {
                   checked={bannerEnabled}
                   disabled={savingBanner || !project}
                   onToggle={toggleBanner}
+                />
+                <ToggleRow
+                  title="Email voters when an idea is released"
+                  description="Confirmed public-board voters get a release note on mark fixed"
+                  checked={voterNotifyEnabled}
+                  disabled={savingVoterNotify || !project}
+                  onToggle={toggleVoterNotify}
                 />
               </SettingsSection>
 
