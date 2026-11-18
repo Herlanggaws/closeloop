@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/base64"
 	"net/http"
 	"testing"
 )
@@ -165,5 +166,25 @@ func TestR_ING_08_PlatformFilter(t *testing.T) {
 	tickets := list["tickets"].([]any)
 	if len(tickets) != 1 {
 		t.Fatalf("expected 1 web ticket, got %d %v", len(tickets), tickets)
+	}
+}
+
+func TestR_ING_09_JSONDataURLUpload(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	ticketID, _, attID, _, token := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "bug", "message": "json upload", "platform": "web",
+	})
+	png := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
+	h.uploadScreenshotDataURL(attID, token, dataURL)
+
+	code, detail := h.do(http.MethodGet, "/api/tickets/"+ticketID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("detail: %d %v", code, detail)
+	}
+	att := detail["attachments"].([]any)[0].(map[string]any)
+	if att["uploaded"] != true {
+		t.Fatalf("expected uploaded=true, got %v", att)
 	}
 }
