@@ -199,7 +199,11 @@ function harvestContextIds() {
   };
 
   try {
-    const sentry = (window as any).Sentry;
+    const sentry = (window as unknown as { Sentry?: {
+      lastEventId?: () => string;
+      getCurrentHub?: () => { lastEventId?: () => string };
+      getClient?: () => { getOptions?: () => { lastEventId?: string } };
+    } }).Sentry;
     const last =
       sentry?.lastEventId?.() ||
       sentry?.getCurrentHub?.()?.lastEventId?.() ||
@@ -210,7 +214,10 @@ function harvestContextIds() {
   }
 
   try {
-    const posthog = (window as any).posthog;
+    const posthog = (window as unknown as { posthog?: {
+      get_session_id?: () => string;
+      sessionManager?: { checkAndGetSessionAndWindowId?: () => { sessionId?: string } };
+    } }).posthog;
     const session =
       posthog?.get_session_id?.() ||
       posthog?.sessionManager?.checkAndGetSessionAndWindowId?.()?.sessionId;
@@ -604,7 +611,7 @@ function Widget({ cfg }: { cfg: Config }) {
             <p class="sub">Screenshot is attached automatically. Annotate before you send.</p>
             <div class="row">
               {(["bug", "idea", "question"] as const).map((t) => (
-                <button type="button" class={`chip ${type === t ? "on" : ""}`} onClick={() => setType(t)}>
+                <button key={t} type="button" class={`chip ${type === t ? "on" : ""}`} onClick={() => setType(t)}>
                   {t}
                 </button>
               ))}
@@ -772,6 +779,7 @@ if (cfg.key) {
       document.dispatchEvent(new CustomEvent("closeloop:identify"));
     },
   };
-  (window as any).Saidloop = api;
-  (window as any).Closeloop = api;
+  const win = window as unknown as Record<string, unknown>;
+  win.Saidloop = api;
+  win.Closeloop = api;
 }
