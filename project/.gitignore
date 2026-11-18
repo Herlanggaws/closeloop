@@ -12,4 +12,3 @@ frontend/public/w.js.map
 dist
 .DS_Store
 *.log
-pnpm-lock.yaml
