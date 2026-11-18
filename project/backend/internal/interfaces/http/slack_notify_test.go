@@ -114,10 +114,18 @@ func TestR_SLACK_02_NoIntegrationSkipsPost(t *testing.T) {
 	}
 }
 
-func (h *reportHarness) putSlackWebhook(accessToken, projectID, webhook string) {
+func (h *reportHarness) putSlackWebhook(accessToken, projectID, webhook string, events ...string) {
 	h.t.Helper()
+	cfg := map[string]any{"webhook_url": webhook}
+	if len(events) > 0 {
+		list := make([]any, len(events))
+		for i, e := range events {
+			list[i] = e
+		}
+		cfg["events"] = list
+	}
 	code, body := h.do(http.MethodPut, "/api/projects/"+projectID+"/integrations/slack", map[string]any{
-		"config": map[string]any{"webhook_url": webhook},
+		"config": cfg,
 	}, h.authHeaders(accessToken))
 	if code != 200 {
 		h.t.Fatalf("put slack: %d %v", code, body)
@@ -271,5 +279,75 @@ func TestIntegrations_SlackWebhookValidation(t *testing.T) {
 	}
 	if _, ok := cfg["extra"]; ok {
 		t.Fatalf("expected extra keys stripped: %v", cfg)
+	}
+	events, _ := cfg["events"].([]any)
+	if len(events) != 4 {
+		t.Fatalf("expected default all events, got %v", cfg["events"])
+	}
+
+	code, body = h.do(http.MethodPut, "/api/projects/"+seed.ProjectID+"/integrations/slack", map[string]any{
+		"config": map[string]any{
+			"webhook_url": webhook,
+			"events":      []any{"new_bug", "nope"},
+		},
+	}, h.authHeaders(seed.AccessToken))
+	if code == 200 {
+		t.Fatalf("expected reject invalid event, got %d %v", code, body)
+	}
+}
+
+func TestR_SLACK_06_EventFiltersGateEnqueue(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	webhook := "https://hooks.slack.com/services/T000/B000/FILTER"
+
+	h.putSlackWebhook(seed.AccessToken, seed.ProjectID, webhook, "new_bug", "marked_fixed")
+
+	poster := &recordingSlackPoster{}
+	h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "filtered idea", "platform": "web",
+	})
+	if n := h.processSlackJobs(poster); n != 0 {
+		t.Fatalf("expected no job for disabled new_idea, processed %d", n)
+	}
+	if len(poster.Posts()) != 0 {
+		t.Fatalf("expected no posts for idea, got %v", poster.Posts())
+	}
+
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "bug", "message": "allowed bug", "platform": "web",
+	})
+	if n := h.processSlackJobs(poster); n < 1 {
+		t.Fatalf("expected new_bug job, processed %d", n)
+	}
+	if len(poster.Posts()) != 1 {
+		t.Fatalf("want 1 bug post, got %d", len(poster.Posts()))
+	}
+
+	poster = &recordingSlackPoster{}
+	code, body := h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "in_progress",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch progress: %d %v", code, body)
+	}
+	if n := h.processSlackJobs(poster); n != 0 {
+		t.Fatalf("expected no job for disabled status_changed, processed %d", n)
+	}
+
+	poster = &recordingSlackPoster{}
+	code, body = h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "fixed",
+		"note":   "shipped",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch fixed: %d %v", code, body)
+	}
+	if n := h.processSlackJobs(poster); n < 1 {
+		t.Fatalf("expected marked_fixed job, processed %d", n)
+	}
+	posts := poster.Posts()
+	if len(posts) != 1 {
+		t.Fatalf("want 1 fixed post, got %d", len(posts))
 	}
 }

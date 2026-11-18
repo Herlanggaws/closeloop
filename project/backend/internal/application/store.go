@@ -1181,6 +1181,92 @@ type SlackNotifyEvent struct {
 	Note     string
 }
 
+var slackEventKeys = []string{"new_bug", "new_idea", "status_changed", "marked_fixed"}
+
+func normalizeSlackEvents(raw any) ([]string, error) {
+	if raw == nil {
+		return append([]string(nil), slackEventKeys...), nil
+	}
+	var items []string
+	switch v := raw.(type) {
+	case []string:
+		items = append(items, v...)
+	case []any:
+		for _, item := range v {
+			s, ok := item.(string)
+			if !ok {
+				return nil, ErrInvalidInput
+			}
+			items = append(items, s)
+		}
+	default:
+		return nil, ErrInvalidInput
+	}
+	if len(items) == 0 {
+		return append([]string(nil), slackEventKeys...), nil
+	}
+	allowed := map[string]struct{}{}
+	for _, k := range slackEventKeys {
+		allowed[k] = struct{}{}
+	}
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(items))
+	for _, s := range items {
+		s = strings.TrimSpace(s)
+		if _, ok := allowed[s]; !ok {
+			return nil, ErrInvalidInput
+		}
+		if _, dup := seen[s]; dup {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+func slackEventsEnabled(cfg map[string]any) map[string]bool {
+	enabled := map[string]bool{}
+	raw, ok := cfg["events"]
+	if !ok || raw == nil {
+		for _, k := range slackEventKeys {
+			enabled[k] = true
+		}
+		return enabled
+	}
+	list, err := normalizeSlackEvents(raw)
+	if err != nil {
+		for _, k := range slackEventKeys {
+			enabled[k] = true
+		}
+		return enabled
+	}
+	for _, k := range slackEventKeys {
+		enabled[k] = false
+	}
+	for _, k := range list {
+		enabled[k] = true
+	}
+	return enabled
+}
+
+func slackFilterKey(ev SlackNotifyEvent, ticketType string) string {
+	switch ev.Event {
+	case "new_report":
+		if ticketType == "idea" {
+			return "new_idea"
+		}
+		return "new_bug"
+	case "status_changed":
+		if ev.To == "fixed" {
+			return "marked_fixed"
+		}
+		return "status_changed"
+	default:
+		return ""
+	}
+}
+
 func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID string, ev SlackNotifyEvent) error {
 	if ev.Event == "" {
 		ev.Event = "new_report"
@@ -1188,13 +1274,33 @@ func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID string, ev Sla
 	if ev.Event == "status_changed" && ev.From == ev.To {
 		return nil
 	}
-	var n int
-	if err := s.DB.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM integrations
-		WHERE project_id=$1 AND provider='slack'`, projectID).Scan(&n); err != nil {
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='slack'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
-	if n == 0 {
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
+	}
+	ticketType := ""
+	if ev.TicketID != "" {
+		t, getErr := s.GetTicket(ctx, ev.TicketID)
+		if getErr != nil {
+			return getErr
+		}
+		ticketType = t.Type
+	}
+	filter := slackFilterKey(ev, ticketType)
+	if filter == "" {
+		return nil
+	}
+	if !slackEventsEnabled(cfg)[filter] {
 		return nil
 	}
 	payload := map[string]any{
@@ -1208,7 +1314,7 @@ func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID string, ev Sla
 			payload["note"] = strings.TrimSpace(ev.Note)
 		}
 	}
-	_, err := s.DB.ExecContext(ctx, `
+	_, err = s.DB.ExecContext(ctx, `
 		INSERT INTO jobs(kind, payload) VALUES ('notify_slack', $1)`,
 		mustJSON(payload))
 	return err
@@ -1472,7 +1578,11 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		if !strings.HasPrefix(url, "https://hooks.slack.com/") {
 			return Integration{}, ErrInvalidInput
 		}
-		cleaned = map[string]any{"webhook_url": url}
+		events, err := normalizeSlackEvents(cleaned["events"])
+		if err != nil {
+			return Integration{}, err
+		}
+		cleaned = map[string]any{"webhook_url": url, "events": events}
 	}
 	body, err := json.Marshal(cleaned)
 	if err != nil {

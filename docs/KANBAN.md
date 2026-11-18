@@ -96,6 +96,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 #### M3 · Tool tim & publik (F8, F9, F11)
 - [x] **F8** Slack new-report via Incoming Webhook (Settings → Integrations)
 - [x] **F8** Slack status notifications (same webhook; OAuth channel picker later)
+- [x] **F8** Slack event filters (new bug / idea / status / marked fixed)
 - [ ] **F8** Slack OAuth channel picker
 - [ ] **F8** GitHub Issues / Linear / Jira create + bi-directional status
 - [x] **F9** Builder publish controls + public ideas list (`/app/board`, `/board/[slug]`)

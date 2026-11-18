@@ -105,20 +105,47 @@ const DEBUG_CATALOG: CatalogItem[] = [
   },
 ];
 
-function asConfig(raw: IntegrationRow["config"]): Record<string, string> {
-  let obj: Record<string, unknown> = {};
+const SLACK_EVENT_KEYS = ["new_bug", "new_idea", "status_changed", "marked_fixed"] as const;
+type SlackEventKey = (typeof SLACK_EVENT_KEYS)[number];
+type SlackEventsState = Record<SlackEventKey, boolean>;
+
+function parseConfigObject(raw: IntegrationRow["config"]): Record<string, unknown> {
   if (typeof raw === "string") {
     try {
-      obj = JSON.parse(raw) as Record<string, unknown>;
+      return JSON.parse(raw) as Record<string, unknown>;
     } catch {
-      obj = {};
+      return {};
     }
-  } else if (raw && typeof raw === "object") {
-    obj = raw;
   }
+  if (raw && typeof raw === "object") return raw;
+  return {};
+}
+
+function asConfig(raw: IntegrationRow["config"]): Record<string, string> {
+  const obj = parseConfigObject(raw);
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  }
+  return out;
+}
+
+function slackEventsFromConfig(raw: IntegrationRow["config"]): SlackEventsState {
+  const defaults: SlackEventsState = {
+    new_bug: true,
+    new_idea: true,
+    status_changed: true,
+    marked_fixed: true,
+  };
+  const obj = parseConfigObject(raw);
+  const list = obj.events;
+  if (!Array.isArray(list) || list.length === 0) return defaults;
+  const enabled = new Set(
+    list.filter((item): item is string => typeof item === "string" && item.trim() !== ""),
+  );
+  const out = { ...defaults };
+  for (const key of SLACK_EVENT_KEYS) {
+    out[key] = enabled.has(key);
   }
   return out;
 }
@@ -139,7 +166,7 @@ export function Integrations() {
   const [posthogHost, setPosthogHost] = useState("https://us.posthog.com");
   const [posthogProject, setPosthogProject] = useState("");
   const [slackWebhook, setSlackWebhook] = useState("");
-  const [slackEvents, setSlackEvents] = useState({
+  const [slackEvents, setSlackEvents] = useState<SlackEventsState>({
     new_bug: true,
     new_idea: true,
     status_changed: true,
@@ -182,6 +209,8 @@ export function Integrations() {
         }
         if (slack) {
           setSlackWebhook(slack.config.webhook_url || "");
+          const row = (integRes.integrations || []).find((i) => i.provider === "slack");
+          if (row) setSlackEvents(slackEventsFromConfig(row.config));
         }
         setError("");
       })
@@ -197,7 +226,10 @@ export function Integrations() {
     };
   }, [router]);
 
-  async function saveProvider(provider: WiredProvider, config: Record<string, string>) {
+  async function saveProvider(
+    provider: WiredProvider,
+    config: Record<string, string | string[]>,
+  ) {
     if (!projectId) return false;
     setSaving(provider);
     setError("");
@@ -273,7 +305,10 @@ export function Integrations() {
     return "Configure";
   }
 
-  async function saveAndClose(provider: WiredProvider, config: Record<string, string>) {
+  async function saveAndClose(
+    provider: WiredProvider,
+    config: Record<string, string | string[]>,
+  ) {
     const ok = await saveProvider(provider, config);
     if (ok) setConfigureModal(null);
   }
@@ -412,7 +447,6 @@ export function Integrations() {
                                   }))
                                 }
                                 className="h-4 w-4 accent-[#16A34A]"
-                                title="Coming soon — all connected events post today"
                               />
                             </label>
                           ))}
@@ -442,6 +476,7 @@ export function Integrations() {
                             onClick={() =>
                               void saveAndClose("slack", {
                                 webhook_url: slackWebhook.trim(),
+                                events: SLACK_EVENT_KEYS.filter((key) => slackEvents[key]),
                               })
                             }
                             className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
