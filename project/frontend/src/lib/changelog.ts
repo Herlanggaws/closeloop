@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
-    title: "GitHub App, Auto PR, Issues, public board, and pen-aligned UI",
-    body: "Connect the Saidloop GitHub App from Integrations, pick a repo, run Auto PR, or create a GitHub Issue from a ticket (Issues deep-link on the ticket). Credits show in the sidebar and Billing; agents open PRs only and never merge. Public `/board/[slug]` now shows idea descriptions with search and Top/Trending/New sorting, plus votes/comments and moderated Suggest an idea. Ticket Linked panel matches the pen (Sentry, session, Auto PR Run, GitHub Issue). Project settings add Widget and Public board domain Studio stubs; same day also shipped voter release email, Webhooks, Slack/Sentry/PostHog, and masking/notify polish.",
+    title: "Session replay, audit log, Linear/Jira, and tracker sync",
+    body: "Studio/Business widgets record a masked rrweb buffer and attach it to tickets for playback. Business owners get an audit log with CSV export under SSO & audit. Integrations now connect Linear and Jira via API keys; create issues from a ticket and close sync through inbound webhooks. Same day earlier: GitHub App, Auto PR, public board polish, and pen-aligned Linked panel.",
   },
   {
     date: "2026-11-17",

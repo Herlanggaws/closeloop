@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { SessionReplayPlayer } from "@/components/SessionReplayPlayer";
 import { api } from "@/lib/api";
 import {
   STATUS_META,
@@ -16,6 +17,7 @@ import {
   eventDescription,
   primaryReport,
   relativeTime,
+  replayUrl,
   reporterLine,
   screenshotUrl,
   shortId,
@@ -23,6 +25,8 @@ import {
   type TicketStatus,
 } from "@/lib/tickets";
 import type { MeResponse } from "@/lib/usage";
+
+type DetailTab = "activity" | "replay" | "sentry" | "posthog";
 
 type ProjectInfo = { id: string; name: string };
 
@@ -49,6 +53,13 @@ export function ReportDetail() {
   const [githubIssueBusy, setGithubIssueBusy] = useState(false);
   const [githubIssueUrl, setGithubIssueUrl] = useState("");
   const [githubAppConnected, setGithubAppConnected] = useState(false);
+  const [linearConnected, setLinearConnected] = useState(false);
+  const [jiraConnected, setJiraConnected] = useState(false);
+  const [linearIssueBusy, setLinearIssueBusy] = useState(false);
+  const [linearIssueUrl, setLinearIssueUrl] = useState("");
+  const [jiraIssueBusy, setJiraIssueBusy] = useState(false);
+  const [jiraIssueUrl, setJiraIssueUrl] = useState("");
+  const [detailTab, setDetailTab] = useState<DetailTab>("activity");
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -94,6 +105,30 @@ export function ReportDetail() {
         setGithubAppConnected(
           Boolean(ghCfg.installation_id) && Boolean(String(ghCfg.repo_full_name || "").trim()),
         );
+        const linear = (integRes.integrations || []).find((i) => i.provider === "linear");
+        const jira = (integRes.integrations || []).find((i) => i.provider === "jira");
+        setLinearConnected(Boolean(linear));
+        setJiraConnected(Boolean(jira));
+        const linearEv = [...(detail.events || [])]
+          .reverse()
+          .find((e) => e.kind === "linear_issue_created");
+        if (linearEv) {
+          const payload =
+            typeof linearEv.payload === "string"
+              ? (JSON.parse(linearEv.payload) as { url?: string })
+              : ((linearEv.payload || {}) as { url?: string });
+          if (payload.url) setLinearIssueUrl(payload.url);
+        }
+        const jiraEv = [...(detail.events || [])]
+          .reverse()
+          .find((e) => e.kind === "jira_issue_created");
+        if (jiraEv) {
+          const payload =
+            typeof jiraEv.payload === "string"
+              ? (JSON.parse(jiraEv.payload) as { url?: string })
+              : ((jiraEv.payload || {}) as { url?: string });
+          if (payload.url) setJiraIssueUrl(payload.url);
+        }
         const issueEv = [...(detail.events || [])]
           .reverse()
           .find((e) => e.kind === "github_issue_created");
@@ -171,6 +206,27 @@ export function ReportDetail() {
     }
   }
 
+  async function createTrackerIssue(
+    path: "linear-issue" | "jira-issue",
+    setBusy: (v: boolean) => void,
+    setUrl: (v: string) => void,
+  ) {
+    if (!ticketId) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api<{ issue: { url?: string }; existing?: boolean }>(
+        `/api/tickets/${ticketId}/${path}`,
+        { method: "POST" },
+      );
+      if (res.issue?.url) setUrl(res.issue.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create issue");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createGitHubIssue() {
     if (!ticketId || githubIssueBusy) return;
     setGithubIssueBusy(true);
@@ -242,6 +298,7 @@ export function ReportDetail() {
     dot: "#A3A3A3",
   };
   const shot = data ? screenshotUrl(data.attachments || []) : "";
+  const replay = data ? replayUrl(data.attachments || []) : "";
   const contextRows = contextEntries(report);
   const reporterTotal = data?.reporters?.total ?? ticket?.report_count ?? 0;
   const events = [...(data?.events || [])].reverse();
@@ -249,6 +306,7 @@ export function ReportDetail() {
   const posthogUrl = data ? buildPosthogUrl(report, data.integrations) : null;
   const hasSentryConfig = !!data?.integrations?.some((i) => i.provider === "sentry");
   const hasPosthogConfig = !!data?.integrations?.some((i) => i.provider === "posthog");
+  const replayPlanOk = plan === "studio" || plan === "business";
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -368,41 +426,100 @@ export function ReportDetail() {
               </div>
 
               <div className="flex gap-5 border-b border-[#17171714]">
-                <span className="border-b-2 border-[#171717] pb-2.5 font-ds-ui text-[13px] font-medium text-[#171717]">
-                  Activity
-                </span>
-                <span className="pb-2.5 font-ds-ui text-[13px] font-medium text-[#737373]">
-                  Session replay
-                </span>
-                <span className="pb-2.5 font-ds-ui text-[13px] font-medium text-[#737373]">
-                  Sentry
-                </span>
-                <span className="pb-2.5 font-ds-ui text-[13px] font-medium text-[#737373]">
-                  PostHog
-                </span>
+                {(
+                  [
+                    ["activity", "Activity"],
+                    ["replay", "Session replay"],
+                    ["sentry", "Sentry"],
+                    ["posthog", "PostHog"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setDetailTab(id)}
+                    className={
+                      detailTab === id
+                        ? "border-b-2 border-[#171717] pb-2.5 font-ds-ui text-[13px] font-medium text-[#171717]"
+                        : "border-b-2 border-transparent pb-2.5 font-ds-ui text-[13px] font-medium text-[#737373]"
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
               <div className="flex flex-col gap-3.5 pb-8">
-                {events.length === 0 ? (
-                  <p className="font-ds-ui text-[13px] text-[#A3A3A3]">No activity yet.</p>
-                ) : (
-                  events.map((event) => (
-                    <div key={event.id} className="flex items-center gap-2.5">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F5F5F5] font-ds-ui text-[10px] text-[#737373]">
-                        {event.kind === "note" ? "N" : event.kind === "status_changed" ? "S" : "•"}
+                {detailTab === "activity" &&
+                  (events.length === 0 ? (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">No activity yet.</p>
+                  ) : (
+                    events.map((event) => (
+                      <div key={event.id} className="flex items-center gap-2.5">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F5F5F5] font-ds-ui text-[10px] text-[#737373]">
+                          {event.kind === "note" ? "N" : event.kind === "status_changed" ? "S" : "•"}
+                        </div>
+                        <div className="min-w-0 flex-1 font-ds-ui text-[13px]">
+                          <span className="font-medium text-[#171717]">
+                            {actorLabel(event.actor)}
+                          </span>{" "}
+                          <span className="text-[#737373]">{eventDescription(event)}</span>
+                        </div>
+                        <span className="shrink-0 font-ds-mono text-[11px] text-[#A3A3A3]">
+                          {relativeTime(event.created_at)}
+                        </span>
                       </div>
-                      <div className="min-w-0 flex-1 font-ds-ui text-[13px]">
-                        <span className="font-medium text-[#171717]">
-                          {actorLabel(event.actor)}
-                        </span>{" "}
-                        <span className="text-[#737373]">{eventDescription(event)}</span>
-                      </div>
-                      <span className="shrink-0 font-ds-mono text-[11px] text-[#A3A3A3]">
-                        {relativeTime(event.created_at)}
-                      </span>
-                    </div>
-                  ))
-                )}
+                    ))
+                  ))}
+
+                {detailTab === "replay" &&
+                  (replay ? (
+                    <SessionReplayPlayer url={replay} />
+                  ) : replayPlanOk ? (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
+                      No session replay was attached to this report.
+                    </p>
+                  ) : (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
+                      Session replay is available on Studio and Business plans.
+                    </p>
+                  ))}
+
+                {detailTab === "sentry" &&
+                  (sentryUrl ? (
+                    <a
+                      href={sentryUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-ds-ui text-[13px] text-[#266DF0] no-underline"
+                    >
+                      Open related Sentry event
+                    </a>
+                  ) : (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
+                      {hasSentryConfig
+                        ? "No Sentry event id on this report."
+                        : "Connect Sentry in Integrations to deep-link events."}
+                    </p>
+                  ))}
+
+                {detailTab === "posthog" &&
+                  (posthogUrl ? (
+                    <a
+                      href={posthogUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-ds-ui text-[13px] text-[#266DF0] no-underline"
+                    >
+                      Open PostHog session
+                    </a>
+                  ) : (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
+                      {hasPosthogConfig
+                        ? "No PostHog session id on this report."
+                        : "Connect PostHog in Integrations to deep-link sessions."}
+                    </p>
+                  ))}
               </div>
             </div>
 
@@ -535,6 +652,60 @@ export function ReportDetail() {
                         className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
                       >
                         Connect GitHub App
+                      </Link>
+                    ) : null
+                  }
+                />
+                <LinkedRow
+                  title={linearIssueUrl ? "Linear issue" : "No Linear issue yet"}
+                  subtitle="Linear · create from ticket"
+                  actionLabel={linearIssueBusy ? "…" : linearIssueUrl ? "View" : "Create"}
+                  href={linearIssueUrl || undefined}
+                  onAction={
+                    linearIssueUrl
+                      ? undefined
+                      : () =>
+                          void createTrackerIssue(
+                            "linear-issue",
+                            setLinearIssueBusy,
+                            setLinearIssueUrl,
+                          )
+                  }
+                  actionDisabled={linearIssueBusy || (!linearConnected && !linearIssueUrl)}
+                  footer={
+                    !linearConnected && !linearIssueUrl ? (
+                      <Link
+                        href="/app/settings/integrations"
+                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
+                      >
+                        Connect Linear
+                      </Link>
+                    ) : null
+                  }
+                />
+                <LinkedRow
+                  title={jiraIssueUrl ? "Jira issue" : "No Jira issue yet"}
+                  subtitle="Jira · create from ticket"
+                  actionLabel={jiraIssueBusy ? "…" : jiraIssueUrl ? "View" : "Create"}
+                  href={jiraIssueUrl || undefined}
+                  onAction={
+                    jiraIssueUrl
+                      ? undefined
+                      : () =>
+                          void createTrackerIssue(
+                            "jira-issue",
+                            setJiraIssueBusy,
+                            setJiraIssueUrl,
+                          )
+                  }
+                  actionDisabled={jiraIssueBusy || (!jiraConnected && !jiraIssueUrl)}
+                  footer={
+                    !jiraConnected && !jiraIssueUrl ? (
+                      <Link
+                        href="/app/settings/integrations"
+                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
+                      >
+                        Connect Jira
                       </Link>
                     ) : null
                   }

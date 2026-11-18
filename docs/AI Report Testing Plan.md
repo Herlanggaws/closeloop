@@ -180,6 +180,20 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-MCP-03 | update_status / add_note | Write scope | tools/call | Persisted like dashboard | mcp write |
 | R-MCP-04 | Bad MCP token | Garbage bearer | Any call | 401 | auth |
 
+### 4.5b Replay, audit, Linear/Jira (M3/M4)
+
+| ID | Case | Given | When | Then | Fix hint |
+| --- | --- | --- | --- | --- | --- |
+| R-REPLAY-01 | Studio ingest offers replay | Plan studio | Ingest + config | `replay_enabled` + replay upload fields; detail shows uploaded replay | CreateReplayAttachment |
+| R-REPLAY-02 | Free skips replay | Plan free | Ingest + config | No replay slot | ReplayAllowed |
+| R-REPLAY-03 | Retention purge | Studio replay aged past 7d | PurgeExpiredReplaysOnce | Attachment row deleted | ListExpiredReplays |
+| R-AUDIT-01 | Login audited | Business org | GET `/api/org/audit-logs` | Contains `auth.login` | InsertAudit on issueSession |
+| R-AUDIT-02 | Non-business forbidden | Indie org | GET audit-logs | 403 PLAN_REQUIRED | requireBusinessOwner |
+| R-AUDIT-03 | Export CSV | Business org | GET export `format=csv` | text/csv with auth.login | exportAuditLogs |
+| R-TRACK-01 | Linear create + webhook | Studio + Linear config | Create issue → webhook completed | Ticket fixed | SyncTicketFixedFromExternal |
+| R-TRACK-02 | Jira create + webhook | Studio + Jira config | Create issue → status Done webhook | Ticket fixed | jiraWebhook |
+| R-TRACK-03 | Linear requires config | No Linear integration | CreateLinearIssueForTicket | Error | GetIntegrationConfig |
+
 ### 4.6 UI smoke (L3 · optional tiap commit, wajib nightly)
 
 | ID | Case | Steps | Then |

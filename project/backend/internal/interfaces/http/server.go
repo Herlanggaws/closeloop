@@ -52,6 +52,8 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/auth/logout", s.logout)
 		api.GET("/me", s.authRequired(), s.me)
 		api.PATCH("/org/plan", s.authRequired(), s.patchOrgPlan)
+		api.GET("/org/audit-logs", s.authRequired(), s.listAuditLogs)
+		api.GET("/org/audit-logs/export", s.authRequired(), s.exportAuditLogs)
 		api.GET("/org/members", s.authRequired(), s.listOrgMembers)
 		api.POST("/org/invites", s.authRequired(), s.createOrgInvites)
 		api.POST("/org/invites/:id/resend", s.authRequired(), s.resendOrgInvite)
@@ -84,6 +86,8 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/tickets/:id/autopr", s.authRequired(), s.startAutoprRun)
 		api.GET("/tickets/:id/autopr", s.authRequired(), s.listTicketAutoprRuns)
 		api.POST("/tickets/:id/github-issue", s.authRequired(), s.createGitHubIssue)
+		api.POST("/tickets/:id/linear-issue", s.authRequired(), s.createLinearIssue)
+		api.POST("/tickets/:id/jira-issue", s.authRequired(), s.createJiraIssue)
 		api.POST("/tickets/:id/comments", s.authRequired(), s.createTeamComment)
 		api.POST("/tickets/merge", s.authRequired(), s.mergeTickets)
 		api.GET("/projects/:id/board-comments", s.authRequired(), s.listBoardComments)
@@ -112,6 +116,8 @@ func (s *Server) Router() *gin.Engine {
 
 	r.GET("/v1/files/:token", s.readFile)
 	r.POST("/webhooks/github", s.githubWebhook)
+	r.POST("/webhooks/linear", s.linearWebhook)
+	r.POST("/webhooks/jira", s.jiraWebhook)
 	r.Any("/mcp", s.mcpHandler)
 	r.Any("/mcp/*path", s.mcpHandler)
 	return r
@@ -208,6 +214,7 @@ func (s *Server) issueSession(c *gin.Context, user application.User) {
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 	})
+	s.writeAuditForUser(c, user, "auth.login", user.ID, nil)
 	c.JSON(200, gin.H{"access_token": access, "user": gin.H{"id": user.ID, "email": user.Email, "name": user.Name, "avatar_url": user.AvatarURL}})
 }
 
@@ -673,6 +680,9 @@ func (s *Server) patchOrgPlan(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	s.writeAudit(c, org.ID, "", "org.plan_changed", org.ID, map[string]any{
+		"from": org.Plan, "to": updated.Plan,
+	})
 	c.JSON(200, gin.H{"org": updated, "usage": usage})
 }
 
@@ -845,6 +855,7 @@ func (s *Server) createMCPToken(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	s.writeAudit(c, org.ID, "", "mcp.token_created", id, map[string]any{"prefix": prefix})
 	c.JSON(201, gin.H{"token": raw, "prefix": prefix, "scopes": ternary(write, []string{"read", "write"}, []string{"read"})})
 }
 
@@ -857,6 +868,9 @@ func (s *Server) deleteMCPToken(c *gin.Context) {
 	if err := s.Store.DeleteMCPToken(c.Request.Context(), projectID, tokenID); err != nil {
 		mapErr(c, err)
 		return
+	}
+	if org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID")); err == nil {
+		s.writeAudit(c, org.ID, "", "mcp.token_revoked", tokenID, map[string]any{"project_id": projectID})
 	}
 	c.JSON(200, gin.H{"ok": true})
 }
@@ -904,6 +918,9 @@ func (s *Server) putIntegration(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	if org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID")); err == nil {
+		s.writeAudit(c, org.ID, "", "integration.upserted", id, map[string]any{"provider": c.Param("provider")})
+	}
 	c.JSON(200, gin.H{"integration": item})
 }
 
@@ -915,6 +932,9 @@ func (s *Server) deleteIntegration(c *gin.Context) {
 	if err := s.Store.DeleteIntegration(c.Request.Context(), id, c.Param("provider")); err != nil {
 		mapErr(c, err)
 		return
+	}
+	if org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID")); err == nil {
+		s.writeAudit(c, org.ID, "", "integration.deleted", id, map[string]any{"provider": c.Param("provider")})
 	}
 	c.Status(204)
 }
@@ -1031,6 +1051,15 @@ func (s *Server) patchTicket(c *gin.Context) {
 		}
 		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, slackEv)
 		_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), t.ProjectID, slackEv)
+		if org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID")); err == nil {
+			action := "ticket.status_changed"
+			if status == "fixed" {
+				action = "ticket.mark_fixed"
+			}
+			s.writeAudit(c, org.ID, actor, action, t.ID, map[string]any{
+				"from": fromStatus, "to": status,
+			})
+		}
 	}
 	t, _ = s.Store.GetTicket(c.Request.Context(), t.ID)
 	c.JSON(200, gin.H{"ticket": t})
@@ -1350,6 +1379,11 @@ func (s *Server) mergeTickets(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	if org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID")); err == nil {
+		s.writeAudit(c, org.ID, actor, "ticket.merge", body.ParentID, map[string]any{
+			"child_ids": body.ChildIDs,
+		})
+	}
 	c.JSON(200, gin.H{"ok": true})
 }
 
@@ -1379,9 +1413,15 @@ func (s *Server) ingestConfig(c *gin.Context) {
 	if selectors == nil {
 		selectors = []string{}
 	}
+	plan, err := s.Store.OrgPlan(c.Request.Context(), p.OrgID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
 	c.JSON(200, gin.H{
 		"sensitive_selectors": selectors,
 		"mask_text_inputs":    p.MaskTextInputs,
+		"replay_enabled":      application.ReplayAllowed(plan),
 	})
 }
 
@@ -1417,14 +1457,30 @@ func (s *Server) ingestReport(c *gin.Context) {
 	}
 	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), p.ID, createdEv)
 	_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), p.ID, createdEv)
-	c.JSON(201, gin.H{
+
+	out := gin.H{
 		"ticket_id":     ticketID,
 		"report_id":     reportID,
 		"attachment_id": attID,
 		"upload_url":    s.Files.UploadURL(attID, token),
 		"upload_token":  token,
 		"storage_key":   key,
-	})
+	}
+
+	plan, planErr := s.Store.OrgPlan(c.Request.Context(), p.OrgID)
+	if planErr == nil && application.ReplayAllowed(plan) {
+		replayID, replayToken, replayKey, replayErr := s.Store.CreateReplayAttachment(c.Request.Context(), p.ID, reportID)
+		if replayErr != nil {
+			slog.Error("create replay attachment", "err", replayErr, "report_id", reportID)
+		} else {
+			out["replay_attachment_id"] = replayID
+			out["replay_upload_url"] = s.Files.UploadURL(replayID, replayToken)
+			out["replay_upload_token"] = replayToken
+			out["replay_storage_key"] = replayKey
+		}
+	}
+
+	c.JSON(201, out)
 }
 
 func (s *Server) uploadAttachment(c *gin.Context) {

@@ -9,6 +9,11 @@ import {
   type AnnotateTool,
   type Stroke,
 } from "./annotate";
+import {
+  gzipEventsBase64,
+  snapshotReplayEvents,
+  startReplayRecording,
+} from "./replay";
 
 type State = "launcher" | "form" | "sent" | "banner";
 
@@ -65,6 +70,7 @@ function readConfig(): Config {
 type IngestMaskConfig = {
   selectors: string[];
   maskTextInputs: boolean;
+  replayEnabled: boolean;
 };
 
 const ALWAYS_MASK_SELECTORS = [
@@ -86,12 +92,12 @@ const TEXT_INPUT_MASK_SELECTORS = [
 ];
 
 async function fetchProjectMaskConfig(cfg: Config): Promise<IngestMaskConfig> {
-  if (!cfg.key) return { selectors: [], maskTextInputs: true };
+  if (!cfg.key) return { selectors: [], maskTextInputs: true, replayEnabled: false };
   try {
     const res = await fetch(`${cfg.api}/v1/ingest/config`, {
       headers: { "X-Closeloop-Key": cfg.key },
     });
-    if (!res.ok) return { selectors: [], maskTextInputs: true };
+    if (!res.ok) return { selectors: [], maskTextInputs: true, replayEnabled: false };
     const data = await res.json();
     const list = data?.sensitive_selectors;
     const selectors = Array.isArray(list)
@@ -100,9 +106,10 @@ async function fetchProjectMaskConfig(cfg: Config): Promise<IngestMaskConfig> {
     return {
       selectors,
       maskTextInputs: data?.mask_text_inputs !== false,
+      replayEnabled: data?.replay_enabled === true,
     };
   } catch {
-    return { selectors: [], maskTextInputs: true };
+    return { selectors: [], maskTextInputs: true, replayEnabled: false };
   }
 }
 
@@ -213,6 +220,24 @@ async function submitReport(
     });
     if (!up.ok) throw new Error(await up.text());
   }
+  if (data.replay_upload_url) {
+    try {
+      const replayEvents = snapshotReplayEvents();
+      if (replayEvents.length > 0) {
+        const gzipped = await gzipEventsBase64(replayEvents);
+        const up = await fetch(data.replay_upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: gzipped }),
+        });
+        if (!up.ok) {
+          console.warn("closeloop: replay upload failed", await up.text());
+        }
+      }
+    } catch (err) {
+      console.warn("closeloop: replay upload skipped", err);
+    }
+  }
   await fetch(`${cfg.api}/v1/ingest/reports/${data.report_id}/complete`, {
     method: "POST",
     headers: { "X-Closeloop-Key": cfg.key },
@@ -262,8 +287,15 @@ function Widget({ cfg }: { cfg: Config }) {
 
     async function loadConfigAndUpdates() {
       const maskCfg = await fetchProjectMaskConfig(cfg);
-      if (!cancelled && maskCfg.selectors.length) {
+      if (cancelled) return;
+      if (maskCfg.selectors.length) {
         cfg.selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
+      }
+      if (maskCfg.replayEnabled) {
+        startReplayRecording({
+          maskSelectors: cfg.selectors,
+          maskTextInputs: maskCfg.maskTextInputs,
+        });
       }
       try {
         const update = await fetchUpdates(cfg);

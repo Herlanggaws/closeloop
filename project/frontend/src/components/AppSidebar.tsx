@@ -16,6 +16,7 @@ export type AppSidebarActive =
   | "integrations"
   | "team"
   | "billing"
+  | "sso"
   | "auto-pr";
 
 type Props = {
@@ -144,6 +145,12 @@ export function AppSidebar({
           label="Billing"
           active={active === "billing"}
           icon={<IconCreditCard />}
+        />
+        <NavItem
+          href="/app/settings/sso"
+          label="SSO & audit"
+          active={active === "sso"}
+          icon={<IconShield />}
         />
       </nav>
 
@@ -381,6 +388,14 @@ function IconUsers(props: SVGProps<SVGSVGElement>) {
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function IconShield(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...iconProps(props)}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
     </svg>
   );
 }

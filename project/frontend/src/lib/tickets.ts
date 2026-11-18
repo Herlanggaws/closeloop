@@ -217,6 +217,11 @@ export function screenshotUrl(attachments: TicketAttachment[]) {
   return shot?.url || "";
 }
 
+export function replayUrl(attachments: TicketAttachment[]) {
+  const replay = attachments.find((a) => a.kind === "replay" && a.uploaded && a.url);
+  return replay?.url || "";
+}
+
 export function primaryReport(reports: TicketReport[]) {
   return reports[0];
 }
