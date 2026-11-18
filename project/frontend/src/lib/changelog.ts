@@ -13,7 +13,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
     title: "Coach-mark tours, session replay, and integrations",
-    body: "First-visit coach marks guide Inbox, Install, MCP, Project settings, Notify, and onboarding. Tours also register for board, Auto PR, integrations, SSO, and self-host when those pages are reachable. Same day: session replay playback, audit log CSV export, Linear/Jira connect, GitHub App, and public board polish.",
+    body: "First-visit coach marks guide Inbox, Install, MCP, Project settings, Notify, and onboarding. Tours also register for board, Auto PR, integrations, SSO, and self-host when those pages are reachable. Same day: session replay playback, audit log CSV export, Linear/Jira connect, GitHub App, and public board polish. Fixed GitHub App Save repository staying disabled after connect when installation_id came back as a number.",
   },
   {
     date: "2026-11-17",

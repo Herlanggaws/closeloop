@@ -5,6 +5,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
+import { asConfig, parseIntegrationConfig } from "@/lib/integration-config";
 import type { MeResponse } from "@/lib/usage";
 
 type Integration = {
@@ -122,27 +123,6 @@ const WEBHOOK_EVENT_KEYS = [
 type WebhookEventKey = (typeof WEBHOOK_EVENT_KEYS)[number];
 type WebhookEventsState = Record<WebhookEventKey, boolean>;
 
-function parseConfigObject(raw: IntegrationRow["config"]): Record<string, unknown> {
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      return {};
-    }
-  }
-  if (raw && typeof raw === "object") return raw;
-  return {};
-}
-
-function asConfig(raw: IntegrationRow["config"]): Record<string, string> {
-  const obj = parseConfigObject(raw);
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (typeof v === "string" && v.trim()) out[k] = v.trim();
-  }
-  return out;
-}
-
 function slackEventsFromConfig(raw: IntegrationRow["config"]): SlackEventsState {
   const defaults: SlackEventsState = {
     new_bug: true,
@@ -150,7 +130,7 @@ function slackEventsFromConfig(raw: IntegrationRow["config"]): SlackEventsState 
     status_changed: true,
     marked_fixed: true,
   };
-  const obj = parseConfigObject(raw);
+  const obj = parseIntegrationConfig(raw);
   const list = obj.events;
   if (!Array.isArray(list) || list.length === 0) return defaults;
   const enabled = new Set(
@@ -169,7 +149,7 @@ function webhookEventsFromConfig(raw: IntegrationRow["config"]): WebhookEventsSt
     "ticket.status_changed": true,
     "ticket.fixed": true,
   };
-  const obj = parseConfigObject(raw);
+  const obj = parseIntegrationConfig(raw);
   const list = obj.events;
   if (!Array.isArray(list) || list.length === 0) return defaults;
   const enabled = new Set(
@@ -335,6 +315,8 @@ export function Integrations() {
         body: JSON.stringify({ installation_id: installationId }),
       });
       applyGitHubConfig(asConfig(res.integration.config));
+      // Callback id is authoritative; config may still omit it if JSON types drift.
+      setGithubInstallationId(String(installationId));
       setConfigureModal("github_app");
       await loadGitHubRepos(project, installationId);
     } catch (err) {
