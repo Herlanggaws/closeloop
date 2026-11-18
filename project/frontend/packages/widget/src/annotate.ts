@@ -52,6 +52,8 @@ export async function compositeAnnotatedPng(
   displayWidth: number,
   displayHeight: number,
 ): Promise<string> {
+  if (strokes.length === 0) return baseDataUrl;
+
   const img = await loadImage(baseDataUrl);
   const canvas = document.createElement("canvas");
   canvas.width = img.naturalWidth || img.width;
@@ -59,13 +61,15 @@ export async function compositeAnnotatedPng(
   const ctx = canvas.getContext("2d");
   if (!ctx) return baseDataUrl;
 
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0);
   const scaleX = canvas.width / Math.max(displayWidth, 1);
   const scaleY = canvas.height / Math.max(displayHeight, 1);
 
   const scaled = strokes.map((stroke) => scaleStroke(stroke, scaleX, scaleY));
   drawStrokes(ctx, scaled, null);
-  return canvas.toDataURL("image/png", 0.92);
+  return canvas.toDataURL("image/jpeg", 0.85);
 }
 
 function scaleStroke(stroke: Stroke, sx: number, sy: number): Stroke {
