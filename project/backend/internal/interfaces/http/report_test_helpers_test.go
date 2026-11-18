@@ -144,6 +144,7 @@ func (h *reportHarness) truncate() {
 			idea_comment_tokens, idea_comments,
 			idea_suggestions,
 			idea_vote_tokens, idea_votes,
+			credit_ledger, autopr_runs,
 			reporters, mcp_tokens, integrations, invites, project_keys, projects, memberships,
 			refresh_tokens, waitlist, users, organizations
 		RESTART IDENTITY CASCADE`); err != nil {

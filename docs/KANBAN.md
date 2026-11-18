@@ -113,8 +113,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 #### M4 · AI & Business (F10, F12)
 - [x] **F10** GitHub App connect (S-13)
-- [x] **F10** Sandboxed auto-PR runner + credits ledger (S-10, S-15) — worker-local sandbox (Fly Machines later)
-- [x] **F10** Never-merge policy + cost caps
+- [x] **F10** Stub auto-PR runner + credits ledger (S-10, S-15) — opens never-merge markdown context PR; Agent SDK / Fly sandbox later
+- [x] **F10** Never-merge policy + flat cost accounting
 - [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
 - [ ] **F12** Audit log + export
 - [ ] **F12** Docker / Helm self-host + license activation (S-17)
