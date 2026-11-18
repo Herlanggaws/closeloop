@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
-    title: "GitHub App, Auto PR, public board, Slack & webhooks",
-    body: "Connect the Saidloop GitHub App from Integrations, pick a repo, and run Auto PR from a ticket — runs list on Auto PR runs with cost and PR links; credits show in the sidebar and Billing; agents open PRs only and never merge. Same day: publish tickets to a public `/board/[slug]` ideas list, detail, and roadmap with votes/comments, voter release email on mark fixed, outbound Webhooks plus Slack/Sentry/PostHog, mask-all-text-inputs, notify channel toggles, and sidebar polish.",
+    title: "GitHub App, Auto PR, Issues, public board, Slack & webhooks",
+    body: "Connect the Saidloop GitHub App from Integrations, pick a repo, run Auto PR, or create a GitHub Issue from a ticket in one click (same App install; Issues deep-link on the ticket). Credits show in the sidebar and Billing; agents open PRs only and never merge. Same day: public `/board/[slug]` with votes/comments and moderated Suggest an idea, voter release email on mark fixed, outbound Webhooks plus Slack/Sentry/PostHog, mask-all-text-inputs, notify channel toggles, and sidebar polish.",
   },
   {
     date: "2026-11-17",

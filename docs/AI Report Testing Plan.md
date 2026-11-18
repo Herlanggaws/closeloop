@@ -150,6 +150,9 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-HOOK-02 | Event filter + auto secret | events=`ticket.fixed` only | Ingest then mark fixed | Create skipped; fixed posts; secret generated | normalizeOutboundEvents |
 | R-HOOK-03 | Reject HTTP URL | `http://…` | PUT webhooks | 400 | UpsertIntegration |
 | R-SLACK-05 | Same status no-op | Slack saved; ticket open | PATCH status=open | No slack job/post | from==to guard |
+| R-GHISSUE-01 | Issues needs App | No github_app | POST github-issue | 400 | CreateGitHubIssueForTicket |
+| R-GHISSUE-02 | Create + idempotent | github_app + fake creator | POST twice | 201 then 200 existing; one upstream call | ticket_events github_issue_created |
+| R-GHISSUE-03 | Upstream error | Fake creator fails | POST github-issue | 502 | UPSTREAM_ERROR |
 
 ### 4.4c Public board (F9 · S-11 / S-24)
 

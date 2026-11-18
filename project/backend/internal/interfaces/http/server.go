@@ -21,10 +21,11 @@ import (
 )
 
 type Server struct {
-	Cfg    config.Config
-	Store  *application.Store
-	Files  *storage.FSStore
-	Mailer application.MailSender
+	Cfg                config.Config
+	Store              *application.Store
+	Files              *storage.FSStore
+	Mailer             application.MailSender
+	GitHubIssueCreator application.GitHubIssueCreator
 }
 
 func New(cfg config.Config, store *application.Store, files *storage.FSStore, mailer application.MailSender) *Server {
@@ -82,6 +83,7 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/tickets/:id/notes", s.authRequired(), s.addNote)
 		api.POST("/tickets/:id/autopr", s.authRequired(), s.startAutoprRun)
 		api.GET("/tickets/:id/autopr", s.authRequired(), s.listTicketAutoprRuns)
+		api.POST("/tickets/:id/github-issue", s.authRequired(), s.createGitHubIssue)
 		api.POST("/tickets/:id/comments", s.authRequired(), s.createTeamComment)
 		api.POST("/tickets/merge", s.authRequired(), s.mergeTickets)
 		api.GET("/projects/:id/board-comments", s.authRequired(), s.listBoardComments)

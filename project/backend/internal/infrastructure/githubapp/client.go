@@ -225,6 +225,46 @@ type CreatePRResult struct {
 	Branch  string
 }
 
+type CreateIssueInput struct {
+	InstallationID int64
+	Owner          string
+	Repo           string
+	Title          string
+	Body           string
+}
+
+type CreateIssueResult struct {
+	HTMLURL string
+	Number  int
+}
+
+// CreateIssue opens a GitHub Issue on the installation repo.
+func (c *Client) CreateIssue(ctx context.Context, in CreateIssueInput) (CreateIssueResult, error) {
+	if in.InstallationID == 0 || in.Owner == "" || in.Repo == "" || strings.TrimSpace(in.Title) == "" {
+		return CreateIssueResult{}, fmt.Errorf("invalid create issue input")
+	}
+	token, err := c.InstallationToken(ctx, in.InstallationID)
+	if err != nil {
+		return CreateIssueResult{}, err
+	}
+	var out struct {
+		HTMLURL string `json:"html_url"`
+		Number  int    `json:"number"`
+	}
+	payload := map[string]any{
+		"title": strings.TrimSpace(in.Title),
+		"body":  in.Body,
+	}
+	err = c.doJSON(ctx, token, http.MethodPost, fmt.Sprintf("/repos/%s/%s/issues", in.Owner, in.Repo), payload, &out)
+	if err != nil {
+		return CreateIssueResult{}, err
+	}
+	if out.HTMLURL == "" || out.Number == 0 {
+		return CreateIssueResult{}, fmt.Errorf("empty issue response")
+	}
+	return CreateIssueResult{HTMLURL: out.HTMLURL, Number: out.Number}, nil
+}
+
 // CreatePullRequest commits files on a new branch and opens a PR.
 // Intentionally has no Merge method — Auto PR never merges.
 func (c *Client) CreatePullRequest(ctx context.Context, in CreatePRInput) (CreatePRResult, error) {

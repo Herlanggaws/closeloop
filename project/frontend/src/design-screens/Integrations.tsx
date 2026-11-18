@@ -44,10 +44,10 @@ const NOTIFY_CATALOG: CatalogItem[] = [
   {
     id: "github_issues",
     name: "GitHub Issues",
-    description: "Create issues from tickets",
+    description: "Create issues from tickets via GitHub App",
     icon: "GH",
     iconBg: "#171717",
-    action: "coming_soon",
+    action: "configure",
   },
   {
     id: "linear",
@@ -187,7 +187,9 @@ export function Integrations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
-  const [configureModal, setConfigureModal] = useState<WiredProvider | null>(null);
+  const [configureModal, setConfigureModal] = useState<WiredProvider | "github_issues" | null>(
+    null,
+  );
   const configureTitleId = useId();
 
   const [sentryOrg, setSentryOrg] = useState("");
@@ -431,6 +433,7 @@ export function Integrations() {
     if (item.wired === "slack") return slackConnected ? "connected" : "none";
     if (item.wired === "webhooks") return webhooksConnected ? "connected" : "none";
     if (item.wired === "github_app") return githubConnected ? "connected" : "none";
+    if (item.id === "github_issues") return githubConnected ? "connected" : "none";
     return "none";
   }
 
@@ -444,6 +447,14 @@ export function Integrations() {
   }, [configureModal]);
 
   function onCardAction(item: CatalogItem) {
+    if (item.id === "github_issues") {
+      if (!githubConnected) {
+        void connectGitHubApp();
+        return;
+      }
+      setConfigureModal("github_issues");
+      return;
+    }
     if (item.action === "configure" && item.wired === "github_app") {
       if (!githubConnected) {
         void connectGitHubApp();
@@ -461,6 +472,7 @@ export function Integrations() {
   function actionLabel(item: CatalogItem): string {
     if (item.action === "upgrade") return "Upgrade";
     if (item.action === "coming_soon") return "Coming soon";
+    if (item.id === "github_issues") return githubConnected ? "Configure" : "Connect";
     if (item.wired === "github_app") return githubConnected ? "Configure" : "Connect";
     return "Configure";
   }
@@ -883,6 +895,61 @@ export function Integrations() {
                             className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
                           >
                             {saving === "github_app" ? "Saving…" : "Save repository"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {configureModal === "github_issues" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              GitHub Issues
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Uses the same GitHub App installation and repository. Create an issue
+                              from any ticket detail with one click.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <p className="mt-4 font-ds-ui text-[13px] text-[#171717]">
+                          Repo:{" "}
+                          <span className="font-ds-mono text-[12px]">
+                            {githubRepo || "Not selected"}
+                          </span>
+                        </p>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void loadGitHubRepos(
+                                projectId,
+                                Number(githubInstallationId) || undefined,
+                              );
+                              setConfigureModal("github_app");
+                            }}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Configure GitHub App
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white"
+                          >
+                            Done
                           </button>
                         </div>
                       </>
