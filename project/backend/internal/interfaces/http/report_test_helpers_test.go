@@ -141,6 +141,7 @@ func (h *reportHarness) truncate() {
 	if _, err := h.db.Exec(`
 		TRUNCATE TABLE
 			jobs, notifications, ticket_events, attachments, reports, tickets,
+			idea_comment_tokens, idea_comments,
 			idea_vote_tokens, idea_votes,
 			reporters, mcp_tokens, integrations, invites, project_keys, projects, memberships,
 			refresh_tokens, waitlist, users, organizations
@@ -272,10 +273,10 @@ func (h *reportHarness) uploadScreenshot(attachmentID, uploadToken string, data 
 	}
 }
 
-func (h *reportHarness) uploadScreenshotDataURL(attachmentID, uploadToken, dataURL string) {
+func (h *reportHarness) uploadScreenshotJSON(attachmentID, uploadToken string, payload map[string]string) {
 	h.t.Helper()
 	path := fmt.Sprintf("/v1/ingest/attachments/%s/upload?token=%s", attachmentID, uploadToken)
-	body, _ := json.Marshal(map[string]string{"data_url": dataURL})
+	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

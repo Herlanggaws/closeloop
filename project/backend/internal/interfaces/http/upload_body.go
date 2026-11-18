@@ -10,8 +10,9 @@ import (
 	"github.com/closeloop/api/internal/application"
 )
 
-// decodeAttachmentBody accepts raw binary (legacy) or JSON that WAFs allow through:
-// {"data_url":"data:image/png;base64,..."} or {"data":"<base64>"}.
+// decodeAttachmentBody accepts raw binary (legacy) or JSON:
+// {"data":"<base64>"} (preferred; avoids WAF rules that match "image/png")
+// or {"data_url":"data:...;base64,..."}.
 func decodeAttachmentBody(contentType string, r io.Reader) (io.Reader, int64, error) {
 	ct := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
 	if ct != "application/json" {

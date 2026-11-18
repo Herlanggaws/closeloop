@@ -40,7 +40,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed (notify enqueue); channel toggles visual |
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
-| S-11 Manage public board | `/app/board` | **Partial** pen-aligned tabs/table + slug + publish toggles; roadmap/comments moderation later |
+| S-11 Manage public board | `/app/board` | **Partial** slug + publish + comment moderation (hide/unhide); roadmap moderation later |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
 | S-13 Integrations | `/app/settings/integrations` | **Partial** pen-aligned catalog; Sentry/PostHog + Slack webhook wired; GitHub/Linear/Jira/App/Webhooks stubs (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
@@ -52,7 +52,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-22 Mobile report sheet | `/preview/widget/mobile` | Needs F3 SDK |
 | S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed + waitlist confirmation wired; S-27 vote verify + released-to-voters on mark fixed |
 | S-28 Join Waitlist | `/` modal + `/preview/waitlist` | Enter / invalid / joined / already + resend; CTAs open modal (`?join=1`) |
-| S-24…S-26 Public board | `/board/[slug]` | **Partial** pen-aligned list/detail/roadmap + email-verified votes; comments later |
+| S-24…S-26 Public board | `/board/[slug]` | **Partial** list/detail/roadmap + email-verified votes + comments/replies; roadmap moderation later |
 
 ### Todo — by PRD feature
 
@@ -101,7 +101,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F9** Builder publish controls + public ideas list (`/app/board`, `/board/[slug]`)
 - [x] **F9** Email-verified votes on public board (S-27 verify)
 - [x] **F9** Release emails to voters on mark fixed (S-27 released)
-- [ ] **F9** Board comments
+- [x] **F9** Board comments + one-level replies + moderation hide
 - [ ] **F11** rrweb replay module, attach to ticket, default masking
 
 #### M4 · AI & Business (F10, F12)
@@ -135,7 +135,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation email shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
-| M3 | F8 F9 F11 | Slack + public board + votes + voter release mail; comments/OAuth/replay still open |
+| M3 | F8 F9 F11 | Slack + public board + votes/comments + voter release mail; OAuth/replay still open |
 | M4 | F10 F12 | Design only |
 | M5 | Billing + public beta | Todo |
 

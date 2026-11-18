@@ -209,6 +209,35 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 			}
 		}
 		return nil
+	case "notify_comment_verify":
+		var p struct {
+			TicketID    string `json:"ticket_id"`
+			Email       string `json:"email"`
+			RawToken    string `json:"raw_token"`
+			ProjectName string `json:"project_name"`
+			IdeaTitle   string `json:"idea_title"`
+			BoardSlug   string `json:"board_slug"`
+		}
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return err
+		}
+		if deps.Mail == nil || p.Email == "" || p.RawToken == "" {
+			return nil
+		}
+		confirmURL := strings.TrimRight(deps.WebURL, "/") + "/comment/confirm?t=" + p.RawToken
+		mail := email.CommentVerifyMail{
+			To:           p.Email,
+			ProjectName:  p.ProjectName,
+			IdeaTitle:    p.IdeaTitle,
+			ConfirmURL:   confirmURL,
+			GreetingName: email.GreetingFromEmail(p.Email),
+		}
+		subject := email.CommentVerifySubject(mail.ProjectName)
+		html := email.RenderCommentVerifyHTML(mail)
+		if err := deps.Mail.Send(p.Email, subject, html); err != nil {
+			slog.Error("send comment verify mail", "err", err, "to", p.Email)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown job %s", kind)
 	}

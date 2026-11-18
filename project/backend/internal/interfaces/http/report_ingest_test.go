@@ -169,15 +169,17 @@ func TestR_ING_08_PlatformFilter(t *testing.T) {
 	}
 }
 
-func TestR_ING_09_JSONDataURLUpload(t *testing.T) {
+func TestR_ING_09_JSONBase64Upload(t *testing.T) {
 	h := newReportHarness(t)
 	seed := h.seedUserProject("indie")
 	ticketID, _, attID, _, token := h.ingestReport(seed.PublicKey, map[string]any{
 		"type": "bug", "message": "json upload", "platform": "web",
 	})
 	png := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4}
-	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
-	h.uploadScreenshotDataURL(attID, token, dataURL)
+	// Prefer bare base64: DNSCloud WAF blocks bodies containing the literal "image/png".
+	h.uploadScreenshotJSON(attID, token, map[string]string{
+		"data": base64.StdEncoding.EncodeToString(png),
+	})
 
 	code, detail := h.do(http.MethodGet, "/api/tickets/"+ticketID, nil, h.authHeaders(seed.AccessToken))
 	if code != 200 {

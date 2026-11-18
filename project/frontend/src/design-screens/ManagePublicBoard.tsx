@@ -22,6 +22,18 @@ type Project = {
   board_slug: string;
 };
 
+type BoardComment = {
+  id: string;
+  ticket_id: string;
+  idea_title: string;
+  email: string;
+  display_name: string;
+  body: string;
+  is_team: boolean;
+  status: "pending" | "visible" | "hidden";
+  created_at: string;
+};
+
 const ROADMAP_LABEL: Record<string, string> = {
   open: "Planned",
   in_progress: "In progress",
@@ -50,6 +62,20 @@ export function ManagePublicBoard() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"ideas" | "roadmap" | "comments">("ideas");
+  const [boardComments, setBoardComments] = useState<BoardComment[]>([]);
+  const [pendingComments, setPendingComments] = useState(0);
+  const [commentFilter, setCommentFilter] = useState<"all" | "pending" | "visible" | "hidden">(
+    "all",
+  );
+  const [moderating, setModerating] = useState<string | null>(null);
+
+  async function loadBoardComments(projectId: string, status: string) {
+    const res = await api<{ comments: BoardComment[]; pending_count: number }>(
+      `/api/projects/${projectId}/board-comments?status=${encodeURIComponent(status)}`,
+    );
+    setBoardComments(res.comments || []);
+    setPendingComments(res.pending_count || 0);
+  }
 
   useEffect(() => {
     const id = localStorage.getItem("closeloop_project");
@@ -62,13 +88,18 @@ export function ManagePublicBoard() {
       api<MeResponse>("/api/me"),
       api<{ project: Project }>(`/api/projects/${id}`),
       api<{ tickets: Ticket[] }>(`/api/projects/${id}/tickets`),
+      api<{ comments: BoardComment[]; pending_count: number }>(
+        `/api/projects/${id}/board-comments?status=all`,
+      ),
     ])
-      .then(([meRes, projectRes, ticketsRes]) => {
+      .then(([meRes, projectRes, ticketsRes, commentsRes]) => {
         if (cancelled) return;
         setMe(meRes);
         setProject(projectRes.project);
         setSlugDraft(projectRes.project.board_slug || "");
         setTickets(ticketsRes.tickets || []);
+        setBoardComments(commentsRes.comments || []);
+        setPendingComments(commentsRes.pending_count || 0);
         setError("");
       })
       .catch((err) => {
@@ -81,6 +112,35 @@ export function ManagePublicBoard() {
       cancelled = true;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!project || activeTab !== "comments") return;
+    let cancelled = false;
+    loadBoardComments(project.id, commentFilter)
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load comments");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [project, activeTab, commentFilter]);
+
+  async function setCommentHidden(comment: BoardComment, hidden: boolean) {
+    if (!project) return;
+    setModerating(comment.id);
+    setError("");
+    try {
+      await api(`/api/comments/${comment.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ hidden }),
+      });
+      await loadBoardComments(project.id, commentFilter);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update comment");
+    } finally {
+      setModerating(null);
+    }
+  }
 
   async function saveSlug() {
     if (!project) return;
@@ -220,7 +280,12 @@ export function ManagePublicBoard() {
                   [
                     ["ideas", `Ideas${ideaCount ? ` · ${ideaCount}` : ""}`],
                     ["roadmap", "Roadmap"],
-                    ["comments", "Comments"],
+                    [
+                      "comments",
+                      pendingComments > 0
+                        ? `Comments · ${pendingComments} pending`
+                        : "Comments",
+                    ],
                   ] as const
                 ).map(([id, label]) => (
                   <button
@@ -307,13 +372,111 @@ export function ManagePublicBoard() {
                     Screenshots and reporter details are never shown on the board.
                   </p>
                 </section>
-              ) : (
+              ) : activeTab === "roadmap" ? (
                 <div className="max-w-[880px] rounded-xl border border-[#17171714] bg-[#FAFAFA] px-6 py-10 text-center">
                   <p className="font-ds-sans text-[15px] font-medium text-[#171717]">
-                    {activeTab === "roadmap" ? "Roadmap moderation" : "Comment moderation"}
+                    Roadmap moderation
                   </p>
                   <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">Coming soon.</p>
                 </div>
+              ) : (
+                <section className="max-w-[880px]">
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {(
+                      [
+                        ["all", "All"],
+                        ["pending", "Pending"],
+                        ["visible", "Visible"],
+                        ["hidden", "Hidden"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setCommentFilter(id)}
+                        className={`inline-flex h-8 cursor-pointer items-center rounded-full border px-3 font-ds-ui text-[12.5px] ${
+                          commentFilter === id
+                            ? "border-[#171717] bg-[#171717] text-white"
+                            : "border-[#1717171F] bg-white text-[#737373] hover:text-[#171717]"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-[#17171714]">
+                    <div className="grid grid-cols-[1fr_140px_90px_100px] gap-3 border-b border-[#17171714] bg-[#FAFAFA] px-4 py-2.5">
+                      <span className="font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
+                        Comment
+                      </span>
+                      <span className="font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
+                        Author
+                      </span>
+                      <span className="font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
+                        Status
+                      </span>
+                      <span className="font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
+                        Action
+                      </span>
+                    </div>
+                    {boardComments.length === 0 ? (
+                      <p className="px-4 py-8 font-ds-ui text-sm text-[#737373]">
+                        No comments in this filter.
+                      </p>
+                    ) : (
+                      boardComments.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className="grid grid-cols-[1fr_140px_90px_100px] items-center gap-3 border-b border-[#17171714] px-4 py-3 last:border-b-0"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate font-ds-ui text-[13px] font-medium text-[#171717]">
+                              {comment.idea_title}
+                            </div>
+                            <div className="mt-0.5 line-clamp-2 font-ds-ui text-[12.5px] text-[#737373]">
+                              {comment.body}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-ds-ui text-[12.5px] text-[#171717]">
+                              {comment.display_name}
+                              {comment.is_team ? " · Team" : ""}
+                            </div>
+                            <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">
+                              {comment.email}
+                            </div>
+                          </div>
+                          <span className="font-ds-ui text-[12px] capitalize text-[#737373]">
+                            {comment.status}
+                          </span>
+                          <div>
+                            {comment.status === "pending" ? (
+                              <span className="font-ds-ui text-[12px] text-[#A3A3A3]">Awaiting email</span>
+                            ) : comment.status === "hidden" ? (
+                              <button
+                                type="button"
+                                disabled={moderating === comment.id}
+                                onClick={() => void setCommentHidden(comment, false)}
+                                className="cursor-pointer border-0 bg-transparent p-0 font-ds-ui text-[12.5px] font-medium text-[#266DF0] disabled:opacity-50"
+                              >
+                                Unhide
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={moderating === comment.id}
+                                onClick={() => void setCommentHidden(comment, true)}
+                                className="cursor-pointer border-0 bg-transparent p-0 font-ds-ui text-[12.5px] font-medium text-[#DA314A] disabled:opacity-50"
+                              >
+                                Hide
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
               )}
             </>
           )}

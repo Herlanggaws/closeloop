@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -73,12 +74,18 @@ func (s *Server) Router() *gin.Engine {
 		api.GET("/tickets/:id", s.authRequired(), s.getTicket)
 		api.PATCH("/tickets/:id", s.authRequired(), s.patchTicket)
 		api.POST("/tickets/:id/notes", s.authRequired(), s.addNote)
+		api.POST("/tickets/:id/comments", s.authRequired(), s.createTeamComment)
 		api.POST("/tickets/merge", s.authRequired(), s.mergeTickets)
+		api.GET("/projects/:id/board-comments", s.authRequired(), s.listBoardComments)
+		api.PATCH("/comments/:id", s.authRequired(), s.patchComment)
 
 		api.GET("/public/boards/:slug", s.getPublicBoard)
 		api.GET("/public/boards/:slug/ideas/:id", s.getPublicIdea)
+		api.GET("/public/boards/:slug/ideas/:id/comments", s.listPublicComments)
+		api.POST("/public/boards/:slug/ideas/:id/comments", s.requestPublicComment)
 		api.POST("/public/boards/:slug/ideas/:id/votes", s.requestPublicVote)
 		api.GET("/public/votes/confirm", s.confirmPublicVote)
+		api.GET("/public/comments/confirm", s.confirmPublicComment)
 	}
 
 	ingest := r.Group("/v1/ingest")
@@ -1059,6 +1066,147 @@ func (s *Server) confirmPublicVote(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"vote": result})
+}
+
+func (s *Server) listPublicComments(c *gin.Context) {
+	comments, err := s.Store.ListPublicComments(c.Request.Context(), c.Param("slug"), c.Param("id"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"comments": comments})
+}
+
+func (s *Server) requestPublicComment(c *gin.Context) {
+	var body struct {
+		Email       string `json:"email"`
+		Body        string `json:"body"`
+		DisplayName string `json:"display_name"`
+		ParentID    string `json:"parent_id"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	req, err := s.Store.RequestIdeaComment(
+		c.Request.Context(),
+		c.Param("slug"),
+		c.Param("id"),
+		body.Email,
+		body.DisplayName,
+		body.Body,
+		body.ParentID,
+	)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if req.SendEmail {
+		_ = s.Store.EnqueueCommentVerify(
+			c.Request.Context(),
+			req.TicketID,
+			req.Email,
+			req.RawToken,
+			req.ProjectName,
+			req.IdeaTitle,
+			req.BoardSlug,
+		)
+	}
+	c.JSON(202, gin.H{"ok": true, "message": "Check your email to confirm your comment."})
+}
+
+func (s *Server) confirmPublicComment(c *gin.Context) {
+	result, err := s.Store.ConfirmIdeaComment(c.Request.Context(), c.Query("t"))
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrNotFound):
+			writeErr(c, 404, "NOT_FOUND", "invalid comment link")
+		case errors.Is(err, application.ErrConflict):
+			writeErr(c, 409, "ALREADY_USED", "this comment link was already used")
+		case errors.Is(err, application.ErrGone):
+			writeErr(c, 410, "EXPIRED", "this comment link has expired")
+		default:
+			mapErr(c, err)
+		}
+		return
+	}
+	c.JSON(200, gin.H{"comment": result})
+}
+
+func (s *Server) createTeamComment(c *gin.Context) {
+	var body struct {
+		Body     string `json:"body"`
+		ParentID string `json:"parent_id"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	t, err := s.Store.GetTicket(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if !s.requireTicketWrite(c, t.ProjectID) {
+		return
+	}
+	comment, err := s.Store.CreateTeamComment(
+		c.Request.Context(),
+		t.ID,
+		c.GetString("email"),
+		body.Body,
+		body.ParentID,
+	)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(201, gin.H{"comment": comment})
+}
+
+func (s *Server) listBoardComments(c *gin.Context) {
+	projectID := c.Param("id")
+	if !s.requireProjectAccess(c, projectID) {
+		return
+	}
+	comments, pending, err := s.Store.ListBoardComments(c.Request.Context(), projectID, c.Query("status"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"comments": comments, "pending_count": pending})
+}
+
+func (s *Server) patchComment(c *gin.Context) {
+	var body struct {
+		Hidden *bool `json:"hidden"`
+	}
+	if err := c.BindJSON(&body); err != nil || body.Hidden == nil {
+		writeErr(c, 400, "INVALID_INPUT", "hidden required")
+		return
+	}
+	var projectID string
+	err := s.Store.DB.QueryRowContext(c.Request.Context(), `
+		SELECT t.project_id
+		FROM idea_comments c
+		JOIN tickets t ON t.id=c.ticket_id
+		WHERE c.id=$1`, c.Param("id")).Scan(&projectID)
+	if errors.Is(err, sql.ErrNoRows) {
+		mapErr(c, application.ErrNotFound)
+		return
+	}
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if !s.requireTicketWrite(c, projectID) {
+		return
+	}
+	if err := s.Store.SetCommentHidden(c.Request.Context(), c.Param("id"), projectID, *body.Hidden); err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"ok": true})
 }
 
 func (s *Server) addNote(c *gin.Context) {
