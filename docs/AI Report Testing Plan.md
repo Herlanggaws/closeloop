@@ -152,6 +152,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-BOARD-01 | Publish appears | Project has `board_slug` | PATCH `is_public=true` + GET public board | Idea listed with title | SetTicketPublic + PublicBoardBySlug |
 | R-BOARD-02 | Unpublished / bad slug | Ticket not public / unknown slug | GET public board | Empty list / 404 | is_public filter |
 | R-BOARD-03 | No private fields | Published ticket with email/context | GET public board + idea | Payload has no message/context/email/attachments | PublicIdea DTO |
+| R-BOARD-04 | Idea detail 404 | Unpublished / wrong slug / unknown id | GET public idea | 404 | PublicIdeaBySlug |
 
 ### 4.5 MCP read path (F5 · SC-2)
 
@@ -173,6 +174,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-05 | Banner payload | After fix + identify | `/v1/ingest/updates` non-empty (widget banner assert light) |
 | R-UI-06 | Post-M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | Public board link + page live; Auto PR still hidden/redirect |
 | R-UI-07 | Public board | Publish idea via API | Open `/board/{slug}` | Published title visible |
+| R-UI-08 | Idea detail | Publish idea via API | Open list → click idea | Detail title + back to list |
 
 ---
 
@@ -267,7 +269,7 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…03 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…04 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
 - [x] Mail sink assert untuk R-FIX-03/04
 - [x] MCP JSON-RPC client helper
 

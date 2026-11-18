@@ -1,19 +1,18 @@
-# Report test run — 2026-11-18T023000Z
+# Report test run — 2026-11-18T031210Z
 
-Branch: dev
+Branch: dev @ pending
 Result: PASS
-Duration: ~13s
+Duration: Go 12s + UI 10s
 
 ## Summary
 
-- Suite: `go test` report L0/L1/L2 (+ existing package tests)
-- Passed: R-ING-*, R-INB-*, R-MRG-*, R-FIX-*, R-MCP-*, R-SLACK-01…05, R-BOARD-01…03
-- Database: `closeloop_test`
-- Command: `pnpm test:reports` / `bash scripts/test-reports.sh`
+- Suite: `go test` report L0/L1/L2 (+ R-BOARD-01…04) and Playwright L3 (`R-UI-01`…`R-UI-08`)
+- Database: `closeloop_test` / local `closeloop`
+- Command: `pnpm test:reports` + `pnpm test:reports:ui`
 
-## Changes this run
+## Notes
 
-- F9 public board: `board_slug` + `is_public`, `/app/board` manage UI, `/board/[slug]` public list
+- F9 S-25 public idea detail: `/board/[slug]/ideas/[id]` + list links
 
 ## Next human action
 

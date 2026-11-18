@@ -135,3 +135,38 @@ func TestR_BOARD_03_PublicPayloadStripsPrivateFields(t *testing.T) {
 		}
 	}
 }
+
+func TestR_BOARD_04_PublicIdeaDetailNotFound(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+
+	code, projectBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("get project: %d %v", code, projectBody)
+	}
+	slug := projectBody["project"].(map[string]any)["board_slug"].(string)
+
+	hiddenID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "still private", "platform": "web",
+	})
+
+	code, unpublished := h.do(http.MethodGet, "/api/public/boards/"+slug+"/ideas/"+hiddenID, nil, nil)
+	if code != 404 {
+		t.Fatalf("unpublished idea want 404, got %d %v", code, unpublished)
+	}
+
+	code, badID := h.do(http.MethodGet, "/api/public/boards/"+slug+"/ideas/00000000-0000-0000-0000-000000000000", nil, nil)
+	if code != 404 {
+		t.Fatalf("unknown idea id want 404, got %d %v", code, badID)
+	}
+
+	publishedID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "public elsewhere", "platform": "web",
+	})
+	h.do(http.MethodPatch, "/api/tickets/"+publishedID, map[string]any{"is_public": true}, h.authHeaders(seed.AccessToken))
+
+	code, badSlug := h.do(http.MethodGet, "/api/public/boards/no-such-board-xyz/ideas/"+publishedID, nil, nil)
+	if code != 404 {
+		t.Fatalf("wrong slug want 404, got %d %v", code, badSlug)
+	}
+}

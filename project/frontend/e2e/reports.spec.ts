@@ -197,4 +197,36 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(page.getByRole("heading", { name: "Ideas" })).toBeVisible();
     await expect(page.getByText("public board smoke idea")).toBeVisible();
   });
+
+  test("R-UI-08 public idea detail from list", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    expect(projectRes.ok()).toBeTruthy();
+    const projectBody = await projectRes.json();
+    const slug = projectBody.project.board_slug as string;
+    expect(slug).toBeTruthy();
+
+    const { ticket_id: ticketId } = await ingestReport(
+      request,
+      session.publicKey,
+      "public idea detail smoke",
+      { type: "idea" },
+    );
+
+    const publish = await request.patch(`${API_URL}/api/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { is_public: true },
+    });
+    expect(publish.ok()).toBeTruthy();
+
+    await page.goto(`/board/${slug}`);
+    await page.getByRole("link", { name: /public idea detail smoke/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/board/${slug}/ideas/${ticketId}`));
+    await expect(page.getByRole("heading", { name: "public idea detail smoke" })).toBeVisible();
+    await page.getByRole("link", { name: /back to ideas/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/board/${slug}/?$`));
+    await expect(page.getByRole("heading", { name: "Ideas" })).toBeVisible();
+  });
 });
