@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { API_URL, api, setAccessToken } from "@/lib/api";
+import { safePostAuthPath } from "@/lib/auth-redirect";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
 
 type AuthMode = "login" | "signup";
@@ -121,6 +122,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasSession] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(localStorage.getItem("closeloop_access"));
+  });
 
   useEffect(() => {
     const err = searchParams?.get("error");
@@ -128,6 +133,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       setError(err);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!hasSession) return;
+    router.replace(safePostAuthPath(searchParams?.get("next")));
+  }, [hasSession, router, searchParams]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -151,13 +161,26 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           body: JSON.stringify({ email, password }),
         });
         setAccessToken(res.access_token);
-        router.push("/app/inbox");
+        router.push(safePostAuthPath(searchParams?.get("next")));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (hasSession) {
+    return (
+      <div
+        data-pencil-name="Form Side"
+        className="box-border flex h-full min-h-0 flex-1 flex-col items-start justify-between gap-0 p-[40px_64px]"
+      >
+        <CloseloopLogo />
+        <p className="font-ds-ui m-0 text-[14px] text-[var(--text-secondary)]">Taking you in…</p>
+        <div />
+      </div>
+    );
   }
 
   return (

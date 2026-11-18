@@ -8,7 +8,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
     title: "Public board publish + Slack webhooks",
-    body: "Publish tickets to a public `/board/[slug]` ideas list, idea detail, and roadmap — and visitors can vote with email confirmation. Integrations shows the full catalog; Configure opens a modal for Slack, Sentry, and PostHog. Same day: Slack status notifications, plus landing yearly pricing and mobile pricing polish.",
+    body: "Publish tickets to a public `/board/[slug]` ideas list, idea detail, and roadmap — and visitors can vote with email confirmation. Integrations shows the full catalog; Configure opens a modal for Slack, Sentry, and PostHog. Same day: Slack status notifications, landing yearly pricing and mobile pricing polish, and logged-in visits to /login or /signup now skip straight into the app.",
   },
   {
     date: "2026-11-17",
