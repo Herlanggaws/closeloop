@@ -147,6 +147,8 @@ async function maskAndShot(
   try {
     const fullCanvas = await domToCanvas(document.body, {
       scale: 1,
+      timeout: 2500,
+      font: false,
       filter: (node) => !isCloseloopWidgetNode(node),
     });
 
@@ -338,6 +340,7 @@ function Widget({ cfg }: { cfg: Config }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
+  const maskConfigRef = useRef<IngestMaskConfig | null>(null);
   const [snipRect, setSnipRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const snipStart = useRef<{ x: number; y: number } | null>(null);
   const snipping = useRef(false);
@@ -347,6 +350,7 @@ function Widget({ cfg }: { cfg: Config }) {
 
     async function loadConfigAndUpdates() {
       const maskCfg = await fetchProjectMaskConfig(cfg);
+      maskConfigRef.current = maskCfg;
       if (cancelled) return;
       if (maskCfg.selectors.length) {
         cfg.selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
@@ -427,7 +431,8 @@ function Widget({ cfg }: { cfg: Config }) {
     setCapturing(true);
     setError("");
     try {
-      const maskCfg = await fetchProjectMaskConfig(cfg);
+      const maskCfg = maskConfigRef.current ?? (await fetchProjectMaskConfig(cfg));
+      maskConfigRef.current = maskCfg;
       const selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
       cfg.selectors = selectors;
       const next = await maskAndShot(selectors, maskCfg.maskTextInputs);
@@ -504,7 +509,8 @@ function Widget({ cfg }: { cfg: Config }) {
     setCapturing(true);
     setError("");
     try {
-      const maskCfg = await fetchProjectMaskConfig(cfg);
+      const maskCfg = maskConfigRef.current ?? (await fetchProjectMaskConfig(cfg));
+      maskConfigRef.current = maskCfg;
       const selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
       cfg.selectors = selectors;
       const next = await maskAndShot(selectors, maskCfg.maskTextInputs, rect);
