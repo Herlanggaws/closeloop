@@ -1,0 +1,22 @@
+---
+description: Feature UI must follow closeloop.pen S-* frames via Pencil MCP
+alwaysApply: true
+---
+
+# Pen design is the UI source of truth
+
+When implementing or changing **user-facing UI** (app screens, public board, settings, widget chrome):
+
+1. **Source of truth:** `closeloop.pen` screen frames (`S-*`), not ad-hoc layouts.
+2. **Before coding UI:** open the matching frame in Pencil MCP (`get_app_state` / `Get` / `TakeScreenshot`). If the file is not open, ask the user to open `closeloop.pen`.
+3. **Implement:** match structure (sections, grids, tabs, panels), hierarchy, and product copy from the pen. Wire live data into that shell.
+4. **Do not** replace a designed screen with a minimal form-only page when a pen frame exists.
+5. **Unwired providers/features:** keep pen cards/sections visible as Coming soon / Upgrade / disabled stubs — do not omit them.
+6. **Exports:** `/preview` dumps and `design-screens/*` pen exports are helpers; if they disagree with the current pen frame, **follow the pen**.
+7. **No pen frame yet:** use existing Saidloop design-system / `AppSidebar` patterns; do not invent a new visual language.
+8. **Skip:** pure backend/API/worker/docs/rules with no user-facing surface.
+
+```text
+❌ Feature ships a reinvented form that drops pen cards/sections
+✅ Pen layout + Configure expands to wired fields; other cards stay as designed stubs
+```

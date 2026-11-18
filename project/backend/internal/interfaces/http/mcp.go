@@ -183,12 +183,20 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 		if t.ProjectID != projectID {
 			return nil, application.ErrForbidden
 		}
-		if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, str("status"), "agent", ""); err != nil {
+		fromStatus := t.Status
+		toStatus := str("status")
+		if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, toStatus, "agent", ""); err != nil {
 			return nil, err
 		}
-		if str("status") == "fixed" {
+		if toStatus == "fixed" {
 			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID)
 		}
+		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
+			TicketID: t.ID,
+			Event:    "status_changed",
+			From:     fromStatus,
+			To:       toStatus,
+		})
 		return s.Store.GetTicket(c.Request.Context(), t.ID)
 	case "add_note":
 		if !canWrite {
@@ -217,12 +225,20 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 			return nil, application.ErrForbidden
 		}
 		note := str("note")
+		fromStatus := t.Status
 		if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, "fixed", "agent", note); err != nil {
 			return nil, err
 		}
 		if err := s.Store.EnqueueNotify(c.Request.Context(), t.ID); err != nil {
 			return nil, err
 		}
+		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
+			TicketID: t.ID,
+			Event:    "status_changed",
+			From:     fromStatus,
+			To:       "fixed",
+			Note:     note,
+		})
 		return map[string]any{"queued": true, "ticket_id": t.ID}, nil
 	default:
 		return nil, application.ErrNotFound

@@ -152,21 +152,146 @@ test.describe("Report UI smoke (R-UI)", () => {
     expect(secondBody.updates || []).toHaveLength(0);
   });
 
-  test("R-UI-06 M1 nav hide + post-M1 redirects", async ({ page, request }) => {
+  test("R-UI-06 post-M1 nav: board live, Auto PR still hidden", async ({ page, request }) => {
     const session = await seedSession(request);
     await gotoInbox(page, session);
 
     const nav = page.locator("aside nav");
     await expect(nav.getByRole("link", { name: "Inbox" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Public board" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Auto PR runs" })).toHaveCount(0);
-    await expect(nav.getByRole("link", { name: "Public board" })).toHaveCount(0);
 
     await page.goto("/app/auto-pr");
     await expect(page).toHaveURL(/\/app\/inbox/);
     await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
 
     await page.goto("/app/board");
-    await expect(page).toHaveURL(/\/app\/inbox/);
-    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+    await expect(page).toHaveURL(/\/app\/board/);
+    await expect(page.getByRole("heading", { name: "Public board" })).toBeVisible();
+  });
+
+  test("R-UI-07 public board shows published idea", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    expect(projectRes.ok()).toBeTruthy();
+    const projectBody = await projectRes.json();
+    const slug = projectBody.project.board_slug as string;
+    expect(slug).toBeTruthy();
+
+    const { ticket_id: ticketId } = await ingestReport(
+      request,
+      session.publicKey,
+      "public board smoke idea",
+      { type: "idea" },
+    );
+
+    const publish = await request.patch(`${API_URL}/api/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { is_public: true },
+    });
+    expect(publish.ok()).toBeTruthy();
+
+    await page.goto(`/board/${slug}`);
+    await expect(page.getByRole("heading", { name: /Help shape/i })).toBeVisible();
+    await expect(page.getByText("public board smoke idea")).toBeVisible();
+  });
+
+  test("R-UI-08 public idea detail from list", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    expect(projectRes.ok()).toBeTruthy();
+    const projectBody = await projectRes.json();
+    const slug = projectBody.project.board_slug as string;
+    expect(slug).toBeTruthy();
+
+    const { ticket_id: ticketId } = await ingestReport(
+      request,
+      session.publicKey,
+      "public idea detail smoke",
+      { type: "idea" },
+    );
+
+    const publish = await request.patch(`${API_URL}/api/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { is_public: true },
+    });
+    expect(publish.ok()).toBeTruthy();
+
+    await page.goto(`/board/${slug}`);
+    await page.getByRole("link", { name: /public idea detail smoke/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/board/${slug}/ideas/${ticketId}`));
+    await expect(page.getByRole("heading", { name: "public idea detail smoke" })).toBeVisible();
+    await page.getByRole("link", { name: /all ideas/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/board/${slug}/?$`));
+    await expect(page.getByRole("heading", { name: /Help shape/i })).toBeVisible();
+  });
+
+  test("R-UI-11 public board vote confirm", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    expect(projectRes.ok()).toBeTruthy();
+    const projectBody = await projectRes.json();
+    const slug = projectBody.project.board_slug as string;
+
+    const { ticket_id: ticketId } = await ingestReport(
+      request,
+      session.publicKey,
+      "vote ui smoke idea",
+      { type: "idea" },
+    );
+    const publish = await request.patch(`${API_URL}/api/tickets/${ticketId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { is_public: true },
+    });
+    expect(publish.ok()).toBeTruthy();
+
+    await page.goto(`/board/${slug}/ideas/${ticketId}`);
+    await page.getByRole("button", { name: /vote for this idea/i }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByLabel("Email").fill("voter-ui@example.com");
+    await page.getByRole("button", { name: /send confirm link/i }).click();
+    await expect(page.getByText(/check voter-ui@example.com/i)).toBeVisible();
+
+    const { execFileSync } = await import("node:child_process");
+    const dbURL =
+      process.env.DATABASE_URL ||
+      `postgres://${process.env.USER || "postgres"}@localhost:5432/closeloop?sslmode=disable`;
+    const token = execFileSync(
+      "psql",
+      [
+        dbURL,
+        "-tAc",
+        "SELECT payload->>'raw_token' FROM jobs WHERE kind='notify_vote_verify' ORDER BY created_at DESC LIMIT 1",
+      ],
+      { encoding: "utf8" },
+    ).trim();
+    expect(token).toBeTruthy();
+
+    await page.goto(`/vote/confirm?t=${token}`);
+    await expect(page.getByRole("heading", { name: /vote confirmed/i })).toBeVisible();
+    await page.getByRole("link", { name: /back to idea/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/board/${slug}/ideas/${ticketId}`));
+    await expect(page.getByText(/you voted as voter-ui@example.com/i)).toBeVisible();
+  });
+
+  test("R-UI-10 Integrations S-13 Slack card + configure", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await applySession(page, session);
+    await page.goto("/app/settings/integrations");
+    await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Notify and track" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Debugging context" })).toBeVisible();
+    await expect(page.getByText("Slack", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Sentry", { exact: true }).first()).toBeVisible();
+    await page.getByRole("button", { name: "Configure" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("Incoming Webhook URL")).toBeVisible();
   });
 });

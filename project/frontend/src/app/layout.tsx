@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GoogleTagManager } from "@next/third-parties/google";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { ClearStaleSW } from "@/components/ClearStaleSW";
+import { SaidloopDogfoodWidget } from "@/components/SaidloopDogfoodWidget";
 import {
   GTM_ID,
   SITE_DESCRIPTION,
@@ -10,6 +11,7 @@ import {
   SITE_URL,
 } from "@/lib/site";
 import "./globals.css";
+
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -62,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <GoogleTagManager gtmId={GTM_ID} />
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}>
         <ClearStaleSW />
+        <SaidloopDogfoodWidget />
         {children}
       </body>
     </html>

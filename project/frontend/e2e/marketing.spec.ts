@@ -31,6 +31,21 @@ test.describe("Marketing pages smoke", () => {
     );
   });
 
+  test("landing add-on credits copy wraps inside the card", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/#pricing");
+    const addon = page.locator('[data-pencil-name="Add-on"]');
+    const desc = addon.locator('[data-pencil-name="D"]');
+
+    await expect(desc).toBeVisible();
+    const overflow = await desc.evaluate((el) => {
+      const card = el.closest('[data-pencil-name="Add-on"]');
+      if (!(card instanceof HTMLElement)) return true;
+      return el.scrollWidth > card.clientWidth;
+    });
+    expect(overflow).toBe(false);
+  });
+
   test("landing billing toggle switches yearly prices", async ({ page }) => {
     await page.goto("/#pricing");
     const pricing = page.locator("#pricing");

@@ -74,6 +74,11 @@ func (s *Server) Router() *gin.Engine {
 		api.PATCH("/tickets/:id", s.authRequired(), s.patchTicket)
 		api.POST("/tickets/:id/notes", s.authRequired(), s.addNote)
 		api.POST("/tickets/merge", s.authRequired(), s.mergeTickets)
+
+		api.GET("/public/boards/:slug", s.getPublicBoard)
+		api.GET("/public/boards/:slug/ideas/:id", s.getPublicIdea)
+		api.POST("/public/boards/:slug/ideas/:id/votes", s.requestPublicVote)
+		api.GET("/public/votes/confirm", s.confirmPublicVote)
 	}
 
 	ingest := r.Group("/v1/ingest")
@@ -724,6 +729,7 @@ func (s *Server) patchProject(c *gin.Context) {
 		Platforms          *[]string `json:"platforms"`
 		NotifyEnabled      *bool     `json:"notify_enabled"`
 		SensitiveSelectors *[]string `json:"sensitive_selectors"`
+		BoardSlug          *string   `json:"board_slug"`
 	}
 	if err := c.BindJSON(&body); err != nil {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
@@ -750,7 +756,11 @@ func (s *Server) patchProject(c *gin.Context) {
 			}
 		}
 	}
-	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.SensitiveSelectors); err != nil {
+	if body.BoardSlug != nil {
+		trimmed := strings.TrimSpace(*body.BoardSlug)
+		body.BoardSlug = &trimmed
+	}
+	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.SensitiveSelectors, body.BoardSlug); err != nil {
 		mapErr(c, err)
 		return
 	}
@@ -934,11 +944,16 @@ func (s *Server) getTicket(c *gin.Context) {
 
 func (s *Server) patchTicket(c *gin.Context) {
 	var body struct {
-		Status string `json:"status"`
-		Note   string `json:"note"`
+		Status   *string `json:"status"`
+		Note     string  `json:"note"`
+		IsPublic *bool   `json:"is_public"`
 	}
 	if err := c.BindJSON(&body); err != nil {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	if body.Status == nil && body.IsPublic == nil {
+		writeErr(c, 400, "INVALID_INPUT", "status or is_public required")
 		return
 	}
 	t, err := s.Store.GetTicket(c.Request.Context(), c.Param("id"))
@@ -949,15 +964,100 @@ func (s *Server) patchTicket(c *gin.Context) {
 	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
-	if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, body.Status, "user:"+c.GetString("email"), body.Note); err != nil {
-		mapErr(c, err)
-		return
+	actor := "user:" + c.GetString("email")
+	if body.IsPublic != nil {
+		if err := s.Store.SetTicketPublic(c.Request.Context(), t.ID, *body.IsPublic, actor); err != nil {
+			mapErr(c, err)
+			return
+		}
 	}
-	if body.Status == "fixed" {
-		_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID)
+	if body.Status != nil {
+		status := strings.TrimSpace(*body.Status)
+		if status == "" {
+			writeErr(c, 400, "INVALID_INPUT", "status is required")
+			return
+		}
+		fromStatus := t.Status
+		if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, status, actor, body.Note); err != nil {
+			mapErr(c, err)
+			return
+		}
+		if status == "fixed" {
+			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID)
+		}
+		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
+			TicketID: t.ID,
+			Event:    "status_changed",
+			From:     fromStatus,
+			To:       status,
+			Note:     body.Note,
+		})
 	}
 	t, _ = s.Store.GetTicket(c.Request.Context(), t.ID)
 	c.JSON(200, gin.H{"ticket": t})
+}
+
+func (s *Server) getPublicBoard(c *gin.Context) {
+	board, ideas, err := s.Store.PublicBoardBySlug(c.Request.Context(), c.Param("slug"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"project": board, "ideas": ideas})
+}
+
+func (s *Server) getPublicIdea(c *gin.Context) {
+	board, idea, err := s.Store.PublicIdeaBySlug(c.Request.Context(), c.Param("slug"), c.Param("id"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"project": board, "idea": idea})
+}
+
+func (s *Server) requestPublicVote(c *gin.Context) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	req, err := s.Store.RequestIdeaVote(c.Request.Context(), c.Param("slug"), c.Param("id"), body.Email)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if req.SendEmail {
+		_ = s.Store.EnqueueVoteVerify(
+			c.Request.Context(),
+			req.TicketID,
+			req.Email,
+			req.RawToken,
+			req.ProjectName,
+			req.IdeaTitle,
+			req.BoardSlug,
+		)
+	}
+	c.JSON(202, gin.H{"ok": true, "message": "Check your email to confirm your vote."})
+}
+
+func (s *Server) confirmPublicVote(c *gin.Context) {
+	result, err := s.Store.ConfirmIdeaVote(c.Request.Context(), c.Query("t"))
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrNotFound):
+			writeErr(c, 404, "NOT_FOUND", "invalid vote link")
+		case errors.Is(err, application.ErrConflict):
+			writeErr(c, 409, "ALREADY_USED", "this vote link was already used")
+		case errors.Is(err, application.ErrGone):
+			writeErr(c, 410, "EXPIRED", "this vote link has expired")
+		default:
+			mapErr(c, err)
+		}
+		return
+	}
+	c.JSON(200, gin.H{"vote": result})
 }
 
 func (s *Server) addNote(c *gin.Context) {
@@ -1067,6 +1167,10 @@ func (s *Server) ingestReport(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), p.ID, application.SlackNotifyEvent{
+		TicketID: ticketID,
+		Event:    "new_report",
+	})
 	c.JSON(201, gin.H{
 		"ticket_id":     ticketID,
 		"report_id":     reportID,

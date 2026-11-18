@@ -3570,7 +3570,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
             <div
               data-pencil-name="Desc"
-              className="text-[14px]/[normal] box-border text-[#FFFFFFB3] font-ds-ui font-normal text-left [white-space:nowrap]"
+              className="text-[14px]/[normal] box-border text-[#FFFFFFB3] font-ds-ui font-normal text-left [white-space:normal]"
             >
               For solo builders shipping with AI.
             </div>
@@ -4143,17 +4143,17 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Text"
-            className="box-border [flex:1_1_0] h-fit flex flex-col gap-[2px] justify-start items-start"
+            className="box-border min-w-0 w-full [flex:1_1_0] h-fit flex flex-col gap-[2px] justify-start items-start"
           >
             <div
               data-pencil-name="T"
-              className="text-[15px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.2px] text-left [white-space:nowrap]"
+              className="text-[15px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.2px] text-left"
             >
               AI auto PR credits
             </div>
             <div
               data-pencil-name="D"
-              className="text-[13px]/[normal] box-border text-[#737373] font-ds-ui font-normal text-left [white-space:nowrap]"
+              className="text-[13px]/[1.4] box-border w-full text-[#737373] font-ds-ui font-normal text-left [white-space:normal]"
             >
               Add-on for any paid plan. One credit runs one sandboxed agent that opens a pull
               request. Pricing set once per-run model cost is measured.

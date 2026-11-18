@@ -141,6 +141,7 @@ func (h *reportHarness) truncate() {
 	if _, err := h.db.Exec(`
 		TRUNCATE TABLE
 			jobs, notifications, ticket_events, attachments, reports, tickets,
+			idea_vote_tokens, idea_votes,
 			reporters, mcp_tokens, integrations, invites, project_keys, projects, memberships,
 			refresh_tokens, waitlist, users, organizations
 		RESTART IDENTITY CASCADE`); err != nil {
@@ -273,7 +274,10 @@ func (h *reportHarness) uploadScreenshot(attachmentID, uploadToken string, data 
 
 func (h *reportHarness) drainNotifyJobs() int {
 	h.t.Helper()
-	n, err := application.ProcessJobsOnce(context.Background(), h.store, h.mailer, 20)
+	n, err := application.ProcessJobsOnce(context.Background(), h.store, application.WorkerDeps{
+		Mail:   h.mailer,
+		WebURL: h.server.Cfg.WebURL,
+	}, 20)
 	if err != nil {
 		h.t.Fatalf("process jobs: %v", err)
 	}

@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
-    title: "Landing pricing toggle and mobile layout",
-    body: "Yearly billing on the landing page now switches plan prices (two months free). Same day: the public page reflows on phones — hamburger nav, stacked sections, and a waitlist that fits a thumb.",
+    title: "Public board publish + Slack webhooks",
+    body: "Publish tickets to a public `/board/[slug]` ideas list, idea detail, and roadmap — and visitors can vote with email confirmation. Integrations shows the full catalog; Configure opens a modal for Slack, Sentry, and PostHog. Same day: Slack status notifications, plus landing yearly pricing and mobile pricing polish.",
   },
   {
     date: "2026-11-17",

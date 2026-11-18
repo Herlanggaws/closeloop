@@ -9,6 +9,7 @@ import { formatUsage, type OrgUsage } from "@/lib/usage";
 
 export type AppSidebarActive =
   | "inbox"
+  | "board"
   | "install"
   | "mcp"
   | "settings"
@@ -54,6 +55,7 @@ export function AppSidebar({
           active={active === "inbox"}
           count={inboxCount}
         />
+        <NavItem href="/app/board" label="Public board" active={active === "board"} />
         <SectionLabel>Setup</SectionLabel>
         <NavItem href="/app/install" label="Install widget" active={active === "install"} />
         <NavItem href="/app/mcp" label="MCP server" active={active === "mcp"} />

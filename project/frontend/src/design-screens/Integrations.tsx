@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { api } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
@@ -18,25 +18,90 @@ type IntegrationRow = {
   config: Record<string, unknown> | string;
 };
 
+type WiredProvider = "sentry" | "posthog" | "slack";
+
 type CatalogItem = {
-  id: "sentry" | "posthog";
+  id: string;
   name: string;
   description: string;
   icon: string;
+  iconBg: string;
+  action: "configure" | "coming_soon" | "upgrade";
+  badge?: string;
+  wired?: WiredProvider;
 };
 
-const CATALOG: CatalogItem[] = [
+const NOTIFY_CATALOG: CatalogItem[] = [
+  {
+    id: "slack",
+    name: "Slack",
+    description: "Incoming webhook · new reports and status changes",
+    icon: "Sl",
+    iconBg: "#4A154B",
+    action: "configure",
+    wired: "slack",
+  },
+  {
+    id: "github_issues",
+    name: "GitHub Issues",
+    description: "Create issues from tickets",
+    icon: "GH",
+    iconBg: "#171717",
+    action: "coming_soon",
+  },
+  {
+    id: "linear",
+    name: "Linear",
+    description: "Two-way status sync",
+    icon: "Li",
+    iconBg: "#5E6AD2",
+    action: "coming_soon",
+  },
+  {
+    id: "jira",
+    name: "Jira",
+    description: "Create issues in Jira Cloud projects",
+    icon: "Ji",
+    iconBg: "#2684FF",
+    action: "upgrade",
+    badge: "Studio",
+  },
+];
+
+const DEBUG_CATALOG: CatalogItem[] = [
   {
     id: "sentry",
     name: "Sentry",
     description: "Link reports to errors by user and release",
     icon: "Se",
+    iconBg: "#362D59",
+    action: "configure",
+    wired: "sentry",
   },
   {
     id: "posthog",
     name: "PostHog",
     description: "Attach the session from before each report",
-    icon: "P",
+    icon: "Ph",
+    iconBg: "#1D4AFF",
+    action: "configure",
+    wired: "posthog",
+  },
+  {
+    id: "github_app",
+    name: "GitHub App",
+    description: "Repository access for AI auto PR",
+    icon: "GA",
+    iconBg: "#171717",
+    action: "coming_soon",
+  },
+  {
+    id: "webhooks",
+    name: "Webhooks",
+    description: "POST every report event to your endpoint",
+    icon: "Wh",
+    iconBg: "#EA6C0C",
+    action: "coming_soon",
   },
 ];
 
@@ -66,12 +131,20 @@ export function Integrations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<"sentry" | "posthog" | null>(null);
+  const [configureModal, setConfigureModal] = useState<WiredProvider | null>(null);
+  const configureTitleId = useId();
 
   const [sentryOrg, setSentryOrg] = useState("");
   const [sentryProject, setSentryProject] = useState("");
   const [posthogHost, setPosthogHost] = useState("https://us.posthog.com");
   const [posthogProject, setPosthogProject] = useState("");
+  const [slackWebhook, setSlackWebhook] = useState("");
+  const [slackEvents, setSlackEvents] = useState({
+    new_bug: true,
+    new_idea: true,
+    status_changed: true,
+    marked_fixed: true,
+  });
 
   useEffect(() => {
     const id = localStorage.getItem("closeloop_project");
@@ -98,6 +171,7 @@ export function Integrations() {
         })) as Integration[];
         const sentry = list.find((i) => i.provider === "sentry");
         const posthog = list.find((i) => i.provider === "posthog");
+        const slack = list.find((i) => i.provider === "slack");
         if (sentry) {
           setSentryOrg(sentry.config.org || "");
           setSentryProject(sentry.config.project || "");
@@ -105,6 +179,9 @@ export function Integrations() {
         if (posthog) {
           setPosthogHost(posthog.config.host || "https://us.posthog.com");
           setPosthogProject(posthog.config.project_id || posthog.config.project || "");
+        }
+        if (slack) {
+          setSlackWebhook(slack.config.webhook_url || "");
         }
         setError("");
       })
@@ -120,8 +197,8 @@ export function Integrations() {
     };
   }, [router]);
 
-  async function saveProvider(provider: "sentry" | "posthog", config: Record<string, string>) {
-    if (!projectId) return;
+  async function saveProvider(provider: WiredProvider, config: Record<string, string>) {
+    if (!projectId) return false;
     setSaving(provider);
     setError("");
     try {
@@ -129,14 +206,16 @@ export function Integrations() {
         method: "PUT",
         body: JSON.stringify({ config }),
       });
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
+      return false;
     } finally {
       setSaving(null);
     }
   }
 
-  async function clearProvider(provider: "sentry" | "posthog") {
+  async function clearProvider(provider: WiredProvider) {
     if (!projectId) return;
     setSaving(provider);
     setError("");
@@ -147,9 +226,11 @@ export function Integrations() {
       if (provider === "sentry") {
         setSentryOrg("");
         setSentryProject("");
-      } else {
+      } else if (provider === "posthog") {
         setPosthogHost("https://us.posthog.com");
         setPosthogProject("");
+      } else {
+        setSlackWebhook("");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not disconnect");
@@ -162,18 +243,39 @@ export function Integrations() {
   const email = me?.user.email || "";
   const sentryConnected = Boolean(sentryOrg.trim());
   const posthogConnected = Boolean(posthogHost.trim() && posthogProject.trim());
+  const slackConnected = Boolean(slackWebhook.trim());
 
   function statusFor(item: CatalogItem): "connected" | "none" {
-    if (item.id === "sentry") return sentryConnected ? "connected" : "none";
-    return posthogConnected ? "connected" : "none";
+    if (item.wired === "sentry") return sentryConnected ? "connected" : "none";
+    if (item.wired === "posthog") return posthogConnected ? "connected" : "none";
+    if (item.wired === "slack") return slackConnected ? "connected" : "none";
+    return "none";
   }
 
-  function onAction(item: CatalogItem) {
-    setExpanded((prev) => (prev === item.id ? null : item.id));
+  useEffect(() => {
+    if (!configureModal) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setConfigureModal(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [configureModal]);
+
+  function onCardAction(item: CatalogItem) {
+    if (item.action === "configure" && item.wired) {
+      setConfigureModal(item.wired);
+    }
   }
 
-  function actionLabel(item: CatalogItem) {
-    return expanded === item.id ? "Close" : "Configure";
+  function actionLabel(item: CatalogItem): string {
+    if (item.action === "upgrade") return "Upgrade";
+    if (item.action === "coming_soon") return "Coming soon";
+    return "Configure";
+  }
+
+  async function saveAndClose(provider: WiredProvider, config: Record<string, string>) {
+    const ok = await saveProvider(provider, config);
+    if (ok) setConfigureModal(null);
   }
 
   return (
@@ -196,7 +298,7 @@ export function Integrations() {
               Integrations
             </h1>
             <p className="font-ds-ui text-[13.5px] text-[#737373]">
-              Pull in debugging context for report deep links.
+              Send reports where your team already works, and pull in debugging context.
             </p>
           </div>
         </header>
@@ -208,121 +310,302 @@ export function Integrations() {
             <>
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
-              <IntegrationGroup title="Debugging context">
-                {CATALOG.map((item) => (
+              <IntegrationGroup title="Notify and track">
+                {NOTIFY_CATALOG.map((item) => (
                   <IntegrationCard
                     key={item.id}
                     item={item}
                     status={statusFor(item)}
                     actionLabel={actionLabel(item)}
-                    onAction={() => onAction(item)}
+                    onAction={() => onCardAction(item)}
                   />
                 ))}
               </IntegrationGroup>
 
-              {expanded === "sentry" && (
-                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
-                        Sentry
-                      </h3>
-                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                        Links use <code className="font-ds-mono text-[12px]">sentry_event_id</code>{" "}
-                        from report context.
-                      </p>
-                    </div>
-                    {sentryConnected && (
-                      <button
-                        type="button"
-                        disabled={saving === "sentry"}
-                        onClick={() => void clearProvider("sentry")}
-                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
-                      >
-                        Disconnect
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <Field label="Org slug" value={sentryOrg} onChange={setSentryOrg} placeholder="acme" />
-                    <Field
-                      label="Project slug"
-                      value={sentryProject}
-                      onChange={setSentryProject}
-                      placeholder="web-app"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    disabled={saving === "sentry" || !sentryOrg.trim()}
-                    onClick={() =>
-                      void saveProvider("sentry", {
-                        org: sentryOrg.trim(),
-                        project: sentryProject.trim(),
-                      })
-                    }
-                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
-                  >
-                    {saving === "sentry" ? "Saving…" : "Save Sentry"}
-                  </button>
-                </div>
-              )}
+              <IntegrationGroup title="Debugging context">
+                {DEBUG_CATALOG.map((item) => (
+                  <IntegrationCard
+                    key={item.id}
+                    item={item}
+                    status={statusFor(item)}
+                    actionLabel={actionLabel(item)}
+                    onAction={() => onCardAction(item)}
+                  />
+                ))}
+              </IntegrationGroup>
 
-              {expanded === "posthog" && (
-                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
-                        PostHog
-                      </h3>
-                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                        Links use{" "}
-                        <code className="font-ds-mono text-[12px]">posthog_session_id</code> from
-                        report context.
-                      </p>
-                    </div>
-                    {posthogConnected && (
-                      <button
-                        type="button"
-                        disabled={saving === "posthog"}
-                        onClick={() => void clearProvider("posthog")}
-                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
-                      >
-                        Disconnect
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <Field
-                      label="Host"
-                      value={posthogHost}
-                      onChange={setPosthogHost}
-                      placeholder="https://us.posthog.com"
-                    />
-                    <Field
-                      label="Project id"
-                      value={posthogProject}
-                      onChange={setPosthogProject}
-                      placeholder="12345"
-                    />
-                  </div>
+              {configureModal ? (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                  role="presentation"
+                >
                   <button
                     type="button"
-                    disabled={
-                      saving === "posthog" || !posthogHost.trim() || !posthogProject.trim()
-                    }
-                    onClick={() =>
-                      void saveProvider("posthog", {
-                        host: posthogHost.trim().replace(/\/$/, ""),
-                        project_id: posthogProject.trim(),
-                      })
-                    }
-                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                    aria-label="Close configure"
+                    className="absolute inset-0 border-0 bg-[#0A0A0A66]"
+                    onClick={() => setConfigureModal(null)}
+                  />
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={configureTitleId}
+                    className="relative z-10 max-h-[90vh] w-full max-w-[520px] overflow-y-auto rounded-2xl border border-[#17171714] bg-white p-6 shadow-lg"
                   >
-                    {saving === "posthog" ? "Saving…" : "Save PostHog"}
-                  </button>
+                    {error ? (
+                      <p className="mb-3 font-ds-ui text-sm text-[#DA314A]">{error}</p>
+                    ) : null}
+                    {configureModal === "slack" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              Slack · Incoming webhook
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Choose which events post to the channel. Paste a Slack Incoming
+                              Webhook URL to connect.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {slackConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "slack"}
+                            onClick={() => void clearProvider("slack")}
+                            className="mt-3 cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          {(
+                            [
+                              ["new_bug", "New bug"],
+                              ["new_idea", "New idea"],
+                              ["status_changed", "Status changed"],
+                              ["marked_fixed", "Marked fixed"],
+                            ] as const
+                          ).map(([key, label]) => (
+                            <label
+                              key={key}
+                              className="flex cursor-pointer items-center justify-between rounded-lg border border-[#17171714] bg-[#FAFAFA] px-3 py-2.5"
+                            >
+                              <span className="font-ds-ui text-[13px] text-[#171717]">{label}</span>
+                              <input
+                                type="checkbox"
+                                checked={slackEvents[key]}
+                                onChange={(e) =>
+                                  setSlackEvents((prev) => ({
+                                    ...prev,
+                                    [key]: e.target.checked,
+                                  }))
+                                }
+                                className="h-4 w-4 accent-[#16A34A]"
+                                title="Coming soon — all connected events post today"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-4">
+                          <Field
+                            label="Incoming Webhook URL"
+                            value={slackWebhook}
+                            onChange={setSlackWebhook}
+                            placeholder="https://hooks.slack.com/services/…"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              saving === "slack" ||
+                              !slackWebhook.trim().startsWith("https://hooks.slack.com/")
+                            }
+                            onClick={() =>
+                              void saveAndClose("slack", {
+                                webhook_url: slackWebhook.trim(),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "slack" ? "Saving…" : "Save Slack"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {configureModal === "sentry" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              Sentry
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Links use{" "}
+                              <code className="font-ds-mono text-[12px]">sentry_event_id</code> from
+                              report context.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {sentryConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "sentry"}
+                            onClick={() => void clearProvider("sentry")}
+                            className="mt-3 cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <Field
+                            label="Org slug"
+                            value={sentryOrg}
+                            onChange={setSentryOrg}
+                            placeholder="acme"
+                          />
+                          <Field
+                            label="Project slug"
+                            value={sentryProject}
+                            onChange={setSentryProject}
+                            placeholder="web-app"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving === "sentry" || !sentryOrg.trim()}
+                            onClick={() =>
+                              void saveAndClose("sentry", {
+                                org: sentryOrg.trim(),
+                                project: sentryProject.trim(),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "sentry" ? "Saving…" : "Save Sentry"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {configureModal === "posthog" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              PostHog
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Links use{" "}
+                              <code className="font-ds-mono text-[12px]">posthog_session_id</code>{" "}
+                              from report context.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {posthogConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "posthog"}
+                            onClick={() => void clearProvider("posthog")}
+                            className="mt-3 cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <Field
+                            label="Host"
+                            value={posthogHost}
+                            onChange={setPosthogHost}
+                            placeholder="https://us.posthog.com"
+                          />
+                          <Field
+                            label="Project id"
+                            value={posthogProject}
+                            onChange={setPosthogProject}
+                            placeholder="12345"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              saving === "posthog" ||
+                              !posthogHost.trim() ||
+                              !posthogProject.trim()
+                            }
+                            onClick={() =>
+                              void saveAndClose("posthog", {
+                                host: posthogHost.trim().replace(/\/$/, ""),
+                                project_id: posthogProject.trim(),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "posthog" ? "Saving…" : "Save PostHog"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
-              )}
+              ) : null}
             </>
           )}
         </div>
@@ -335,7 +618,7 @@ function IntegrationGroup({ title, children }: { title: string; children: ReactN
   return (
     <section className="flex flex-col gap-3">
       <h2 className="font-ds-ui text-xs font-medium text-[#A3A3A3]">{title}</h2>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">{children}</div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{children}</div>
     </section>
   );
 }
@@ -351,18 +634,31 @@ function IntegrationCard({
   actionLabel: string;
   onAction: () => void;
 }) {
+  const disabled = item.action === "coming_soon";
+  const primary = item.action === "upgrade";
+
   return (
-    <div className="flex min-h-[148px] flex-col rounded-xl border border-[#17171714] bg-white p-4">
+    <div className="flex min-h-[156px] flex-col rounded-xl border border-[#17171714] bg-white p-4">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#17171714] bg-[#FAFAFA] font-ds-sans text-[11px] font-semibold text-[#171717]">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg font-ds-sans text-[11px] font-semibold text-white"
+          style={{ background: item.iconBg }}
+        >
           {item.icon}
         </div>
-        {status === "connected" && (
-          <span className="inline-flex items-center gap-1.5 font-ds-ui text-[11px] text-[#16A34A]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
-            Connected
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {item.badge ? (
+            <span className="rounded-md bg-[#F5F5F5] px-1.5 py-0.5 font-ds-ui text-[10px] font-medium text-[#737373]">
+              {item.badge}
+            </span>
+          ) : null}
+          {status === "connected" && (
+            <span className="inline-flex items-center gap-1.5 font-ds-ui text-[11px] text-[#16A34A]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
+              Connected
+            </span>
+          )}
+        </div>
       </div>
       <div className="mt-3 font-ds-sans text-[15px] font-semibold text-[#171717]">
         {item.name}
@@ -372,8 +668,14 @@ function IntegrationCard({
       </p>
       <button
         type="button"
+        disabled={disabled}
         onClick={onAction}
-        className="mt-4 inline-flex h-8 w-fit cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717] hover:bg-[#FAFAFA]"
+        title={disabled ? "Coming soon" : undefined}
+        className={`mt-4 inline-flex h-8 w-fit items-center rounded-md px-3 font-ds-sans text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
+          primary
+            ? "cursor-pointer bg-[#171717] text-white"
+            : "cursor-pointer border border-[#1717171F] bg-white text-[#171717] hover:bg-[#FAFAFA]"
+        }`}
       >
         {actionLabel}
       </button>

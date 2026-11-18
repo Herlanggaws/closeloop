@@ -51,7 +51,7 @@ MCP: list_open_feedback → get_feedback_context → mark_fixed / update_status 
 - Sentry/PostHog deep links, rrweb, Slack/Linear, F10 auto-PR
 - Pixel match vs `closeloop.pen`
 
-**Related (bukan report loop):** waitlist — `W-01` / `W-02` / `W-03` in `waitlist_test.go` (send once on insert + `inserted`/`created_at`; invalid email no send; resend for existing email). S-27 vote HTML unit tests in `vote_test.go` (no board wire yet).
+**Related (bukan report loop):** waitlist — `W-01` / `W-02` / `W-03` in `waitlist_test.go` (send once on insert + `inserted`/`created_at`; invalid email no send; resend for existing email). S-27 vote verify: HTML unit tests in `vote_test.go`; board wire covered by `R-BOARD-05`/`06` + `R-UI-11`.
 
 ---
 
@@ -135,6 +135,27 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-FIX-05 | In-app updates | Reporter identified | `GET /v1/ingest/updates?reporter=` | Fixed payload once; second poll empty/seen | ingestUpdates |
 | R-FIX-06 | Free plan MCP write | Free plan read-only token | mark_fixed via MCP | Rejected / gated; UI badge path not required in L1 | scope gate |
 
+### 4.4b Slack notify (F8 · S-13)
+
+| ID | Case | Given | When | Then | Fix hint |
+| --- | --- | --- | --- | --- | --- |
+| R-SLACK-01 | New report webhook | Slack Incoming Webhook saved | Ingest + ProcessJobsOnce | One POST to webhook with title + ticket link | EnqueueSlackNotify + notify_slack job |
+| R-SLACK-02 | No Slack config | No slack integration | Ingest + ProcessJobsOnce | No `notify_slack` job / no POST | EnqueueSlackNotify guard |
+| R-SLACK-03 | Status change | Slack saved; ticket open | PATCH status=in_progress | POST with from/to | patchTicket → status_changed |
+| R-SLACK-04 | Mark fixed note | Slack saved | MCP mark_fixed + note | POST includes fixed + note | mcp mark_fixed enqueue |
+| R-SLACK-05 | Same status no-op | Slack saved; ticket open | PATCH status=open | No slack job/post | from==to guard |
+
+### 4.4c Public board (F9 · S-11 / S-24)
+
+| ID | Case | Given | When | Then | Fix hint |
+| --- | --- | --- | --- | --- | --- |
+| R-BOARD-01 | Publish appears | Project has `board_slug` | PATCH `is_public=true` + GET public board | Idea listed with title | SetTicketPublic + PublicBoardBySlug |
+| R-BOARD-02 | Unpublished / bad slug | Ticket not public / unknown slug | GET public board | Empty list / 404 | is_public filter |
+| R-BOARD-03 | No private fields | Published ticket with email/context | GET public board + idea | Payload has no message/context/email/attachments | PublicIdea DTO |
+| R-BOARD-04 | Idea detail 404 | Unpublished / wrong slug / unknown id | GET public idea | 404 | PublicIdeaBySlug |
+| R-BOARD-05 | Vote confirm | Publish + POST vote | Process job + GET confirm | vote_count=1; reuse 409 | RequestIdeaVote + ConfirmIdeaVote |
+| R-BOARD-06 | Vote guards | Unpublished / bad email | POST votes | 404 / 400 | PublicIdeaBySlug + NormalizeVoterEmail |
+
 ### 4.5 MCP read path (F5 · SC-2)
 
 | ID | Case | Given | When | Then | Fix hint |
@@ -153,7 +174,11 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-03 | Merge flow | Multi-select → `/app/inbox/merge` → confirm | Parent detail shows merged count |
 | R-UI-04 | Mark fixed UI | Detail → fixed → submit note | Status Fixed; activity updated |
 | R-UI-05 | Banner payload | After fix + identify | `/v1/ingest/updates` non-empty (widget banner assert light) |
-| R-UI-06 | M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | No Auto PR/Public board links; both routes redirect to inbox |
+| R-UI-06 | Post-M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | Public board link + page live; Auto PR still hidden/redirect |
+| R-UI-07 | Public board | Publish idea via API | Open `/board/{slug}` | Published title visible |
+| R-UI-08 | Idea detail | Publish idea via API | Open list → click idea | Detail title + back to list |
+| R-UI-10 | Integrations catalog | Seed session | Open `/app/settings/integrations` | Notify/Debugging sections + Slack Configure webhook field |
+| R-UI-11 | Board vote | Publish idea | Vote modal → confirm token → idea | Voted banner + count path | S-27 verify |
 
 ---
 
@@ -248,13 +273,13 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…06 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
 - [x] Mail sink assert untuk R-FIX-03/04
 - [x] MCP JSON-RPC client helper
 
 ### Phase C — L3 UI + agent UX
 
-- [x] Playwright scaffold; R-UI-01…06 (`frontend/e2e/reports.spec.ts`, `pnpm test:reports:ui`)
+- [x] Playwright scaffold; R-UI-01…07 (`frontend/e2e/reports.spec.ts`, `pnpm test:reports:ui`)
 - [x] AGENTS.md section: report test loop pointing ke dokumen ini
 - [ ] Optional: Closeloop MCP tool `run_report_tests` yang nge-wrap script + return summary
 
