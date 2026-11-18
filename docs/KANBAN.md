@@ -42,7 +42,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | Publish flags, roadmap columns |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
-| S-13 Integrations | `/app/settings/integrations` | **Partial** S-13 grid (notify + debug) + Slack event panel shell; Sentry/PostHog config live; Slack/GitHub/Linear/Jira OAuth later (F8/F10) |
+| S-13 Integrations | `/app/settings/integrations` | **Partial** Sentry/PostHog deep links + Slack Incoming Webhook (new reports); GitHub/Linear/Jira OAuth later (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
@@ -94,7 +94,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] **F7** React Native + Expo config plugin
 
 #### M3 · Tool tim & publik (F8, F9, F11)
-- [ ] **F8** Slack new-report + status notifications
+- [x] **F8** Slack new-report via Incoming Webhook (Settings → Integrations; status-change posts later)
+- [ ] **F8** Slack status notifications + OAuth channel picker
 - [ ] **F8** GitHub Issues / Linear / Jira create + bi-directional status
 - [ ] **F9** Public board SSR, votes, comments, release emails (S-24…S-27)
 - [ ] **F9** Builder publish controls (S-11)
@@ -131,7 +132,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation email shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
-| M3 | F8 F9 F11 | Design only |
+| M3 | F8 F9 F11 | Slack webhook shipped; board/OAuth/replay still design |
 | M4 | F10 F12 | Design only |
 | M5 | Billing + public beta | Todo |
 

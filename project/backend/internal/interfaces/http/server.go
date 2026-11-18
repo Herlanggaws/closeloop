@@ -1067,6 +1067,7 @@ func (s *Server) ingestReport(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), p.ID, ticketID)
 	c.JSON(201, gin.H{
 		"ticket_id":     ticketID,
 		"report_id":     reportID,

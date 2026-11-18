@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
-    title: "Landing pricing toggle and mobile layout",
-    body: "Yearly billing on the landing page now switches plan prices (two months free). Same day: the public page reflows on phones — hamburger nav, stacked sections, and a waitlist that fits a thumb.",
+    title: "Slack new-report webhooks",
+    body: "Paste a Slack Incoming Webhook under Settings → Integrations and new reports post to your channel. Same day: landing yearly pricing toggle and mobile layout polish.",
   },
   {
     date: "2026-11-17",

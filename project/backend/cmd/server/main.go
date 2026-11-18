@@ -59,7 +59,7 @@ func main() {
 	defer stop()
 
 	if *mode == "worker" || *mode == "all" {
-		go application.RunWorker(ctx, store, mailer, files)
+		go application.RunWorker(ctx, store, mailer, files, cfg.WebURL, nil)
 	}
 	if *mode == "worker" {
 		<-ctx.Done()

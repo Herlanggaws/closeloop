@@ -18,14 +18,16 @@ type IntegrationRow = {
   config: Record<string, unknown> | string;
 };
 
+type ProviderID = "sentry" | "posthog" | "slack";
+
 type CatalogItem = {
-  id: "sentry" | "posthog";
+  id: ProviderID;
   name: string;
   description: string;
   icon: string;
 };
 
-const CATALOG: CatalogItem[] = [
+const DEBUG_CATALOG: CatalogItem[] = [
   {
     id: "sentry",
     name: "Sentry",
@@ -37,6 +39,15 @@ const CATALOG: CatalogItem[] = [
     name: "PostHog",
     description: "Attach the session from before each report",
     icon: "P",
+  },
+];
+
+const TEAM_CATALOG: CatalogItem[] = [
+  {
+    id: "slack",
+    name: "Slack",
+    description: "Post new reports to a channel via Incoming Webhook",
+    icon: "Sl",
   },
 ];
 
@@ -66,12 +77,13 @@ export function Integrations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<"sentry" | "posthog" | null>(null);
+  const [expanded, setExpanded] = useState<ProviderID | null>(null);
 
   const [sentryOrg, setSentryOrg] = useState("");
   const [sentryProject, setSentryProject] = useState("");
   const [posthogHost, setPosthogHost] = useState("https://us.posthog.com");
   const [posthogProject, setPosthogProject] = useState("");
+  const [slackWebhook, setSlackWebhook] = useState("");
 
   useEffect(() => {
     const id = localStorage.getItem("closeloop_project");
@@ -98,6 +110,7 @@ export function Integrations() {
         })) as Integration[];
         const sentry = list.find((i) => i.provider === "sentry");
         const posthog = list.find((i) => i.provider === "posthog");
+        const slack = list.find((i) => i.provider === "slack");
         if (sentry) {
           setSentryOrg(sentry.config.org || "");
           setSentryProject(sentry.config.project || "");
@@ -105,6 +118,9 @@ export function Integrations() {
         if (posthog) {
           setPosthogHost(posthog.config.host || "https://us.posthog.com");
           setPosthogProject(posthog.config.project_id || posthog.config.project || "");
+        }
+        if (slack) {
+          setSlackWebhook(slack.config.webhook_url || "");
         }
         setError("");
       })
@@ -120,7 +136,7 @@ export function Integrations() {
     };
   }, [router]);
 
-  async function saveProvider(provider: "sentry" | "posthog", config: Record<string, string>) {
+  async function saveProvider(provider: ProviderID, config: Record<string, string>) {
     if (!projectId) return;
     setSaving(provider);
     setError("");
@@ -136,7 +152,7 @@ export function Integrations() {
     }
   }
 
-  async function clearProvider(provider: "sentry" | "posthog") {
+  async function clearProvider(provider: ProviderID) {
     if (!projectId) return;
     setSaving(provider);
     setError("");
@@ -147,9 +163,11 @@ export function Integrations() {
       if (provider === "sentry") {
         setSentryOrg("");
         setSentryProject("");
-      } else {
+      } else if (provider === "posthog") {
         setPosthogHost("https://us.posthog.com");
         setPosthogProject("");
+      } else {
+        setSlackWebhook("");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not disconnect");
@@ -162,10 +180,12 @@ export function Integrations() {
   const email = me?.user.email || "";
   const sentryConnected = Boolean(sentryOrg.trim());
   const posthogConnected = Boolean(posthogHost.trim() && posthogProject.trim());
+  const slackConnected = Boolean(slackWebhook.trim());
 
   function statusFor(item: CatalogItem): "connected" | "none" {
     if (item.id === "sentry") return sentryConnected ? "connected" : "none";
-    return posthogConnected ? "connected" : "none";
+    if (item.id === "posthog") return posthogConnected ? "connected" : "none";
+    return slackConnected ? "connected" : "none";
   }
 
   function onAction(item: CatalogItem) {
@@ -196,7 +216,7 @@ export function Integrations() {
               Integrations
             </h1>
             <p className="font-ds-ui text-[13.5px] text-[#737373]">
-              Pull in debugging context for report deep links.
+              Debugging deep links and team notifications for new reports.
             </p>
           </div>
         </header>
@@ -209,7 +229,19 @@ export function Integrations() {
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
               <IntegrationGroup title="Debugging context">
-                {CATALOG.map((item) => (
+                {DEBUG_CATALOG.map((item) => (
+                  <IntegrationCard
+                    key={item.id}
+                    item={item}
+                    status={statusFor(item)}
+                    actionLabel={actionLabel(item)}
+                    onAction={() => onAction(item)}
+                  />
+                ))}
+              </IntegrationGroup>
+
+              <IntegrationGroup title="Team notifications">
+                {TEAM_CATALOG.map((item) => (
                   <IntegrationCard
                     key={item.id}
                     item={item}
@@ -320,6 +352,55 @@ export function Integrations() {
                     className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
                   >
                     {saving === "posthog" ? "Saving…" : "Save PostHog"}
+                  </button>
+                </div>
+              )}
+
+              {expanded === "slack" && (
+                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
+                        Slack
+                      </h3>
+                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                        Paste an Incoming Webhook URL from Slack. New reports post to that
+                        channel.
+                      </p>
+                    </div>
+                    {slackConnected && (
+                      <button
+                        type="button"
+                        disabled={saving === "slack"}
+                        onClick={() => void clearProvider("slack")}
+                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    <Field
+                      label="Incoming Webhook URL"
+                      value={slackWebhook}
+                      onChange={setSlackWebhook}
+                      placeholder="https://hooks.slack.com/services/…"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={
+                      saving === "slack" ||
+                      !slackWebhook.trim().startsWith("https://hooks.slack.com/")
+                    }
+                    onClick={() =>
+                      void saveProvider("slack", {
+                        webhook_url: slackWebhook.trim(),
+                      })
+                    }
+                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                  >
+                    {saving === "slack" ? "Saving…" : "Save Slack"}
                   </button>
                 </div>
               )}

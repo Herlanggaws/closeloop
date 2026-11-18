@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/closeloop/api/internal/infrastructure/email"
+	"github.com/closeloop/api/internal/infrastructure/slack"
 )
 
 const projectRetention = 30 * 24 * time.Hour
@@ -20,7 +22,17 @@ type ProjectFileCleaner interface {
 	RemoveProject(projectID string) error
 }
 
-func RunWorker(ctx context.Context, store *Store, mail MailSender, files ProjectFileCleaner) {
+type WorkerDeps struct {
+	Mail   MailSender
+	Slack  slack.Poster
+	WebURL string
+}
+
+func RunWorker(ctx context.Context, store *Store, mail MailSender, files ProjectFileCleaner, webURL string, slackPoster slack.Poster) {
+	if slackPoster == nil {
+		slackPoster = slack.NewClient()
+	}
+	deps := WorkerDeps{Mail: mail, Slack: slackPoster, WebURL: webURL}
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	purgeTicker := time.NewTicker(time.Hour)
@@ -33,7 +45,7 @@ func RunWorker(ctx context.Context, store *Store, mail MailSender, files Project
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if _, err := ProcessJobsOnce(ctx, store, mail, 5); err != nil {
+			if _, err := ProcessJobsOnce(ctx, store, deps, 5); err != nil {
 				slog.Error("process jobs", "err", err)
 			}
 		case <-purgeTicker.C:
@@ -43,13 +55,13 @@ func RunWorker(ctx context.Context, store *Store, mail MailSender, files Project
 }
 
 // ProcessJobsOnce claims up to limit pending jobs and runs them. Used by the worker and tests.
-func ProcessJobsOnce(ctx context.Context, store *Store, mail MailSender, limit int) (int, error) {
+func ProcessJobsOnce(ctx context.Context, store *Store, deps WorkerDeps, limit int) (int, error) {
 	jobs, err := store.ClaimJobs(ctx, limit)
 	if err != nil {
 		return 0, err
 	}
 	for _, job := range jobs {
-		err := handleJob(ctx, store, mail, job.Kind, job.Payload)
+		err := handleJob(ctx, store, deps, job.Kind, job.Payload)
 		if finErr := store.FinishJob(ctx, job.ID, err); finErr != nil {
 			return len(jobs), finErr
 		}
@@ -79,7 +91,7 @@ func purgeDeletedProjects(ctx context.Context, store *Store, files ProjectFileCl
 	}
 }
 
-func handleJob(ctx context.Context, store *Store, mail MailSender, kind string, payload json.RawMessage) error {
+func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, payload json.RawMessage) error {
 	switch kind {
 	case "notify_reporters":
 		var p struct {
@@ -105,12 +117,53 @@ func handleJob(ctx context.Context, store *Store, mail MailSender, kind string, 
 			}
 			subject := email.FixedSubject(fixed.TicketTitle)
 			html := email.RenderFixedHTML(fixed)
-			if err := mail.Send(m.Email, subject, html); err != nil {
+			if err := deps.Mail.Send(m.Email, subject, html); err != nil {
 				slog.Error("send mail", "err", err, "to", m.Email)
 			}
 		}
 		return nil
+	case "notify_slack":
+		var p struct {
+			TicketID string `json:"ticket_id"`
+		}
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return err
+		}
+		return notifySlack(ctx, store, deps, p.TicketID)
 	default:
 		return fmt.Errorf("unknown job %s", kind)
 	}
+}
+
+func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID string) error {
+	if deps.Slack == nil {
+		return nil
+	}
+	ticket, err := store.GetTicket(ctx, ticketID)
+	if err != nil {
+		if err == ErrNotFound || err == ErrPlanRequired {
+			return nil
+		}
+		return err
+	}
+	webhookURL, err := store.SlackWebhookURL(ctx, ticket.ProjectID)
+	if err != nil {
+		return err
+	}
+	if webhookURL == "" {
+		return nil
+	}
+	project, err := store.ProjectByID(ctx, ticket.ProjectID)
+	if err != nil {
+		if err == ErrNotFound {
+			return nil
+		}
+		return err
+	}
+	ticketURL := ""
+	if base := strings.TrimRight(deps.WebURL, "/"); base != "" {
+		ticketURL = base + "/app/tickets/" + ticket.ID
+	}
+	body := slack.NewReportPayload(project.Name, ticket.Type, ticket.Title, ticketURL)
+	return deps.Slack.PostWebhook(ctx, webhookURL, body)
 }

@@ -273,7 +273,10 @@ func (h *reportHarness) uploadScreenshot(attachmentID, uploadToken string, data 
 
 func (h *reportHarness) drainNotifyJobs() int {
 	h.t.Helper()
-	n, err := application.ProcessJobsOnce(context.Background(), h.store, h.mailer, 20)
+	n, err := application.ProcessJobsOnce(context.Background(), h.store, application.WorkerDeps{
+		Mail:   h.mailer,
+		WebURL: h.server.Cfg.WebURL,
+	}, 20)
 	if err != nil {
 		h.t.Fatalf("process jobs: %v", err)
 	}

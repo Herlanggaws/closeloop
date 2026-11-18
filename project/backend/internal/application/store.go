@@ -1135,6 +1135,22 @@ func (s *Store) EnqueueNotify(ctx context.Context, ticketID string) error {
 	return err
 }
 
+func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID, ticketID string) error {
+	var n int
+	if err := s.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM integrations
+		WHERE project_id=$1 AND provider='slack'`, projectID).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		return nil
+	}
+	_, err := s.DB.ExecContext(ctx, `
+		INSERT INTO jobs(kind, payload) VALUES ('notify_slack', $1)`,
+		mustJSON(map[string]any{"ticket_id": ticketID}))
+	return err
+}
+
 func (s *Store) ClaimJobs(ctx context.Context, limit int) ([]struct {
 	ID      string
 	Kind    string
@@ -1368,7 +1384,7 @@ func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integ
 
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
-	if provider != "sentry" && provider != "posthog" {
+	if provider != "sentry" && provider != "posthog" && provider != "slack" {
 		return Integration{}, ErrInvalidInput
 	}
 	if config == nil {
@@ -1387,6 +1403,13 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		if v != nil {
 			cleaned[k] = v
 		}
+	}
+	if provider == "slack" {
+		url, _ := cleaned["webhook_url"].(string)
+		if !strings.HasPrefix(url, "https://hooks.slack.com/") {
+			return Integration{}, ErrInvalidInput
+		}
+		cleaned = map[string]any{"webhook_url": url}
 	}
 	body, err := json.Marshal(cleaned)
 	if err != nil {
@@ -1423,6 +1446,25 @@ func (s *Store) DeleteIntegration(ctx context.Context, projectID, provider strin
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (s *Store) SlackWebhookURL(ctx context.Context, projectID string) (string, error) {
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations
+		WHERE project_id=$1 AND provider='slack'`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return "", err
+	}
+	url, _ := cfg["webhook_url"].(string)
+	return strings.TrimSpace(url), nil
 }
 
 type UsageCounter struct {

@@ -135,6 +135,13 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-FIX-05 | In-app updates | Reporter identified | `GET /v1/ingest/updates?reporter=` | Fixed payload once; second poll empty/seen | ingestUpdates |
 | R-FIX-06 | Free plan MCP write | Free plan read-only token | mark_fixed via MCP | Rejected / gated; UI badge path not required in L1 | scope gate |
 
+### 4.4b Slack notify (F8 · S-13)
+
+| ID | Case | Given | When | Then | Fix hint |
+| --- | --- | --- | --- | --- | --- |
+| R-SLACK-01 | New report webhook | Slack Incoming Webhook saved | Ingest + ProcessJobsOnce | One POST to webhook with title + ticket link | EnqueueSlackNotify + notify_slack job |
+| R-SLACK-02 | No Slack config | No slack integration | Ingest + ProcessJobsOnce | No `notify_slack` job / no POST | EnqueueSlackNotify guard |
+
 ### 4.5 MCP read path (F5 · SC-2)
 
 | ID | Case | Given | When | Then | Fix hint |
@@ -248,7 +255,7 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…02 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
 - [x] Mail sink assert untuk R-FIX-03/04
 - [x] MCP JSON-RPC client helper
 
