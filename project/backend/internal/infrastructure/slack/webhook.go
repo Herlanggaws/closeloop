@@ -66,12 +66,35 @@ func NewReportPayload(projectName, ticketType, title, ticketURL string) map[stri
 		typeLabel = "REPORT"
 	}
 	text := fmt.Sprintf("New %s in %s: %s", strings.ToLower(typeLabel), projectName, title)
+	section := fmt.Sprintf("*%s* · `%s`\n%s", projectName, typeLabel, title)
+	return withTicketLink(text, section, ticketURL)
+}
+
+func NewStatusPayload(projectName, title, from, to, note, ticketURL string) map[string]any {
+	fromLabel := strings.TrimSpace(from)
+	toLabel := strings.TrimSpace(to)
+	if fromLabel == "" {
+		fromLabel = "?"
+	}
+	if toLabel == "" {
+		toLabel = "?"
+	}
+	text := fmt.Sprintf("Status in %s: %s → %s — %s", projectName, fromLabel, toLabel, title)
+	section := fmt.Sprintf("*%s*\n`%s` → `%s`\n%s", projectName, fromLabel, toLabel, title)
+	if n := strings.TrimSpace(note); n != "" {
+		text = fmt.Sprintf("%s\n%s", text, n)
+		section = fmt.Sprintf("%s\n_%s_", section, n)
+	}
+	return withTicketLink(text, section, ticketURL)
+}
+
+func withTicketLink(text, section, ticketURL string) map[string]any {
 	blocks := []map[string]any{
 		{
 			"type": "section",
 			"text": map[string]any{
 				"type": "mrkdwn",
-				"text": fmt.Sprintf("*%s* · `%s`\n%s", projectName, typeLabel, title),
+				"text": section,
 			},
 		},
 	}

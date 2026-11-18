@@ -94,8 +94,9 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] **F7** React Native + Expo config plugin
 
 #### M3 · Tool tim & publik (F8, F9, F11)
-- [x] **F8** Slack new-report via Incoming Webhook (Settings → Integrations; status-change posts later)
-- [ ] **F8** Slack status notifications + OAuth channel picker
+- [x] **F8** Slack new-report via Incoming Webhook (Settings → Integrations)
+- [x] **F8** Slack status notifications (same webhook; OAuth channel picker later)
+- [ ] **F8** Slack OAuth channel picker
 - [ ] **F8** GitHub Issues / Linear / Jira create + bi-directional status
 - [ ] **F9** Public board SSR, votes, comments, release emails (S-24…S-27)
 - [ ] **F9** Builder publish controls (S-11)
@@ -132,7 +133,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation email shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
-| M3 | F8 F9 F11 | Slack webhook shipped; board/OAuth/replay still design |
+| M3 | F8 F9 F11 | Slack webhook + status notify shipped; board/OAuth/replay still design |
 | M4 | F10 F12 | Design only |
 | M5 | Billing + public beta | Todo |
 

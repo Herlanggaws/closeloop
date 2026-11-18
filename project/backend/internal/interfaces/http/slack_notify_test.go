@@ -114,6 +114,129 @@ func TestR_SLACK_02_NoIntegrationSkipsPost(t *testing.T) {
 	}
 }
 
+func (h *reportHarness) putSlackWebhook(accessToken, projectID, webhook string) {
+	h.t.Helper()
+	code, body := h.do(http.MethodPut, "/api/projects/"+projectID+"/integrations/slack", map[string]any{
+		"config": map[string]any{"webhook_url": webhook},
+	}, h.authHeaders(accessToken))
+	if code != 200 {
+		h.t.Fatalf("put slack: %d %v", code, body)
+	}
+}
+
+func (h *reportHarness) processSlackJobs(poster *recordingSlackPoster) int {
+	h.t.Helper()
+	n, err := application.ProcessJobsOnce(context.Background(), h.store, application.WorkerDeps{
+		Mail:   h.mailer,
+		Slack:  poster,
+		WebURL: h.server.Cfg.WebURL,
+	}, 20)
+	if err != nil {
+		h.t.Fatalf("process jobs: %v", err)
+	}
+	return n
+}
+
+func TestR_SLACK_03_StatusChangePostsWebhook(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	webhook := "https://hooks.slack.com/services/T000/B000/STATUS"
+	h.putSlackWebhook(seed.AccessToken, seed.ProjectID, webhook)
+
+	poster := &recordingSlackPoster{}
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "bug", "message": "filter lag", "platform": "web",
+	})
+	h.processSlackJobs(poster) // drain new_report
+	poster = &recordingSlackPoster{}
+
+	code, body := h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "in_progress",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch: %d %v", code, body)
+	}
+
+	n := h.processSlackJobs(poster)
+	if n < 1 {
+		t.Fatalf("expected status slack job, processed %d", n)
+	}
+	posts := poster.Posts()
+	if len(posts) != 1 {
+		t.Fatalf("want 1 status post, got %d", len(posts))
+	}
+	text, _ := posts[0].Body["text"].(string)
+	if !strings.Contains(text, "open") || !strings.Contains(text, "in_progress") {
+		t.Fatalf("missing from/to in payload: %s", text)
+	}
+	if !strings.Contains(text, "filter lag") {
+		t.Fatalf("missing title: %s", text)
+	}
+}
+
+func TestR_SLACK_04_MarkFixedIncludesNote(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	h.putSlackWebhook(seed.AccessToken, seed.ProjectID, "https://hooks.slack.com/services/T000/B000/FIXED")
+	mcpToken, _ := h.createMCPToken(seed.AccessToken, seed.ProjectID)
+
+	poster := &recordingSlackPoster{}
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "bug", "message": "null crash", "platform": "web",
+	})
+	h.processSlackJobs(poster)
+	poster = &recordingSlackPoster{}
+
+	code, body := h.mcpCall(mcpToken, "mark_fixed", map[string]any{
+		"ticket_id": ticketID,
+		"note":      "Shipped in 1.4",
+	})
+	if code != 200 {
+		t.Fatalf("mark_fixed: %d %v", code, body)
+	}
+
+	h.processSlackJobs(poster)
+	posts := poster.Posts()
+	if len(posts) != 1 {
+		t.Fatalf("want 1 fixed post, got %d (%v)", len(posts), posts)
+	}
+	text, _ := posts[0].Body["text"].(string)
+	if !strings.Contains(text, "fixed") {
+		t.Fatalf("missing fixed status: %s", text)
+	}
+	if !strings.Contains(text, "Shipped in 1.4") {
+		t.Fatalf("missing note: %s", text)
+	}
+}
+
+func TestR_SLACK_05_SameStatusSkipsPost(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	h.putSlackWebhook(seed.AccessToken, seed.ProjectID, "https://hooks.slack.com/services/T000/B000/SAME")
+
+	poster := &recordingSlackPoster{}
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "export csv", "platform": "web",
+	})
+	h.processSlackJobs(poster)
+	poster = &recordingSlackPoster{}
+
+	code, body := h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "open",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch same status: %d %v", code, body)
+	}
+
+	n := h.processSlackJobs(poster)
+	if n != 0 {
+		t.Fatalf("expected no slack job for same status, processed %d", n)
+	}
+	if len(poster.Posts()) != 0 {
+		t.Fatalf("expected no posts, got %v", poster.Posts())
+	}
+}
+
 func TestIntegrations_SlackWebhookValidation(t *testing.T) {
 	h := newReportHarness(t)
 	seed := h.seedUserProject("indie")

@@ -1135,7 +1135,21 @@ func (s *Store) EnqueueNotify(ctx context.Context, ticketID string) error {
 	return err
 }
 
-func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID, ticketID string) error {
+type SlackNotifyEvent struct {
+	TicketID string
+	Event    string // new_report | status_changed
+	From     string
+	To       string
+	Note     string
+}
+
+func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID string, ev SlackNotifyEvent) error {
+	if ev.Event == "" {
+		ev.Event = "new_report"
+	}
+	if ev.Event == "status_changed" && ev.From == ev.To {
+		return nil
+	}
 	var n int
 	if err := s.DB.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM integrations
@@ -1145,9 +1159,20 @@ func (s *Store) EnqueueSlackNotify(ctx context.Context, projectID, ticketID stri
 	if n == 0 {
 		return nil
 	}
+	payload := map[string]any{
+		"ticket_id": ev.TicketID,
+		"event":     ev.Event,
+	}
+	if ev.Event == "status_changed" {
+		payload["from"] = ev.From
+		payload["to"] = ev.To
+		if strings.TrimSpace(ev.Note) != "" {
+			payload["note"] = strings.TrimSpace(ev.Note)
+		}
+	}
 	_, err := s.DB.ExecContext(ctx, `
 		INSERT INTO jobs(kind, payload) VALUES ('notify_slack', $1)`,
-		mustJSON(map[string]any{"ticket_id": ticketID}))
+		mustJSON(payload))
 	return err
 }
 

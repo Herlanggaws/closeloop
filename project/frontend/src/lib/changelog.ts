@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
-    title: "Slack new-report webhooks",
-    body: "Paste a Slack Incoming Webhook under Settings → Integrations and new reports post to your channel. Same day: landing yearly pricing toggle, and pricing add-on copy that wraps on phones instead of overflowing the card.",
+    title: "Slack webhooks for new reports and status changes",
+    body: "Paste a Slack Incoming Webhook under Settings → Integrations — new reports and ticket status changes (including mark fixed with note) post to your channel. Same day: landing yearly pricing toggle, and pricing add-on copy that wraps on phones.",
   },
   {
     date: "2026-11-17",

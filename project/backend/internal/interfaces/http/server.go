@@ -949,6 +949,7 @@ func (s *Server) patchTicket(c *gin.Context) {
 	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
+	fromStatus := t.Status
 	if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, body.Status, "user:"+c.GetString("email"), body.Note); err != nil {
 		mapErr(c, err)
 		return
@@ -956,6 +957,13 @@ func (s *Server) patchTicket(c *gin.Context) {
 	if body.Status == "fixed" {
 		_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID)
 	}
+	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
+		TicketID: t.ID,
+		Event:    "status_changed",
+		From:     fromStatus,
+		To:       body.Status,
+		Note:     body.Note,
+	})
 	t, _ = s.Store.GetTicket(c.Request.Context(), t.ID)
 	c.JSON(200, gin.H{"ticket": t})
 }
@@ -1067,7 +1075,10 @@ func (s *Server) ingestReport(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), p.ID, ticketID)
+	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), p.ID, application.SlackNotifyEvent{
+		TicketID: ticketID,
+		Event:    "new_report",
+	})
 	c.JSON(201, gin.H{
 		"ticket_id":     ticketID,
 		"report_id":     reportID,

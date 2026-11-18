@@ -30,6 +30,17 @@ func TestNewReportPayload(t *testing.T) {
 	}
 }
 
+func TestNewStatusPayload(t *testing.T) {
+	body := NewStatusPayload("Bear Budget", "paywall crash", "open", "fixed", "Shipped in 1.2", "http://web.test/app/tickets/abc")
+	text, _ := body["text"].(string)
+	if !strings.Contains(text, "open") || !strings.Contains(text, "fixed") {
+		t.Fatalf("missing status transition: %s", text)
+	}
+	if !strings.Contains(text, "Shipped in 1.2") {
+		t.Fatalf("missing note: %s", text)
+	}
+}
+
 func TestClientPostWebhook(t *testing.T) {
 	var got map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

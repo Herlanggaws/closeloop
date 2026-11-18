@@ -1,19 +1,19 @@
-# Report test run — 2026-11-18T020849Z
+# Report test run — 2026-11-18T021745Z
 
-Branch: dev @ 7f24562
+Branch: dev @ 3ee5548
 Result: PASS
-Duration: 10s
+Duration: 11s
 
 ## Summary
 
 - Suite: `go test` report L0/L1/L2 (+ existing package tests)
-- Passed: R-ING-*, R-INB-*, R-MRG-*, R-FIX-*, R-MCP-*, R-SLACK-01, R-SLACK-02
+- Passed: R-ING-*, R-INB-*, R-MRG-*, R-FIX-*, R-MCP-*, R-SLACK-01…05
 - Database: `closeloop_test`
 - Command: `pnpm test:reports` / `bash scripts/test-reports.sh`
 
 ## Changes this run
 
-- F8 Slack Incoming Webhook for new reports (migration 009, worker job, Settings UI)
+- F8 Slack status notifications (status_changed job payload + mark fixed note)
 
 ## Next human action
 

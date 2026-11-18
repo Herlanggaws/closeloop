@@ -125,19 +125,26 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 	case "notify_slack":
 		var p struct {
 			TicketID string `json:"ticket_id"`
+			Event    string `json:"event"`
+			From     string `json:"from"`
+			To       string `json:"to"`
+			Note     string `json:"note"`
 		}
 		if err := json.Unmarshal(payload, &p); err != nil {
 			return err
 		}
-		return notifySlack(ctx, store, deps, p.TicketID)
+		return notifySlack(ctx, store, deps, p.TicketID, p.Event, p.From, p.To, p.Note)
 	default:
 		return fmt.Errorf("unknown job %s", kind)
 	}
 }
 
-func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID string) error {
+func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID, event, from, to, note string) error {
 	if deps.Slack == nil {
 		return nil
+	}
+	if event == "" {
+		event = "new_report"
 	}
 	ticket, err := store.GetTicket(ctx, ticketID)
 	if err != nil {
@@ -164,6 +171,11 @@ func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID st
 	if base := strings.TrimRight(deps.WebURL, "/"); base != "" {
 		ticketURL = base + "/app/tickets/" + ticket.ID
 	}
-	body := slack.NewReportPayload(project.Name, ticket.Type, ticket.Title, ticketURL)
+	var body map[string]any
+	if event == "status_changed" {
+		body = slack.NewStatusPayload(project.Name, ticket.Title, from, to, note, ticketURL)
+	} else {
+		body = slack.NewReportPayload(project.Name, ticket.Type, ticket.Title, ticketURL)
+	}
 	return deps.Slack.PostWebhook(ctx, webhookURL, body)
 }
