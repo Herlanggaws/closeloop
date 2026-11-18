@@ -247,6 +247,120 @@ func TestR_BOARD_05_VoteConfirmIncrementsCount(t *testing.T) {
 	}
 }
 
+func TestR_BOARD_07_VoteReleasedOnMarkFixed(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+
+	code, projectBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("get project: %d %v", code, projectBody)
+	}
+	slug := projectBody["project"].(map[string]any)["board_slug"].(string)
+
+	hiddenID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "private ship", "platform": "web",
+	})
+	h.mailer.Reset()
+	code, _ = h.do(http.MethodPatch, "/api/tickets/"+hiddenID, map[string]any{
+		"status": "fixed", "note": "shipped private",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("mark private fixed: %d", code)
+	}
+	var releasedPending int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM jobs WHERE kind='notify_vote_released' AND status='pending'`).Scan(&releasedPending); err != nil {
+		t.Fatalf("count jobs: %v", err)
+	}
+	if releasedPending != 0 {
+		t.Fatalf("unpublished should not enqueue vote released, got %d", releasedPending)
+	}
+	h.drainNotifyJobs()
+
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "public ship idea", "platform": "web",
+	})
+	h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{"is_public": true}, h.authHeaders(seed.AccessToken))
+
+	h.mailer.Reset()
+	code, _ = h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "fixed", "note": "no voters yet",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("mark public fixed no votes: %d", code)
+	}
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM jobs WHERE kind='notify_vote_released' AND status='pending'`).Scan(&releasedPending); err != nil {
+		t.Fatalf("count jobs: %v", err)
+	}
+	if releasedPending != 0 {
+		t.Fatalf("no confirmed votes should not enqueue, got %d", releasedPending)
+	}
+	h.drainNotifyJobs()
+
+	ticketID, _, _, _, _ = h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "voted ship idea", "platform": "web",
+	})
+	h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "open", "is_public": true,
+	}, h.authHeaders(seed.AccessToken))
+
+	h.mailer.Reset()
+	code, _ = h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/votes", map[string]any{
+		"email": "voter-ship@example.com",
+	}, nil)
+	if code != 202 {
+		t.Fatalf("request vote: %d", code)
+	}
+	if h.drainNotifyJobs() < 1 {
+		t.Fatal("expected vote verify job")
+	}
+	sent := h.mailer.Sent()
+	if len(sent) != 1 {
+		t.Fatalf("want verify mail, got %d", len(sent))
+	}
+	token := extractVoteToken(sent[0].HTML)
+	code, _ = h.do(http.MethodGet, "/api/public/votes/confirm?t="+token, nil, nil)
+	if code != 200 {
+		t.Fatalf("confirm: %d", code)
+	}
+
+	h.mailer.Reset()
+	code, _ = h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{
+		"status": "fixed", "note": "Shipped for voters",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("mark fixed: %d", code)
+	}
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM jobs WHERE kind='notify_vote_released' AND status='pending'`).Scan(&releasedPending); err != nil {
+		t.Fatalf("count jobs: %v", err)
+	}
+	if releasedPending != 1 {
+		t.Fatalf("want 1 vote released job, got %d", releasedPending)
+	}
+	if h.drainNotifyJobs() < 1 {
+		t.Fatal("expected jobs to process")
+	}
+	sent = h.mailer.Sent()
+	var released *recordedMail
+	for i := range sent {
+		if strings.Contains(sent[i].Subject, "An idea you voted for just shipped") {
+			released = &sent[i]
+			break
+		}
+	}
+	if released == nil {
+		t.Fatalf("missing vote released mail in %#v", sent)
+	}
+	if released.To != "voter-ship@example.com" {
+		t.Fatalf("to=%q", released.To)
+	}
+	if !strings.Contains(released.HTML, "Shipped for voters") {
+		t.Fatalf("note missing in html: %s", released.HTML)
+	}
+	if !strings.Contains(released.HTML, "/board/"+slug+"/ideas/"+ticketID) {
+		t.Fatalf("open url missing: %s", released.HTML)
+	}
+}
+
 func TestR_BOARD_06_VoteUnpublishedAndBadEmail(t *testing.T) {
 	h := newReportHarness(t)
 	seed := h.seedUserProject("indie")

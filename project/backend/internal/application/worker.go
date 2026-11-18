@@ -163,6 +163,52 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 			slog.Error("send vote verify mail", "err", err, "to", p.Email)
 		}
 		return nil
+	case "notify_vote_released":
+		var p struct {
+			TicketID string `json:"ticket_id"`
+		}
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return err
+		}
+		if deps.Mail == nil || p.TicketID == "" {
+			return nil
+		}
+		data, err := store.VoteReleasedNotifyData(ctx, p.TicketID)
+		if err != nil {
+			return err
+		}
+		if len(data.Emails) == 0 || data.BoardSlug == "" {
+			return nil
+		}
+		base := strings.TrimRight(deps.WebURL, "/")
+		openURL := base + "/board/" + data.BoardSlug + "/ideas/" + data.TicketID
+		boardHost := ""
+		if u := strings.TrimPrefix(strings.TrimPrefix(base, "https://"), "http://"); u != "" {
+			boardHost = u + "/board/" + data.BoardSlug
+		}
+		note := strings.TrimSpace(data.ReleaseNote)
+		if note == "" {
+			note = "It's live now."
+		}
+		subject := email.VoteReleasedSubject()
+		for _, to := range data.Emails {
+			mail := email.VoteReleasedMail{
+				To:           to,
+				ProjectName:  data.ProjectName,
+				IdeaTitle:    data.IdeaTitle,
+				ReleaseNote:  note,
+				VoteCount:    data.VoteCount,
+				ReportCount:  data.ReportCount,
+				BoardHost:    boardHost,
+				OpenURL:      openURL,
+				GreetingName: email.GreetingFromEmail(to),
+			}
+			html := email.RenderVoteReleasedHTML(mail)
+			if err := deps.Mail.Send(to, subject, html); err != nil {
+				slog.Error("send vote released mail", "err", err, "to", to)
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown job %s", kind)
 	}
