@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { subscribeWidgetSubmitted } from "@/lib/widget-events";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { API_URL, api, clearProjectSelection } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 
@@ -294,6 +295,7 @@ export function Inbox() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
+      <Tour id="inbox" ready={!loading} />
       <AppSidebar
         projectName={projectName}
         plan={plan}
@@ -321,6 +323,7 @@ export function Inbox() {
             {selected.size >= 2 && (
               <button
                 type="button"
+                data-tour="inbox-bulk"
                 onClick={goMerge}
                 className="h-8 cursor-pointer rounded-md border border-[#1717171F] bg-white px-4 font-ds-sans text-[13px] font-medium tracking-[-0.2px] text-[#171717] shadow-[0_4px_4px_#1717170A] hover:bg-[#FAFAFA]"
               >
@@ -338,7 +341,10 @@ export function Inbox() {
           </div>
         </header>
 
-        <div className="flex h-[58px] shrink-0 items-center gap-2 border-b border-[#17171714] px-6">
+        <div
+          data-tour="inbox-filters"
+          className="flex h-[58px] shrink-0 items-center gap-2 border-b border-[#17171714] px-6"
+        >
           <div className="flex gap-0.5 rounded-[10px] border border-[#17171714] bg-[#F5F5F5] p-[3px]">
             {TYPE_TABS.map((tab) => {
               const active = typeFilter === tab.id;
@@ -399,7 +405,7 @@ export function Inbox() {
               <span className="w-10 shrink-0" />
             </div>
 
-            {filtered.map((ticket) => {
+            {filtered.map((ticket, rowIndex) => {
               const isSelected = selected.has(ticket.id);
               const typeStyle = TYPE_STYLE[ticket.type] || {
                 bg: "#F5F5F5",
@@ -409,6 +415,7 @@ export function Inbox() {
               return (
                 <div
                   key={ticket.id}
+                  data-tour={rowIndex === 0 ? "inbox-row" : undefined}
                   className={`flex items-center gap-4 border-b border-[#17171714] px-6 py-3 ${
                     isSelected ? "bg-[#EFF6FF]" : "bg-white hover:bg-[#FAFAFA]"
                   }`}

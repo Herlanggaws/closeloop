@@ -1,9 +1,13 @@
+"use client";
+
 /* Auto-converted from closeloop.pen export: S-17-Self-host */
+import { Tour } from "@/components/coach/Tour";
 import { SaidloopLogo } from "@/components/SaidloopLogo";
 
 export function SelfHost() {
   return (
     <>
+      <Tour id="self-host" ready />
 <div
       data-pencil-name="S-17 Self-host License"
       className="box-border flex min-h-screen w-full flex-col items-center justify-center gap-[24px] bg-[#F7F7F7]"
@@ -52,6 +56,7 @@ export function SelfHost() {
           </div>
           <div
             data-pencil-name="Key Field"
+            data-tour="selfhost-key"
             className="box-border w-full h-fit shrink-0 flex flex-col gap-[6px] justify-start items-start"
           >
             <div
@@ -88,6 +93,7 @@ export function SelfHost() {
           </div>
           <div
             data-pencil-name="Info"
+            data-tour="selfhost-info"
             className="box-border w-full h-fit shrink-0 flex flex-col gap-0 justify-start items-start [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px] overflow-hidden"
           >
             <div
@@ -178,6 +184,7 @@ export function SelfHost() {
           </div>
           <div
             data-pencil-name="Update"
+            data-tour="selfhost-update"
             className="box-border w-full h-fit shrink-0 flex flex-col gap-[8px] justify-start items-start"
           >
             <div

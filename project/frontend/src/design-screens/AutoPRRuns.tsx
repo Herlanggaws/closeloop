@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 
@@ -110,6 +111,7 @@ export function AutoPRRuns() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
+      <Tour id="auto-pr" ready={!loading} />
       <AppSidebar
         projectName={projectName}
         plan={me?.org.plan || "free"}
@@ -163,7 +165,10 @@ export function AutoPRRuns() {
               </div>
 
               <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1fr_320px]">
-                <div className="overflow-hidden rounded-xl border border-[#17171714]">
+                <div
+                  data-tour="autopr-runs"
+                  className="overflow-hidden rounded-xl border border-[#17171714]"
+                >
                   <table className="w-full border-collapse text-left">
                     <thead className="bg-[#FAFAFA]">
                       <tr className="font-ds-ui text-[11px] text-[#A3A3A3]">
@@ -245,7 +250,7 @@ export function AutoPRRuns() {
                 </div>
 
                 <aside className="flex flex-col gap-4 rounded-xl border border-[#17171714] bg-[#FAFAFA] p-4">
-                  <div>
+                  <div data-tour="autopr-repo">
                     <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Repository</div>
                     <div className="mt-1 font-ds-ui text-[13px] text-[#171717]">
                       {githubRepo || "Connect GitHub App"}

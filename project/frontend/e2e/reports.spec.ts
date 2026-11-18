@@ -527,4 +527,45 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByLabel("Incoming Webhook URL")).toBeVisible();
   });
+
+  test("R-UI-17 Inbox coach-mark tour first visit", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const message = `Tour report ${Date.now()}`;
+    await ingestReport(request, session.publicKey, message);
+
+    await applySession(page, session);
+    await page.goto("/app/inbox");
+    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+    await expect(page.getByText(message)).toBeVisible();
+
+    const tour = page.getByRole("dialog");
+    await expect(tour.getByRole("heading", { name: "Every report lands here" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await tour.getByRole("button", { name: /^Next/ }).click();
+    await expect(tour.getByRole("heading", { name: "Open a report for the full story" })).toBeVisible();
+    await tour.getByRole("button", { name: "Done" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+    await expect(page.getByText(message)).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
+  test("R-UI-18 Inbox coach-mark Esc closes tour", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await ingestReport(request, session.publicKey, `Esc tour ${Date.now()}`);
+    await applySession(page, session);
+    await page.goto("/app/inbox");
+    const tour = page.getByRole("dialog");
+    await expect(tour.getByRole("heading", { name: "Every report lands here" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
 });

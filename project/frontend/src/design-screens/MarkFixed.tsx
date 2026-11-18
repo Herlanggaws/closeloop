@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
 import {
   shortId,
@@ -105,6 +106,7 @@ export function MarkFixed() {
 
   return (
     <div className="relative box-border flex min-h-screen w-full items-center justify-center bg-[#17171766] p-6">
+      <Tour id="notify" ready={!loading && !!data?.ticket} />
       <button
         type="button"
         aria-label="Close backdrop"
@@ -156,7 +158,7 @@ export function MarkFixed() {
               </p>
             )}
 
-            <div className="flex flex-col gap-1.5">
+            <div data-tour="notify-note" className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <label
                   htmlFor="release-note"
@@ -182,7 +184,7 @@ export function MarkFixed() {
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div data-tour="notify-channels" className="flex gap-2">
               <ChannelToggle
                 title="Email"
                 subtitle={
@@ -211,7 +213,10 @@ export function MarkFixed() {
               />
             </div>
 
-            <div className="flex flex-col gap-2.5 rounded-[10px] bg-[#F5F5F5] p-4">
+            <div
+              data-tour="notify-preview"
+              className="flex flex-col gap-2.5 rounded-[10px] bg-[#F5F5F5] p-4"
+            >
               <div className="flex items-center justify-between">
                 <span className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">
                   Banner preview

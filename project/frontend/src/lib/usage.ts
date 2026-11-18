@@ -10,7 +10,7 @@ export type OrgUsage = {
 };
 
 export type MeResponse = {
-  user: { email: string; name?: string; avatar_url?: string };
+  user: { id?: string; email: string; name?: string; avatar_url?: string };
   org: { id?: string; name: string; plan: string };
   role?: string;
   usage?: OrgUsage;
