@@ -15,7 +15,7 @@ export type PublicProject = {
 };
 
 export const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
+  open: "Planned",
   in_progress: "In progress",
   fixed: "Released",
   wont_fix: "Won't fix",
@@ -37,15 +37,19 @@ export const TYPE_STYLE: Record<string, { bg: string; text: string; label: strin
 export function PublicBoardHeader({
   projectName,
   slug,
+  activeTab = "ideas",
 }: {
   projectName: string;
   slug: string;
+  activeTab?: "ideas" | "roadmap";
 }) {
   const initial = (projectName.trim()[0] || "P").toUpperCase();
+  const ideasHref = `/board/${encodeURIComponent(slug)}`;
+  const roadmapHref = `/board/${encodeURIComponent(slug)}/roadmap`;
 
   return (
-    <header className="flex items-center gap-8 border-b border-[#17171714] bg-white px-6 py-4 md:px-12 lg:px-[200px]">
-      <Link href={`/board/${encodeURIComponent(slug)}`} className="flex items-center gap-2 no-underline">
+    <header className="flex flex-wrap items-center gap-4 border-b border-[#17171714] bg-white px-6 py-4 md:gap-8 md:px-12 lg:px-[200px]">
+      <Link href={ideasHref} className="flex items-center gap-2 no-underline">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F59E0B]">
           <span className="font-ds-sans text-[15px] font-extrabold text-white">{initial}</span>
         </div>
@@ -56,18 +60,31 @@ export function PublicBoardHeader({
       </Link>
       <div className="flex flex-1 items-start gap-1">
         <Link
-          href={`/board/${encodeURIComponent(slug)}`}
-          className="rounded-md bg-[#F5F5F5] px-3 py-1.5 font-ds-ui text-[14px] font-medium text-[#171717] no-underline"
+          href={ideasHref}
+          className={`rounded-md px-3 py-1.5 font-ds-ui text-[14px] font-medium no-underline ${
+            activeTab === "ideas" ? "bg-[#F5F5F5] text-[#171717]" : "text-[#A3A3A3]"
+          }`}
         >
           Ideas
         </Link>
-        <div
-          className="rounded-md px-3 py-1.5 font-ds-ui text-[14px] font-medium text-[#A3A3A3]"
-          title="Coming soon"
+        <Link
+          href={roadmapHref}
+          className={`rounded-md px-3 py-1.5 font-ds-ui text-[14px] font-medium no-underline ${
+            activeTab === "roadmap" ? "bg-[#F5F5F5] text-[#171717]" : "text-[#A3A3A3]"
+          }`}
         >
           Roadmap
-        </div>
+        </Link>
       </div>
+      <button
+        type="button"
+        disabled
+        title="Coming soon"
+        className="inline-flex h-9 cursor-not-allowed items-center gap-1.5 rounded-md bg-[#171717] px-4 font-ds-sans text-[13px] font-medium text-white opacity-50"
+      >
+        <span aria-hidden>+</span>
+        Suggest an idea
+      </button>
     </header>
   );
 }
@@ -91,4 +108,16 @@ export function formatIdeaDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+export function VoteStub() {
+  return (
+    <div
+      className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg border border-[#17171714] bg-[#FAFAFA]"
+      title="Voting coming soon"
+    >
+      <span className="font-ds-ui text-[11px] text-[#A3A3A3]">▲</span>
+      <span className="font-ds-ui text-[12px] font-medium text-[#A3A3A3]">—</span>
+    </div>
+  );
 }

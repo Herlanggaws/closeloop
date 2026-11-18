@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -21,12 +22,20 @@ type Project = {
   board_slug: string;
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
+const ROADMAP_LABEL: Record<string, string> = {
+  open: "Planned",
   in_progress: "In progress",
-  fixed: "Fixed",
+  fixed: "Released",
   wont_fix: "Won't fix",
   duplicate: "Duplicate",
+};
+
+const ROADMAP_DOT: Record<string, string> = {
+  open: "#266DF0",
+  in_progress: "#EA6C0C",
+  fixed: "#16A34A",
+  wont_fix: "#A3A3A3",
+  duplicate: "#A3A3A3",
 };
 
 export function ManagePublicBoard() {
@@ -40,6 +49,7 @@ export function ManagePublicBoard() {
   const [toggling, setToggling] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"ideas" | "roadmap" | "comments">("ideas");
 
   useEffect(() => {
     const id = localStorage.getItem("closeloop_project");
@@ -123,6 +133,7 @@ export function ManagePublicBoard() {
   const plan = me?.org.plan || "free";
   const email = me?.user.email || "";
   const publicPath = project?.board_slug ? `/board/${project.board_slug}` : "";
+  const ideaCount = tickets.filter((t) => t.status !== "duplicate").length;
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -137,25 +148,46 @@ export function ManagePublicBoard() {
         showUsageCard
       />
       <main className="flex min-h-screen min-w-0 flex-1 flex-col overflow-y-auto bg-white">
-        <header className="flex shrink-0 items-end border-b border-[#17171714] px-10 pb-6 pt-7">
+        <header className="flex shrink-0 flex-wrap items-end justify-between gap-4 border-b border-[#17171714] px-10 pb-6 pt-7">
           <div className="flex max-w-[720px] flex-col gap-1">
             <h1 className="font-ds-sans text-2xl font-medium tracking-[-0.4px] text-[#171717]">
               Public board
             </h1>
             <p className="font-ds-ui text-[13.5px] text-[#737373]">
-              Choose a slug and publish tickets visitors can read. Votes come later.
+              {project?.board_slug
+                ? `/board/${project.board_slug} · choose what visitors can see`
+                : "Choose a slug and publish tickets visitors can read."}
             </p>
           </div>
+          {publicPath ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void copyLink()}
+                className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+              >
+                {copied ? "Copied" : "Copy link"}
+              </button>
+              <Link
+                href={publicPath}
+                target="_blank"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717] no-underline hover:bg-[#FAFAFA]"
+              >
+                View board
+                <span aria-hidden>↗</span>
+              </Link>
+            </div>
+          ) : null}
         </header>
 
-        <div className="flex flex-1 flex-col gap-8 px-10 pb-10 pt-6">
+        <div className="flex flex-1 flex-col gap-6 px-10 pb-10 pt-6">
           {loading ? (
             <p className="font-ds-ui text-sm text-[#737373]">Loading…</p>
           ) : (
             <>
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
-              <section className="max-w-[720px] rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
+              <section className="max-w-[880px] rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
                 <h2 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
                   Board URL
                 </h2>
@@ -181,69 +213,108 @@ export function ManagePublicBoard() {
                     {savingSlug ? "Saving…" : "Save slug"}
                   </button>
                 </div>
-                {publicPath && (
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <a
-                      href={publicPath}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-ds-mono text-[13px] text-[#266DF0] no-underline hover:underline"
-                    >
-                      {publicPath}
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => void copyLink()}
-                      className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
-                    >
-                      {copied ? "Copied" : "Copy link"}
-                    </button>
-                  </div>
-                )}
               </section>
 
-              <section className="max-w-[720px]">
-                <h2 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
-                  Publish tickets
-                </h2>
-                <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                  Published items appear on the public board. Screenshots and reporter details stay
-                  private.
-                </p>
-                <div className="mt-4 flex flex-col gap-2">
-                  {tickets.length === 0 ? (
-                    <p className="font-ds-ui text-sm text-[#737373]">No tickets yet.</p>
-                  ) : (
-                    tickets.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        className="flex items-center gap-3 rounded-xl border border-[#17171714] bg-white px-4 py-3"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-ds-ui text-[13.5px] font-medium text-[#171717]">
-                            {ticket.title}
-                          </div>
-                          <div className="mt-0.5 font-ds-ui text-[11px] text-[#A3A3A3]">
-                            {ticket.type} · {STATUS_LABEL[ticket.status] || ticket.status}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={toggling === ticket.id}
-                          onClick={() => void togglePublic(ticket)}
-                          className={`inline-flex h-8 cursor-pointer items-center rounded-md px-3 font-ds-sans text-[12px] font-medium disabled:opacity-50 ${
-                            ticket.is_public
-                              ? "border border-[#16A34A33] bg-[#F0FDF4] text-[#16A34A]"
-                              : "border border-[#1717171F] bg-white text-[#171717]"
-                          }`}
+              <div className="flex items-center gap-1 border-b border-[#17171714]">
+                {(
+                  [
+                    ["ideas", `Ideas${ideaCount ? ` · ${ideaCount}` : ""}`],
+                    ["roadmap", "Roadmap"],
+                    ["comments", "Comments"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTab(id)}
+                    className={`-mb-px cursor-pointer border-b-2 px-3 py-2 font-ds-ui text-[13.5px] ${
+                      activeTab === id
+                        ? "border-[#F59E0B] font-medium text-[#171717]"
+                        : "border-transparent text-[#737373] hover:text-[#171717]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {activeTab === "ideas" ? (
+                <section className="max-w-[880px]">
+                  <div className="overflow-hidden rounded-xl border border-[#17171714]">
+                    <div className="grid grid-cols-[1fr_72px_120px_100px] gap-3 border-b border-[#17171714] bg-[#FAFAFA] px-4 py-2.5">
+                      <span className="font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
+                        Idea
+                      </span>
+                      <span className="font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
+                        Votes
+                      </span>
+                      <span className="font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
+                        Roadmap
+                      </span>
+                      <span className="font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
+                        Public
+                      </span>
+                    </div>
+                    {tickets.length === 0 ? (
+                      <p className="px-4 py-8 font-ds-ui text-sm text-[#737373]">No tickets yet.</p>
+                    ) : (
+                      tickets.map((ticket) => (
+                        <div
+                          key={ticket.id}
+                          className="grid grid-cols-[1fr_72px_120px_100px] items-center gap-3 border-b border-[#17171714] px-4 py-3 last:border-b-0"
                         >
-                          {ticket.is_public ? "Published" : "Publish"}
-                        </button>
-                      </div>
-                    ))
-                  )}
+                          <div className="min-w-0">
+                            <div className="truncate font-ds-ui text-[13.5px] font-medium text-[#171717]">
+                              {ticket.title}
+                            </div>
+                            <div className="mt-0.5 font-ds-ui text-[11px] capitalize text-[#A3A3A3]">
+                              {ticket.type}
+                            </div>
+                          </div>
+                          <span className="font-ds-ui text-[13px] text-[#A3A3A3]" title="Voting coming soon">
+                            —
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 font-ds-ui text-[12px] text-[#737373]">
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: ROADMAP_DOT[ticket.status] || "#A3A3A3" }}
+                            />
+                            {ROADMAP_LABEL[ticket.status] || ticket.status}
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={ticket.is_public}
+                            disabled={toggling === ticket.id}
+                            onClick={() => void togglePublic(ticket)}
+                            className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors disabled:opacity-50 ${
+                              ticket.is_public ? "bg-[#16A34A]" : "bg-[#E5E5E5]"
+                            }`}
+                            title={ticket.is_public ? "Public" : "Not public"}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                                ticket.is_public ? "translate-x-[22px]" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <p className="mt-4 rounded-lg border border-[#266DF01F] bg-[#EFF6FF] px-4 py-3 font-ds-ui text-[12.5px] text-[#3B5BDB]">
+                    Bugs and reports with personal data stay private unless you turn them public.
+                    Screenshots and reporter details are never shown on the board.
+                  </p>
+                </section>
+              ) : (
+                <div className="max-w-[880px] rounded-xl border border-[#17171714] bg-[#FAFAFA] px-6 py-10 text-center">
+                  <p className="font-ds-sans text-[15px] font-medium text-[#171717]">
+                    {activeTab === "roadmap" ? "Roadmap moderation" : "Comment moderation"}
+                  </p>
+                  <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">Coming soon.</p>
                 </div>
-              </section>
+              )}
             </>
           )}
         </div>

@@ -194,7 +194,7 @@ test.describe("Report UI smoke (R-UI)", () => {
     expect(publish.ok()).toBeTruthy();
 
     await page.goto(`/board/${slug}`);
-    await expect(page.getByRole("heading", { name: "Ideas" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Help shape/i })).toBeVisible();
     await expect(page.getByText("public board smoke idea")).toBeVisible();
   });
 
@@ -225,8 +225,21 @@ test.describe("Report UI smoke (R-UI)", () => {
     await page.getByRole("link", { name: /public idea detail smoke/i }).click();
     await expect(page).toHaveURL(new RegExp(`/board/${slug}/ideas/${ticketId}`));
     await expect(page.getByRole("heading", { name: "public idea detail smoke" })).toBeVisible();
-    await page.getByRole("link", { name: /back to ideas/i }).click();
+    await page.getByRole("link", { name: /all ideas/i }).click();
     await expect(page).toHaveURL(new RegExp(`/board/${slug}/?$`));
-    await expect(page.getByRole("heading", { name: "Ideas" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Help shape/i })).toBeVisible();
+  });
+
+  test("R-UI-10 Integrations S-13 Slack card + configure", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await applySession(page, session);
+    await page.goto("/app/settings/integrations");
+    await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Notify and track" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Debugging context" })).toBeVisible();
+    await expect(page.getByText("Slack", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Sentry", { exact: true }).first()).toBeVisible();
+    await page.getByRole("button", { name: "Configure" }).first().click();
+    await expect(page.getByLabel("Incoming Webhook URL")).toBeVisible();
   });
 });

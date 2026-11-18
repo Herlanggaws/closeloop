@@ -18,14 +18,55 @@ type IntegrationRow = {
   config: Record<string, unknown> | string;
 };
 
-type ProviderID = "sentry" | "posthog" | "slack";
+type WiredProvider = "sentry" | "posthog" | "slack";
 
 type CatalogItem = {
-  id: ProviderID;
+  id: string;
   name: string;
   description: string;
   icon: string;
+  iconBg: string;
+  action: "configure" | "coming_soon" | "upgrade";
+  badge?: string;
+  wired?: WiredProvider;
 };
+
+const NOTIFY_CATALOG: CatalogItem[] = [
+  {
+    id: "slack",
+    name: "Slack",
+    description: "Incoming webhook · new reports and status changes",
+    icon: "Sl",
+    iconBg: "#4A154B",
+    action: "configure",
+    wired: "slack",
+  },
+  {
+    id: "github_issues",
+    name: "GitHub Issues",
+    description: "Create issues from tickets",
+    icon: "GH",
+    iconBg: "#171717",
+    action: "coming_soon",
+  },
+  {
+    id: "linear",
+    name: "Linear",
+    description: "Two-way status sync",
+    icon: "Li",
+    iconBg: "#5E6AD2",
+    action: "coming_soon",
+  },
+  {
+    id: "jira",
+    name: "Jira",
+    description: "Create issues in Jira Cloud projects",
+    icon: "Ji",
+    iconBg: "#2684FF",
+    action: "upgrade",
+    badge: "Studio",
+  },
+];
 
 const DEBUG_CATALOG: CatalogItem[] = [
   {
@@ -33,21 +74,34 @@ const DEBUG_CATALOG: CatalogItem[] = [
     name: "Sentry",
     description: "Link reports to errors by user and release",
     icon: "Se",
+    iconBg: "#362D59",
+    action: "configure",
+    wired: "sentry",
   },
   {
     id: "posthog",
     name: "PostHog",
     description: "Attach the session from before each report",
-    icon: "P",
+    icon: "Ph",
+    iconBg: "#1D4AFF",
+    action: "configure",
+    wired: "posthog",
   },
-];
-
-const TEAM_CATALOG: CatalogItem[] = [
   {
-    id: "slack",
-    name: "Slack",
-    description: "Post new reports to a channel via Incoming Webhook",
-    icon: "Sl",
+    id: "github_app",
+    name: "GitHub App",
+    description: "Repository access for AI auto PR",
+    icon: "GA",
+    iconBg: "#171717",
+    action: "coming_soon",
+  },
+  {
+    id: "webhooks",
+    name: "Webhooks",
+    description: "POST every report event to your endpoint",
+    icon: "Wh",
+    iconBg: "#EA6C0C",
+    action: "coming_soon",
   },
 ];
 
@@ -77,13 +131,19 @@ export function Integrations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<ProviderID | null>(null);
+  const [expanded, setExpanded] = useState<WiredProvider | null>(null);
 
   const [sentryOrg, setSentryOrg] = useState("");
   const [sentryProject, setSentryProject] = useState("");
   const [posthogHost, setPosthogHost] = useState("https://us.posthog.com");
   const [posthogProject, setPosthogProject] = useState("");
   const [slackWebhook, setSlackWebhook] = useState("");
+  const [slackEvents, setSlackEvents] = useState({
+    new_bug: true,
+    new_idea: true,
+    status_changed: true,
+    marked_fixed: true,
+  });
 
   useEffect(() => {
     const id = localStorage.getItem("closeloop_project");
@@ -136,7 +196,7 @@ export function Integrations() {
     };
   }, [router]);
 
-  async function saveProvider(provider: ProviderID, config: Record<string, string>) {
+  async function saveProvider(provider: WiredProvider, config: Record<string, string>) {
     if (!projectId) return;
     setSaving(provider);
     setError("");
@@ -152,7 +212,7 @@ export function Integrations() {
     }
   }
 
-  async function clearProvider(provider: ProviderID) {
+  async function clearProvider(provider: WiredProvider) {
     if (!projectId) return;
     setSaving(provider);
     setError("");
@@ -183,17 +243,23 @@ export function Integrations() {
   const slackConnected = Boolean(slackWebhook.trim());
 
   function statusFor(item: CatalogItem): "connected" | "none" {
-    if (item.id === "sentry") return sentryConnected ? "connected" : "none";
-    if (item.id === "posthog") return posthogConnected ? "connected" : "none";
-    return slackConnected ? "connected" : "none";
+    if (item.wired === "sentry") return sentryConnected ? "connected" : "none";
+    if (item.wired === "posthog") return posthogConnected ? "connected" : "none";
+    if (item.wired === "slack") return slackConnected ? "connected" : "none";
+    return "none";
   }
 
-  function onAction(item: CatalogItem) {
-    setExpanded((prev) => (prev === item.id ? null : item.id));
+  function onCardAction(item: CatalogItem) {
+    if (item.action === "configure" && item.wired) {
+      setExpanded((prev) => (prev === item.wired ? null : item.wired!));
+      return;
+    }
   }
 
-  function actionLabel(item: CatalogItem) {
-    return expanded === item.id ? "Close" : "Configure";
+  function actionLabel(item: CatalogItem): string {
+    if (item.action === "upgrade") return "Upgrade";
+    if (item.action === "coming_soon") return "Coming soon";
+    return expanded === item.wired ? "Close" : "Configure";
   }
 
   return (
@@ -216,7 +282,7 @@ export function Integrations() {
               Integrations
             </h1>
             <p className="font-ds-ui text-[13.5px] text-[#737373]">
-              Debugging deep links and team notifications for new reports.
+              Send reports where your team already works, and pull in debugging context.
             </p>
           </div>
         </header>
@@ -228,6 +294,18 @@ export function Integrations() {
             <>
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
+              <IntegrationGroup title="Notify and track">
+                {NOTIFY_CATALOG.map((item) => (
+                  <IntegrationCard
+                    key={item.id}
+                    item={item}
+                    status={statusFor(item)}
+                    actionLabel={actionLabel(item)}
+                    onAction={() => onCardAction(item)}
+                  />
+                ))}
+              </IntegrationGroup>
+
               <IntegrationGroup title="Debugging context">
                 {DEBUG_CATALOG.map((item) => (
                   <IntegrationCard
@@ -235,22 +313,85 @@ export function Integrations() {
                     item={item}
                     status={statusFor(item)}
                     actionLabel={actionLabel(item)}
-                    onAction={() => onAction(item)}
+                    onAction={() => onCardAction(item)}
                   />
                 ))}
               </IntegrationGroup>
 
-              <IntegrationGroup title="Team notifications">
-                {TEAM_CATALOG.map((item) => (
-                  <IntegrationCard
-                    key={item.id}
-                    item={item}
-                    status={statusFor(item)}
-                    actionLabel={actionLabel(item)}
-                    onAction={() => onAction(item)}
-                  />
-                ))}
-              </IntegrationGroup>
+              {expanded === "slack" && (
+                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
+                        Slack · Incoming webhook
+                      </h3>
+                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                        Choose which events post to the channel. Paste a Slack Incoming Webhook URL
+                        to connect.
+                      </p>
+                    </div>
+                    {slackConnected && (
+                      <button
+                        type="button"
+                        disabled={saving === "slack"}
+                        onClick={() => void clearProvider("slack")}
+                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {(
+                      [
+                        ["new_bug", "New bug"],
+                        ["new_idea", "New idea"],
+                        ["status_changed", "Status changed"],
+                        ["marked_fixed", "Marked fixed"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label
+                        key={key}
+                        className="flex cursor-pointer items-center justify-between rounded-lg border border-[#17171714] bg-white px-3 py-2.5"
+                      >
+                        <span className="font-ds-ui text-[13px] text-[#171717]">{label}</span>
+                        <input
+                          type="checkbox"
+                          checked={slackEvents[key]}
+                          onChange={(e) =>
+                            setSlackEvents((prev) => ({ ...prev, [key]: e.target.checked }))
+                          }
+                          className="h-4 w-4 accent-[#16A34A]"
+                          title="Coming soon — all connected events post today"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-4">
+                    <Field
+                      label="Incoming Webhook URL"
+                      value={slackWebhook}
+                      onChange={setSlackWebhook}
+                      placeholder="https://hooks.slack.com/services/…"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={
+                      saving === "slack" ||
+                      !slackWebhook.trim().startsWith("https://hooks.slack.com/")
+                    }
+                    onClick={() =>
+                      void saveProvider("slack", {
+                        webhook_url: slackWebhook.trim(),
+                      })
+                    }
+                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                  >
+                    {saving === "slack" ? "Saving…" : "Save Slack"}
+                  </button>
+                </div>
+              )}
 
               {expanded === "sentry" && (
                 <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
@@ -355,55 +496,6 @@ export function Integrations() {
                   </button>
                 </div>
               )}
-
-              {expanded === "slack" && (
-                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
-                        Slack
-                      </h3>
-                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                        Paste an Incoming Webhook URL from Slack. New reports post to that
-                        channel.
-                      </p>
-                    </div>
-                    {slackConnected && (
-                      <button
-                        type="button"
-                        disabled={saving === "slack"}
-                        onClick={() => void clearProvider("slack")}
-                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
-                      >
-                        Disconnect
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-4 grid gap-3">
-                    <Field
-                      label="Incoming Webhook URL"
-                      value={slackWebhook}
-                      onChange={setSlackWebhook}
-                      placeholder="https://hooks.slack.com/services/…"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    disabled={
-                      saving === "slack" ||
-                      !slackWebhook.trim().startsWith("https://hooks.slack.com/")
-                    }
-                    onClick={() =>
-                      void saveProvider("slack", {
-                        webhook_url: slackWebhook.trim(),
-                      })
-                    }
-                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
-                  >
-                    {saving === "slack" ? "Saving…" : "Save Slack"}
-                  </button>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -416,7 +508,7 @@ function IntegrationGroup({ title, children }: { title: string; children: ReactN
   return (
     <section className="flex flex-col gap-3">
       <h2 className="font-ds-ui text-xs font-medium text-[#A3A3A3]">{title}</h2>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">{children}</div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{children}</div>
     </section>
   );
 }
@@ -432,18 +524,31 @@ function IntegrationCard({
   actionLabel: string;
   onAction: () => void;
 }) {
+  const disabled = item.action === "coming_soon";
+  const primary = item.action === "upgrade";
+
   return (
-    <div className="flex min-h-[148px] flex-col rounded-xl border border-[#17171714] bg-white p-4">
+    <div className="flex min-h-[156px] flex-col rounded-xl border border-[#17171714] bg-white p-4">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#17171714] bg-[#FAFAFA] font-ds-sans text-[11px] font-semibold text-[#171717]">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg font-ds-sans text-[11px] font-semibold text-white"
+          style={{ background: item.iconBg }}
+        >
           {item.icon}
         </div>
-        {status === "connected" && (
-          <span className="inline-flex items-center gap-1.5 font-ds-ui text-[11px] text-[#16A34A]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
-            Connected
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {item.badge ? (
+            <span className="rounded-md bg-[#F5F5F5] px-1.5 py-0.5 font-ds-ui text-[10px] font-medium text-[#737373]">
+              {item.badge}
+            </span>
+          ) : null}
+          {status === "connected" && (
+            <span className="inline-flex items-center gap-1.5 font-ds-ui text-[11px] text-[#16A34A]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
+              Connected
+            </span>
+          )}
+        </div>
       </div>
       <div className="mt-3 font-ds-sans text-[15px] font-semibold text-[#171717]">
         {item.name}
@@ -453,8 +558,14 @@ function IntegrationCard({
       </p>
       <button
         type="button"
+        disabled={disabled}
         onClick={onAction}
-        className="mt-4 inline-flex h-8 w-fit cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717] hover:bg-[#FAFAFA]"
+        title={disabled ? "Coming soon" : undefined}
+        className={`mt-4 inline-flex h-8 w-fit items-center rounded-md px-3 font-ds-sans text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
+          primary
+            ? "cursor-pointer bg-[#171717] text-white"
+            : "cursor-pointer border border-[#1717171F] bg-white text-[#171717] hover:bg-[#FAFAFA]"
+        }`}
       >
         {actionLabel}
       </button>

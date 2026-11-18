@@ -175,6 +175,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-06 | Post-M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | Public board link + page live; Auto PR still hidden/redirect |
 | R-UI-07 | Public board | Publish idea via API | Open `/board/{slug}` | Published title visible |
 | R-UI-08 | Idea detail | Publish idea via API | Open list → click idea | Detail title + back to list |
+| R-UI-10 | Integrations catalog | Seed session | Open `/app/settings/integrations` | Notify/Debugging sections + Slack Configure webhook field |
 
 ---
 
