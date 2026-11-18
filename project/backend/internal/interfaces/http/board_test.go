@@ -650,12 +650,146 @@ func TestR_BOARD_09_CommentGuards(t *testing.T) {
 	}
 }
 
+func TestR_BOARD_11_SuggestConfirmCreatesPrivateIdea(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+
+	code, projectBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("get project: %d %v", code, projectBody)
+	}
+	slug := projectBody["project"].(map[string]any)["board_slug"].(string)
+
+	code, suggest := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/suggest", map[string]any{
+		"email": "Suggester@Example.COM",
+		"title": "Dark mode for settings",
+		"body":  "Please add a toggle in project settings.",
+	}, nil)
+	if code != 202 {
+		t.Fatalf("suggest: %d %v", code, suggest)
+	}
+
+	if n := h.drainNotifyJobs(); n < 1 {
+		t.Fatalf("expected suggest verify job, processed %d", n)
+	}
+	sent := h.mailer.Sent()
+	if len(sent) != 1 {
+		t.Fatalf("want 1 suggest mail, got %d", len(sent))
+	}
+	if !strings.Contains(sent[0].Subject, "Confirm your idea") {
+		t.Fatalf("subject=%q", sent[0].Subject)
+	}
+	token := extractSuggestToken(sent[0].HTML)
+	if token == "" {
+		t.Fatalf("no confirm token in mail: %s", sent[0].HTML)
+	}
+
+	code, confirmed := h.do(http.MethodGet, "/api/public/ideas/confirm?t="+token, nil, nil)
+	if code != 200 {
+		t.Fatalf("confirm: %d %v", code, confirmed)
+	}
+	obj := confirmed["suggestion"].(map[string]any)
+	ticketID, _ := obj["idea_id"].(string)
+	if ticketID == "" || obj["board_slug"] != slug {
+		t.Fatalf("confirm payload=%v", confirmed)
+	}
+	if obj["email"] != "suggester@example.com" {
+		t.Fatalf("email normalized=%v", obj["email"])
+	}
+
+	code, again := h.do(http.MethodGet, "/api/public/ideas/confirm?t="+token, nil, nil)
+	if code != 409 {
+		t.Fatalf("reuse token want 409, got %d %v", code, again)
+	}
+
+	code, publicBoard := h.do(http.MethodGet, "/api/public/boards/"+slug, nil, nil)
+	if code != 200 {
+		t.Fatalf("public board: %d %v", code, publicBoard)
+	}
+	for _, raw := range publicBoard["ideas"].([]any) {
+		idea := raw.(map[string]any)
+		if idea["id"] == ticketID {
+			t.Fatalf("private suggested idea leaked on public board: %v", idea)
+		}
+	}
+
+	code, ticketBody := h.do(http.MethodGet, "/api/tickets/"+ticketID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("get ticket: %d %v", code, ticketBody)
+	}
+	ticket := ticketBody["ticket"].(map[string]any)
+	if ticket["type"] != "idea" || ticket["status"] != "open" {
+		t.Fatalf("ticket type/status=%v/%v", ticket["type"], ticket["status"])
+	}
+	if ticket["is_public"] != false {
+		t.Fatalf("want is_public=false, got %v", ticket["is_public"])
+	}
+	if ticket["title"] != "Dark mode for settings" {
+		t.Fatalf("title=%v", ticket["title"])
+	}
+
+	code, ticketsBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID+"/tickets?type=idea", nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("list tickets: %d %v", code, ticketsBody)
+	}
+	found := false
+	for _, raw := range ticketsBody["tickets"].([]any) {
+		tkt := raw.(map[string]any)
+		if tkt["id"] == ticketID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("suggested idea missing from builder inbox")
+	}
+}
+
+func TestR_BOARD_12_SuggestGuards(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+
+	code, projectBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("get project: %d %v", code, projectBody)
+	}
+	slug := projectBody["project"].(map[string]any)["board_slug"].(string)
+
+	code, missing := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/suggest", map[string]any{
+		"email": "ok@example.com",
+		"title": "   ",
+	}, nil)
+	if code != 400 {
+		t.Fatalf("empty title want 400, got %d %v", code, missing)
+	}
+
+	code, bad := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/suggest", map[string]any{
+		"email": "not-an-email",
+		"title": "Valid title",
+	}, nil)
+	if code != 400 {
+		t.Fatalf("bad email want 400, got %d %v", code, bad)
+	}
+
+	code, unknown := h.do(http.MethodPost, "/api/public/boards/no-such-board-xyz/ideas/suggest", map[string]any{
+		"email": "ok@example.com",
+		"title": "Valid title",
+	}, nil)
+	if code != 404 {
+		t.Fatalf("unknown slug want 404, got %d %v", code, unknown)
+	}
+}
+
 func extractVoteToken(htmlBody string) string {
 	return extractTokenMarker(htmlBody, "/vote/confirm?t=")
 }
 
 func extractCommentToken(htmlBody string) string {
 	return extractTokenMarker(htmlBody, "/comment/confirm?t=")
+}
+
+func extractSuggestToken(htmlBody string) string {
+	return extractTokenMarker(htmlBody, "/suggest/confirm?t=")
 }
 
 func extractTokenMarker(htmlBody, marker string) string {

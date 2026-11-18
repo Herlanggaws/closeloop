@@ -461,6 +461,58 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(page.getByText("Love this idea")).toBeVisible();
   });
 
+  test("R-UI-16 public board suggest idea", async ({ page, request }) => {
+    const session = await seedSession(request);
+    const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    });
+    expect(projectRes.ok()).toBeTruthy();
+    const projectBody = await projectRes.json();
+    const slug = projectBody.project.board_slug as string;
+
+    const title = `Suggest UI smoke ${Date.now()}`;
+    await page.goto(`/board/${slug}`);
+    await page.getByRole("button", { name: /suggest an idea/i }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel("Title").fill(title);
+    await dialog.getByLabel("Email").fill("suggester-ui@example.com");
+    await dialog.getByRole("button", { name: /send confirm link/i }).click();
+    await expect(dialog.getByText(/check your email to confirm/i)).toBeVisible();
+
+    const { execFileSync } = await import("node:child_process");
+    const dbURL =
+      process.env.DATABASE_URL ||
+      `postgres://${process.env.USER || "postgres"}@localhost:5432/closeloop?sslmode=disable`;
+    const token = execFileSync(
+      "psql",
+      [
+        dbURL,
+        "-tAc",
+        "SELECT payload->>'raw_token' FROM jobs WHERE kind='notify_suggest_verify' ORDER BY created_at DESC LIMIT 1",
+      ],
+      { encoding: "utf8" },
+    ).trim();
+    expect(token).toBeTruthy();
+
+    await page.goto(`/suggest/confirm?t=${token}`);
+    await expect(page.getByRole("heading", { name: /idea submitted/i })).toBeVisible();
+    await page.getByRole("link", { name: /back to board/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/board/${slug}/?$`));
+    await expect(page.getByText(title)).toHaveCount(0);
+
+    const ticketsRes = await request.get(
+      `${API_URL}/api/projects/${session.projectId}/tickets?type=idea`,
+      { headers: { Authorization: `Bearer ${session.accessToken}` } },
+    );
+    expect(ticketsRes.ok()).toBeTruthy();
+    const ticketsBody = await ticketsRes.json();
+    const found = (ticketsBody.tickets as Array<{ title: string; is_public: boolean }>).some(
+      (t) => t.title === title && t.is_public === false,
+    );
+    expect(found).toBeTruthy();
+  });
+
   test("R-UI-10 Integrations S-13 Slack card + configure", async ({ page, request }) => {
     const session = await seedSession(request);
     await applySession(page, session);

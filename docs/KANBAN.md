@@ -108,6 +108,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F9** Roadmap moderation DnD on `/app/board` (Planned / In progress / Released)
 - [x] **F9** Ideas tab live `vote_count` from confirmed votes (R-UI-15)
 - [x] **F9** Voter release-email kill switch (S-12 `voter_notify_enabled`)
+- [x] **F9** Suggest an idea (S-24 moderated: email confirm → private idea until publish)
 - [ ] **F11** rrweb replay module, attach to ticket, default masking
 
 #### M4 · AI & Business (F10, F12)

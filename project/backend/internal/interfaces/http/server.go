@@ -84,8 +84,10 @@ func (s *Server) Router() *gin.Engine {
 		api.GET("/public/boards/:slug/ideas/:id/comments", s.listPublicComments)
 		api.POST("/public/boards/:slug/ideas/:id/comments", s.requestPublicComment)
 		api.POST("/public/boards/:slug/ideas/:id/votes", s.requestPublicVote)
+		api.POST("/public/boards/:slug/ideas/suggest", s.requestPublicSuggest)
 		api.GET("/public/votes/confirm", s.confirmPublicVote)
 		api.GET("/public/comments/confirm", s.confirmPublicComment)
+		api.GET("/public/ideas/confirm", s.confirmPublicSuggest)
 	}
 
 	ingest := r.Group("/v1/ingest")
@@ -1131,6 +1133,67 @@ func (s *Server) requestPublicComment(c *gin.Context) {
 		)
 	}
 	c.JSON(202, gin.H{"ok": true, "message": "Check your email to confirm your comment."})
+}
+
+func (s *Server) requestPublicSuggest(c *gin.Context) {
+	var body struct {
+		Email string `json:"email"`
+		Title string `json:"title"`
+		Body  string `json:"body"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	req, err := s.Store.RequestIdeaSuggest(
+		c.Request.Context(),
+		c.Param("slug"),
+		body.Email,
+		body.Title,
+		body.Body,
+	)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if req.SendEmail {
+		_ = s.Store.EnqueueSuggestVerify(
+			c.Request.Context(),
+			req.Email,
+			req.RawToken,
+			req.ProjectName,
+			req.IdeaTitle,
+			req.BoardSlug,
+		)
+	}
+	c.JSON(202, gin.H{
+		"ok":      true,
+		"message": "Check your email to confirm — we'll show it after the team publishes.",
+	})
+}
+
+func (s *Server) confirmPublicSuggest(c *gin.Context) {
+	result, err := s.Store.ConfirmIdeaSuggest(c.Request.Context(), c.Query("t"))
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrNotFound):
+			writeErr(c, 404, "NOT_FOUND", "invalid suggestion link")
+		case errors.Is(err, application.ErrConflict):
+			writeErr(c, 409, "ALREADY_USED", "this suggestion link was already used")
+		case errors.Is(err, application.ErrGone):
+			writeErr(c, 410, "EXPIRED", "this suggestion link has expired")
+		default:
+			mapErr(c, err)
+		}
+		return
+	}
+	createdEv := application.SlackNotifyEvent{
+		TicketID: result.TicketID,
+		Event:    "new_report",
+	}
+	_ = s.Store.EnqueueSlackNotify(c.Request.Context(), result.ProjectID, createdEv)
+	_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), result.ProjectID, createdEv)
+	c.JSON(200, gin.H{"suggestion": result})
 }
 
 func (s *Server) confirmPublicComment(c *gin.Context) {

@@ -165,6 +165,8 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-BOARD-10 | Voter notify kill switch | `voter_notify_enabled=false` + confirmed vote | Mark fixed | No `notify_vote_released` job/mail | EnqueueVoteReleased gate |
 | R-BOARD-08 | Comment confirm + reply | Publish idea | POST comment → confirm → reply + team + hide | Public list/replies; hidden excluded | RequestIdeaComment + SetCommentHidden |
 | R-BOARD-09 | Comment guards | Unpublished / bad email / empty / bad parent | POST comments | 404 / 400 | PublicIdeaBySlug + normalize |
+| R-BOARD-11 | Suggest confirm | Valid board slug | POST suggest → confirm | Private `idea` ticket in inbox; not on public list; reuse 409 | RequestIdeaSuggest + ConfirmIdeaSuggest |
+| R-BOARD-12 | Suggest guards | Empty title / bad email / unknown slug | POST suggest | 400 / 400 / 404 | normalize + PublicBoardBySlug |
 
 ### 4.5 MCP read path (F5 · SC-2)
 
@@ -193,6 +195,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-13 | Roadmap DnD | Publish idea | `/app/board` Roadmap → move to In progress | Card in column; status `in_progress` | S-11 roadmap |
 | R-UI-14 | Inbox live refresh | Open inbox | Ingest + `closeloop:submitted` | New row appears without reload | widget event + Inbox refetch |
 | R-UI-15 | Ideas vote count | Publish + confirm vote | Open `/app/board` Ideas | Votes column shows 1 | Ticket.vote_count |
+| R-UI-16 | Suggest idea | Open public board | Suggest modal → confirm token | Private idea in inbox; not on public list | S-24 moderated |
 
 ---
 
@@ -287,7 +290,7 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…09 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…12 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
 - [x] Mail sink assert untuk R-FIX-03/04
 - [x] MCP JSON-RPC client helper
 

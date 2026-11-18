@@ -142,6 +142,7 @@ func (h *reportHarness) truncate() {
 		TRUNCATE TABLE
 			jobs, notifications, ticket_events, attachments, reports, tickets,
 			idea_comment_tokens, idea_comments,
+			idea_suggestions,
 			idea_vote_tokens, idea_votes,
 			reporters, mcp_tokens, integrations, invites, project_keys, projects, memberships,
 			refresh_tokens, waitlist, users, organizations
