@@ -184,6 +184,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-10 | Integrations catalog | Seed session | Open `/app/settings/integrations` | Notify/Debugging sections + Slack Configure webhook field |
 | R-UI-11 | Board vote | Publish idea | Vote modal → confirm token → idea | Voted banner + count path | S-27 verify |
 | R-UI-12 | Board comment | Publish idea | Comment composer → confirm token → idea | Comment body visible | S-25 comments |
+| R-UI-13 | Roadmap DnD | Publish idea | `/app/board` Roadmap → move to In progress | Card in column; status `in_progress` | S-11 roadmap |
 
 ---
 
