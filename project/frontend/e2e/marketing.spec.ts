@@ -31,6 +31,27 @@ test.describe("Marketing pages smoke", () => {
     );
   });
 
+  test("landing billing toggle switches yearly prices", async ({ page }) => {
+    await page.goto("/#pricing");
+    const pricing = page.locator("#pricing");
+    const yearly = pricing.getByRole("button", { name: /Yearly/ });
+    const monthly = pricing.getByRole("button", { name: "Monthly" });
+
+    await expect(pricing.getByText("$12", { exact: true })).toBeVisible();
+    await expect(yearly).toHaveAttribute("aria-pressed", "false");
+
+    await yearly.click();
+    await expect(yearly).toHaveAttribute("aria-pressed", "true");
+    await expect(pricing.getByText("$10", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$33", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$124", { exact: true })).toBeVisible();
+
+    await monthly.click();
+    await expect(monthly).toHaveAttribute("aria-pressed", "true");
+    await expect(pricing.getByText("$12", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$39", { exact: true })).toBeVisible();
+  });
+
   test("landing exposes crawlable SEO signals", async ({ page }) => {
     const response = await page.goto("/");
     expect(response?.ok()).toBeTruthy();

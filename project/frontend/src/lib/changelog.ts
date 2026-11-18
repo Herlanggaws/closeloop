@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
-    title: "Landing page works on phones",
-    body: "The public landing page now reflows on small screens — hamburger nav, stacked sections, fluid type, and a waitlist form that fits a thumb — without sideways scrolling.",
+    title: "Landing pricing toggle and mobile layout",
+    body: "Yearly billing on the landing page now switches plan prices (two months free). Same day: the public page reflows on phones — hamburger nav, stacked sections, and a waitlist that fits a thumb.",
   },
   {
     date: "2026-11-17",
