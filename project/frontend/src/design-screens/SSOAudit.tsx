@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 
@@ -101,6 +102,7 @@ export function SSOAudit() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
+      <Tour id="sso" ready={!loading} />
       <AppSidebar
         projectName={projectName}
         plan={plan}
@@ -121,7 +123,10 @@ export function SSOAudit() {
         )}
 
         <div className="flex flex-1 flex-col gap-6 overflow-auto px-8 py-7">
-          <section className="overflow-hidden rounded-xl border border-[#17171714]">
+          <section
+            data-tour="sso-config"
+            className="overflow-hidden rounded-xl border border-[#17171714]"
+          >
             <div className="flex items-center justify-between border-b border-[#17171714] bg-[#FAFAFA] px-5 py-3">
               <div>
                 <div className="font-ds-ui text-[13px] font-semibold text-[#171717]">
@@ -141,7 +146,10 @@ export function SSOAudit() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-xl border border-[#17171714]">
+          <section
+            data-tour="sso-audit"
+            className="overflow-hidden rounded-xl border border-[#17171714]"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#17171714] bg-[#FAFAFA] px-5 py-3">
               <div>
                 <div className="font-ds-ui text-[13px] font-semibold text-[#171717]">Audit log</div>

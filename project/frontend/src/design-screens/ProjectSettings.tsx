@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { api, clearProjectSelection } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 
@@ -342,6 +343,7 @@ export function ProjectSettings() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
+      <Tour id="project" ready={!loading && !!project} />
       <AppSidebar
         projectName={projectName}
         plan={plan}
@@ -426,6 +428,7 @@ export function ProjectSettings() {
               </SettingsSection>
 
               <SettingsSection
+                tourTarget="project-keys"
                 title="Keys"
                 description="The public key ships in your app and can only create reports."
               >
@@ -457,6 +460,7 @@ export function ProjectSettings() {
               </SettingsSection>
 
               <SettingsSection
+                tourTarget="project-masking"
                 title="Privacy and masking"
                 description="Masked content is blurred on the device. It never reaches our servers."
               >
@@ -518,6 +522,7 @@ export function ProjectSettings() {
               </SettingsSection>
 
               <SettingsSection
+                tourTarget="project-widget"
                 title="Widget"
                 description="How the Report button looks inside your app."
               >
@@ -657,13 +662,18 @@ function SettingsSection({
   title,
   description,
   children,
+  tourTarget,
 }: {
   title: string;
   description: string;
   children: ReactNode;
+  tourTarget?: string;
 }) {
   return (
-    <section className="flex flex-col gap-6 border-b border-[#17171714] py-7 sm:flex-row sm:gap-12">
+    <section
+      data-tour={tourTarget}
+      className="flex flex-col gap-6 border-b border-[#17171714] py-7 sm:flex-row sm:gap-12"
+    >
       <div className="w-full shrink-0 sm:w-[280px]">
         <h2 className="font-ds-sans text-[15px] font-semibold tracking-[-0.2px] text-[#171717]">
           {title}

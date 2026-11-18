@@ -213,6 +213,8 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-14 | Inbox live refresh | Open inbox | Ingest + `closeloop:submitted` | New row appears without reload | widget event + Inbox refetch |
 | R-UI-15 | Ideas vote count | Publish + confirm vote | Open `/app/board` Ideas | Votes column shows 1 | Ticket.vote_count |
 | R-UI-16 | Suggest idea | Open public board | Suggest modal → confirm token | Private idea in inbox; not on public list | S-24 moderated |
+| R-UI-17 | Inbox coach tour | Clean storage + report in inbox | Open `/app/inbox` → Next → Done | Tour shows; reload does not reappear | `data-tour` + tour store |
+| R-UI-18 | Inbox coach Esc | Clean storage + report | Open inbox → Esc | Tour closes and stays seen | Esc marks seen |
 
 ---
 

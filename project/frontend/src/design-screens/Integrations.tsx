@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 
@@ -522,6 +523,7 @@ export function Integrations() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
+      <Tour id="integrations" ready={!loading} />
       <AppSidebar
         projectName={projectName}
         plan={plan}
@@ -552,7 +554,7 @@ export function Integrations() {
             <>
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
-              <IntegrationGroup title="Notify and track">
+              <IntegrationGroup title="Notify and track" tourTarget="integrations-track">
                 {NOTIFY_CATALOG.map((item) => {
                   const cardItem =
                     item.id === "github_issues" && githubRepo.trim()
@@ -578,7 +580,7 @@ export function Integrations() {
                 })}
               </IntegrationGroup>
 
-              <IntegrationGroup title="Debugging context">
+              <IntegrationGroup title="Debugging context" tourTarget="integrations-debug">
                 {DEBUG_CATALOG.map((item) => (
                   <IntegrationCard
                     key={item.id}
@@ -644,7 +646,10 @@ export function Integrations() {
                             Disconnect
                           </button>
                         )}
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div
+                          data-tour="integrations-slack"
+                          className="mt-4 grid gap-3 sm:grid-cols-2"
+                        >
                           {(
                             [
                               ["new_bug", "New bug"],
@@ -1339,9 +1344,17 @@ export function Integrations() {
   );
 }
 
-function IntegrationGroup({ title, children }: { title: string; children: ReactNode }) {
+function IntegrationGroup({
+  title,
+  children,
+  tourTarget,
+}: {
+  title: string;
+  children: ReactNode;
+  tourTarget?: string;
+}) {
   return (
-    <section className="flex flex-col gap-3">
+    <section data-tour={tourTarget} className="flex flex-col gap-3">
       <h2 className="font-ds-ui text-xs font-medium text-[#A3A3A3]">{title}</h2>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{children}</div>
     </section>

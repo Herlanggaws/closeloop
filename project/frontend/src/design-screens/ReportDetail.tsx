@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { SessionReplayPlayer } from "@/components/SessionReplayPlayer";
 import { api } from "@/lib/api";
 import {
@@ -310,6 +311,7 @@ export function ReportDetail() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
+      <Tour id="replay" ready={!loading && !!ticket} />
       <AppSidebar
         projectName={projectName}
         plan={plan}
@@ -437,6 +439,7 @@ export function ReportDetail() {
                   <button
                     key={id}
                     type="button"
+                    data-tour={id === "replay" ? "ticket-replay-tab" : undefined}
                     onClick={() => setDetailTab(id)}
                     className={
                       detailTab === id

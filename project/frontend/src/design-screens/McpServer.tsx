@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { API_URL, api, clearProjectSelection } from "@/lib/api";
 import { relativeTime } from "@/lib/tickets";
 import type { MeResponse } from "@/lib/usage";
@@ -273,6 +274,7 @@ export function McpServer() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
+      <Tour id="mcp" ready={!loading} />
       <AppSidebar
         projectName={projectName}
         plan={plan}
@@ -290,6 +292,7 @@ export function McpServer() {
           </h1>
           <button
             type="button"
+            data-tour="mcp-token"
             disabled={creating || loading}
             onClick={createToken}
             className="h-8 cursor-pointer rounded-md bg-[#171717] px-4 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
@@ -397,22 +400,25 @@ export function McpServer() {
                         ? "Paste into Cursor Settings → MCP → mcp.json."
                         : "Paste into your Claude Code MCP config."}
                     </p>
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[13px] font-medium text-[#171717]">Config</span>
-                      <button
-                        type="button"
-                        onClick={() => copy("config", config)}
-                        className="cursor-pointer text-[13px] font-medium underline-offset-2 hover:underline"
-                      >
-                        {copied === "config" ? "Copied" : "Copy"}
-                      </button>
+                    <div data-tour="mcp-command">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[13px] font-medium text-[#171717]">Config</span>
+                        <button
+                          type="button"
+                          onClick={() => copy("config", config)}
+                          className="cursor-pointer text-[13px] font-medium underline-offset-2 hover:underline"
+                        >
+                          {copied === "config" ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+                      <pre className="overflow-x-auto rounded-lg bg-[#0A0A0A] p-4 text-xs text-[#86EFAC]">
+                        {config}
+                      </pre>
                     </div>
-                    <pre className="overflow-x-auto rounded-lg bg-[#0A0A0A] p-4 text-xs text-[#86EFAC]">
-                      {config}
-                    </pre>
                   </div>
 
                   <div
+                    data-tour="mcp-test"
                     className={`mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border p-3 ${
                       testStatus === "ok"
                         ? "border-[#16A34A33] bg-[#F0FDF4]"

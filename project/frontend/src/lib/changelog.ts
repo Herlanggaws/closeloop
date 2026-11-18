@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
-    title: "Session replay, audit log, Linear/Jira, and tracker sync",
-    body: "Studio/Business widgets record a masked rrweb buffer and attach it to tickets for playback. Business owners get an audit log with CSV export under SSO & audit. Integrations now connect Linear and Jira via API keys; create issues from a ticket and close sync through inbound webhooks. Same day earlier: GitHub App, Auto PR, public board polish, and pen-aligned Linked panel.",
+    title: "Coach-mark tours, session replay, and integrations",
+    body: "First-visit coach marks guide Inbox, Install, MCP, Project settings, Notify, and onboarding. Tours also register for board, Auto PR, integrations, SSO, and self-host when those pages are reachable. Same day: session replay playback, audit log CSV export, Linear/Jira connect, GitHub App, and public board polish.",
   },
   {
     date: "2026-11-17",

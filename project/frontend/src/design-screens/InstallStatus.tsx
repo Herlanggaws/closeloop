@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { api, clearProjectSelection } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 import {
@@ -152,6 +153,7 @@ export function InstallStatus() {
         active="install"
       />
 
+      <Tour id="install" ready={!loading} />
       <main className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-[#17171714] px-6">
           <h1 className="font-ds-sans text-lg font-semibold tracking-[-0.36px] text-[#171717]">
@@ -181,6 +183,7 @@ export function InstallStatus() {
               )}
 
               <section
+                data-tour="install-first-report"
                 className={`rounded-2xl border p-5 ${
                   firstReportReceived
                     ? "border-[#16A34A33] bg-[#F0FDF4]"
@@ -210,8 +213,13 @@ export function InstallStatus() {
                 </p>
               </section>
 
-              <section className="rounded-2xl border border-[#17171714] bg-white p-5 shadow-[0_4px_4px_#1717170A]">
-                <h3 className="font-ds-ui text-[14px] font-semibold text-[#171717]">Snippet</h3>
+              <section
+                data-tour="install-script"
+                className="rounded-2xl border border-[#17171714] bg-white p-5 shadow-[0_4px_4px_#1717170A]"
+              >
+                <h3 className="font-ds-ui text-[14px] font-semibold text-[#171717]">
+                  Add the widget
+                </h3>
                 <p className="mt-1 font-ds-ui text-[12px] text-[#737373]">{subtitle}</p>
 
                 {showTabs && (
@@ -271,6 +279,21 @@ export function InstallStatus() {
                     </a>
                   </p>
                 )}
+              </section>
+
+              <section
+                data-tour="install-mask"
+                className="rounded-2xl border border-[#17171714] bg-white p-5"
+              >
+                <h3 className="font-ds-ui text-[14px] font-semibold text-[#171717]">
+                  Mask sensitive elements
+                </h3>
+                <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
+                  Add{" "}
+                  <code className="font-ds-mono text-[12px]">data-closeloop-mask</code> to balances,
+                  card numbers or anything personal. It&apos;s blurred on the device before the
+                  screenshot leaves it. You can also set CSS selectors under Project settings.
+                </p>
               </section>
 
               <section className="rounded-2xl border border-[#17171714] bg-white p-5">

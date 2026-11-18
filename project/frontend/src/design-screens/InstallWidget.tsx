@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
+import { Tour } from "@/components/coach/Tour";
 import { api, logout } from "@/lib/api";
 import {
   PLATFORM_LABELS,
@@ -111,6 +112,7 @@ export function InstallWidget() {
 
   return (
     <div className="box-border flex min-h-screen w-full flex-col bg-[#F7F7F7]">
+      <Tour id="install" ready={Boolean(publicKey)} />
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#17171714] bg-white px-8">
         <CloseloopLogo />
         <nav className="flex items-center gap-2 text-[13px]">
@@ -173,10 +175,10 @@ export function InstallWidget() {
               </div>
             )}
 
-            <div>
+            <div data-tour="install-script">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[13px] font-medium text-[#171717]">
-                  {activePlatform === "web" ? "Snippet" : "Install"}
+                  {activePlatform === "web" ? "Add the widget" : "Install"}
                 </span>
                 <button
                   type="button"
@@ -190,6 +192,21 @@ export function InstallWidget() {
                 {snippet}
               </pre>
               <p className="mt-2 text-xs text-[#A3A3A3]">Public key: {publicKey || "…"}</p>
+            </div>
+
+            <div
+              data-tour="install-mask"
+              className="rounded-[10px] border border-[#17171714] bg-[#FAFAFA] p-4"
+            >
+              <p className="font-ds-ui text-[13px] font-medium text-[#171717]">
+                Mask sensitive elements
+              </p>
+              <p className="mt-1 font-ds-ui text-[12px] text-[#737373]">
+                Add{" "}
+                <code className="font-ds-mono text-[11px]">data-closeloop-mask</code> to balances,
+                card numbers or anything personal. It&apos;s blurred on the device before the
+                screenshot leaves it.
+              </p>
             </div>
 
             {activePlatform === "web" && (
@@ -207,6 +224,7 @@ export function InstallWidget() {
             )}
 
             <div
+              data-tour="install-first-report"
               className={`flex items-start gap-3 rounded-[10px] border p-4 ${
                 firstReportReceived
                   ? "border-[#16A34A33] bg-[#F0FDF4]"

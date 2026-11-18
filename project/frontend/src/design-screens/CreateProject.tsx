@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
+import { Tour } from "@/components/coach/Tour";
 import { api, ApiRequestError, logout } from "@/lib/api";
 import {
   canCreateProject,
@@ -12,10 +13,14 @@ import {
   type OrgUsage,
 } from "@/lib/usage";
 
-const PLATFORMS = [
-  { id: "web", label: "Web", hint: "Script tag or npm" },
+const WEB_PLATFORMS = [{ id: "web", label: "Web", hint: "Script tag or npm" }] as const;
+
+const NATIVE_PLATFORMS = [
   { id: "android", label: "Android", hint: "Kotlin · Maven Central" },
   { id: "ios", label: "iOS", hint: "Swift Package" },
+] as const;
+
+const CROSS_PLATFORMS = [
   { id: "flutter", label: "Flutter", hint: "pub.dev package" },
   { id: "react-native", label: "React Native", hint: "npm · Expo supported" },
 ] as const;
@@ -110,6 +115,8 @@ export function CreateProject() {
 
   return (
     <div className="box-border flex min-h-screen w-full flex-col bg-[#F7F7F7]">
+      <Tour id="mobile" ready={ready && !atCap} />
+      <Tour id="cross-platform" ready={ready && !atCap} />
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#17171714] bg-white px-8">
         <CloseloopLogo />
         <nav className="flex items-center gap-2 text-[13px]">
@@ -175,34 +182,40 @@ export function CreateProject() {
 
                 <div>
                   <p className="mb-2.5 text-[13px] font-medium text-[#171717]">Where does your app run?</p>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {PLATFORMS.map((p) => {
-                      const on = selected.includes(p.id);
-                      return (
-                        <button
+                  <div className="flex flex-col gap-2.5">
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {WEB_PLATFORMS.map((p) => (
+                        <PlatformCard
                           key={p.id}
-                          type="button"
-                          onClick={() => togglePlatform(p.id)}
-                          className={`cursor-pointer rounded-[10px] p-3.5 text-left transition ${
-                            on
-                              ? "bg-[#FAFAFA] outline outline-[1.5px] outline-[#171717]"
-                              : "bg-white outline outline-1 outline-[#1717171F] hover:bg-[#FAFAFA]"
-                          }`}
-                        >
-                          <div className="mb-3 flex justify-end">
-                            <span
-                              className={`flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] text-white ${
-                                on ? "bg-[#171717]" : "bg-transparent outline outline-1 outline-[#1717171F]"
-                              }`}
-                            >
-                              {on ? "✓" : ""}
-                            </span>
-                          </div>
-                          <div className="text-sm font-semibold text-[#171717]">{p.label}</div>
-                          <div className="text-xs text-[#A3A3A3]">{p.hint}</div>
-                        </button>
-                      );
-                    })}
+                          label={p.label}
+                          hint={p.hint}
+                          on={selected.includes(p.id)}
+                          onToggle={() => togglePlatform(p.id)}
+                        />
+                      ))}
+                    </div>
+                    <div data-tour="platform-native" className="grid grid-cols-3 gap-2.5">
+                      {NATIVE_PLATFORMS.map((p) => (
+                        <PlatformCard
+                          key={p.id}
+                          label={p.label}
+                          hint={p.hint}
+                          on={selected.includes(p.id)}
+                          onToggle={() => togglePlatform(p.id)}
+                        />
+                      ))}
+                    </div>
+                    <div data-tour="platform-cross" className="grid grid-cols-3 gap-2.5">
+                      {CROSS_PLATFORMS.map((p) => (
+                        <PlatformCard
+                          key={p.id}
+                          label={p.label}
+                          hint={p.hint}
+                          on={selected.includes(p.id)}
+                          onToggle={() => togglePlatform(p.id)}
+                        />
+                      ))}
+                    </div>
                   </div>
                   <p className="mt-2 text-xs text-[#A3A3A3]">You can add more platforms to this project later.</p>
                 </div>
@@ -227,6 +240,42 @@ export function CreateProject() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PlatformCard({
+  label,
+  hint,
+  on,
+  onToggle,
+}: {
+  label: string;
+  hint: string;
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`cursor-pointer rounded-[10px] p-3.5 text-left transition ${
+        on
+          ? "bg-[#FAFAFA] outline outline-[1.5px] outline-[#171717]"
+          : "bg-white outline outline-1 outline-[#1717171F] hover:bg-[#FAFAFA]"
+      }`}
+    >
+      <div className="mb-3 flex justify-end">
+        <span
+          className={`flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] text-white ${
+            on ? "bg-[#171717]" : "bg-transparent outline outline-1 outline-[#1717171F]"
+          }`}
+        >
+          {on ? "✓" : ""}
+        </span>
+      </div>
+      <div className="text-sm font-semibold text-[#171717]">{label}</div>
+      <div className="text-xs text-[#A3A3A3]">{hint}</div>
+    </button>
   );
 }
 

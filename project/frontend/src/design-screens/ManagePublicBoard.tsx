@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
 import { TYPE_STYLE } from "./publicBoardShared";
@@ -251,6 +252,7 @@ export function ManagePublicBoard() {
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
+      <Tour id="board" ready={!loading} />
       <AppSidebar
         projectName={project?.name || "Project"}
         plan={plan}
@@ -285,6 +287,7 @@ export function ManagePublicBoard() {
               <Link
                 href={publicPath}
                 target="_blank"
+                data-tour="board-view"
                 className="inline-flex h-9 items-center gap-1.5 rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717] no-underline hover:bg-[#FAFAFA]"
               >
                 View board
@@ -329,7 +332,10 @@ export function ManagePublicBoard() {
                 </div>
               </section>
 
-              <div className="flex items-center gap-1 border-b border-[#17171714]">
+              <div
+                data-tour="board-tabs"
+                className="flex items-center gap-1 border-b border-[#17171714]"
+              >
                 {(
                   [
                     ["ideas", `Ideas${ideaCount ? ` · ${ideaCount}` : ""}`],
@@ -377,9 +383,10 @@ export function ManagePublicBoard() {
                     {tickets.length === 0 ? (
                       <p className="px-4 py-8 font-ds-ui text-sm text-[#737373]">No tickets yet.</p>
                     ) : (
-                      tickets.map((ticket) => (
+                      tickets.map((ticket, rowIndex) => (
                         <div
                           key={ticket.id}
+                          data-tour={rowIndex === 0 ? "board-row" : undefined}
                           className="grid grid-cols-[1fr_72px_120px_100px] items-center gap-3 border-b border-[#17171714] px-4 py-3 last:border-b-0"
                         >
                           <div className="min-w-0">

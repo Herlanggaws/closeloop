@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
+import { Tour } from "@/components/coach/Tour";
 import { API_URL, api, logout } from "@/lib/api";
 
 type ClientTab = "cursor" | "claude";
@@ -173,6 +174,7 @@ export function ConnectMCP() {
 
   return (
     <div className="box-border flex min-h-screen w-full flex-col bg-[#F7F7F7]">
+      <Tour id="mcp" ready={ready} />
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#17171714] bg-white px-8">
         <CloseloopLogo />
         <nav className="flex items-center gap-2 text-[13px]">
@@ -216,6 +218,7 @@ export function ConnectMCP() {
             {!token ? (
               <button
                 type="button"
+                data-tour="mcp-token"
                 disabled={loading}
                 onClick={createToken}
                 className="inline-flex h-10 w-fit cursor-pointer items-center rounded-md bg-[#171717] px-4 text-sm font-medium text-white disabled:opacity-50"
@@ -235,7 +238,7 @@ export function ConnectMCP() {
                   )}
                 </div>
 
-                <div>
+                <div data-tour="mcp-token">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-[13px] font-medium text-[#171717]">Token</span>
                     <button
@@ -251,7 +254,7 @@ export function ConnectMCP() {
                   </code>
                 </div>
 
-                <div>
+                <div data-tour="mcp-command">
                   <div className="mb-2 flex flex-wrap gap-1.5 rounded-[10px] bg-[#F5F5F5] p-1">
                     {(
                       [
@@ -297,6 +300,7 @@ export function ConnectMCP() {
                 </div>
 
                 <div
+                  data-tour="mcp-test"
                   className={`flex flex-col gap-3 rounded-[10px] border p-4 ${
                     testStatus === "ok"
                       ? "border-[#16A34A33] bg-[#F0FDF4]"
