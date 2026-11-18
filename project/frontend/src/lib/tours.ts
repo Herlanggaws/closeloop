@@ -60,21 +60,21 @@ export const TOURS: Record<string, TourDefinition> = {
     steps: [
       {
         target: "install-script",
-        side: "below",
+        side: "right",
         tag: "WEB WIDGET",
         title: "Paste one line and you're live",
         body: "Add this script before </body>. Your first report shows up in the panel on the right, usually within 5 minutes.",
       },
       {
         target: "install-mask",
-        side: "below",
+        side: "right",
         tag: "WEB WIDGET",
         title: "Mark what stays private",
         body: "Add data-closeloop-mask to balances, card numbers or anything personal. It's blurred on the device before the screenshot leaves it.",
       },
       {
         target: "install-first-report",
-        side: "below",
+        side: "left",
         tag: "WEB WIDGET",
         title: "Send a test report",
         body: "Open your app and report something. It lands here with browser, version and user, so you can see the setup worked.",

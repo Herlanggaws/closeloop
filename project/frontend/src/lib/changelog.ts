@@ -7,6 +7,11 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-18",
+    title: "Install page matches the three-step widget guide",
+    body: "The app Install widget screen now follows the S-04 layout: numbered Add / Identify / Mask steps with copyable snippets on the left, and first-report status plus public key on the right—still inside the app sidebar.",
+  },
+  {
+    date: "2026-11-18",
     title: "Coach-mark tours, session replay, and integrations",
     body: "First-visit coach marks guide Inbox, Install, MCP, Project settings, Notify, and onboarding. Tours also register for board, Auto PR, integrations, SSO, and self-host when those pages are reachable. Same day: session replay playback, audit log CSV export, Linear/Jira connect, GitHub App, and public board polish.",
   },
