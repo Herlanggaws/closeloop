@@ -8,6 +8,12 @@
         "--mcp"
       ],
       "alwaysLoad": true
+    },
+    "saidloop": {
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer cl_mcp_7525094fa593485c56621bf62e32abf01075306bbafd9e58"
+      }
     }
   }
 }
