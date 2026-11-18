@@ -10,8 +10,8 @@ import {
 } from "./widget-install.ts";
 
 describe("methodsForPlatforms", () => {
-  it("expands web into script and npm tabs", () => {
-    assert.deepEqual(methodsForPlatforms(["web"]), ["script", "npm"]);
+  it("maps web to the script tab only until npm ships", () => {
+    assert.deepEqual(methodsForPlatforms(["web"]), ["script"]);
   });
 
   it("includes native methods for selected platforms", () => {

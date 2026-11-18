@@ -76,8 +76,9 @@ export function pickDefaultPlatform(platforms: string[]): string {
 
 export function methodsForPlatforms(platforms: string[]): InstallMethod[] {
   const methods: InstallMethod[] = [];
+  // npm package install is not shipped yet — hide the tab until @closeloop/widget is publishable.
   if (platforms.includes("web")) {
-    methods.push("script", "npm");
+    methods.push("script");
   }
   if (platforms.includes("android")) methods.push("android");
   if (platforms.includes("ios")) methods.push("ios");
