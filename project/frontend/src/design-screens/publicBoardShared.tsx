@@ -8,6 +8,7 @@ import { SuggestIdeaModal } from "./SuggestIdeaModal";
 export type PublicIdea = {
   id: string;
   title: string;
+  description?: string;
   type: string;
   status: string;
   vote_count?: number;

@@ -18,7 +18,7 @@ type IntegrationRow = {
   config: Record<string, unknown> | string;
 };
 
-type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks" | "github_app";
+type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks" | "github_app" | "linear" | "jira";
 
 type CatalogItem = {
   id: string;
@@ -35,7 +35,7 @@ const NOTIFY_CATALOG: CatalogItem[] = [
   {
     id: "slack",
     name: "Slack",
-    description: "Incoming webhook · new reports and status changes",
+    description: "New reports and status changes to your channel",
     icon: "Sl",
     iconBg: "#4A154B",
     action: "configure",
@@ -52,18 +52,20 @@ const NOTIFY_CATALOG: CatalogItem[] = [
   {
     id: "linear",
     name: "Linear",
-    description: "Two-way status sync",
+    description: "Create issues + close sync via webhook",
     icon: "Li",
     iconBg: "#5E6AD2",
-    action: "coming_soon",
+    action: "configure",
+    wired: "linear",
   },
   {
     id: "jira",
     name: "Jira",
-    description: "Create issues in Jira Cloud projects",
+    description: "Create issues in Jira Cloud + status webhook",
     icon: "Ji",
     iconBg: "#2684FF",
-    action: "upgrade",
+    action: "configure",
+    wired: "jira",
     badge: "Studio",
   },
 ];
@@ -217,6 +219,12 @@ export function Integrations() {
   const [githubRepos, setGithubRepos] = useState<
     { full_name: string; default_branch: string }[]
   >([]);
+  const [linearAPIKey, setLinearAPIKey] = useState("");
+  const [linearTeamID, setLinearTeamID] = useState("");
+  const [jiraEmail, setJiraEmail] = useState("");
+  const [jiraToken, setJiraToken] = useState("");
+  const [jiraSite, setJiraSite] = useState("");
+  const [jiraProjectKey, setJiraProjectKey] = useState("");
 
   useEffect(() => {
     const id = localStorage.getItem("closeloop_project");
@@ -267,6 +275,18 @@ export function Integrations() {
         const gh = list.find((i) => i.provider === "github_app");
         if (gh) {
           applyGitHubConfig(gh.config);
+        }
+        const linear = list.find((i) => i.provider === "linear");
+        if (linear) {
+          setLinearAPIKey(linear.config.api_key || "");
+          setLinearTeamID(linear.config.team_id || "");
+        }
+        const jira = list.find((i) => i.provider === "jira");
+        if (jira) {
+          setJiraEmail(jira.config.email || "");
+          setJiraToken(jira.config.api_token || "");
+          setJiraSite(jira.config.site || "");
+          setJiraProjectKey(jira.config.project_key || "");
         }
 
         const params = new URLSearchParams(window.location.search);
@@ -411,6 +431,14 @@ export function Integrations() {
         setGithubBranch("main");
         setGithubAccount("");
         setGithubRepos([]);
+      } else if (provider === "linear") {
+        setLinearAPIKey("");
+        setLinearTeamID("");
+      } else if (provider === "jira") {
+        setJiraEmail("");
+        setJiraToken("");
+        setJiraSite("");
+        setJiraProjectKey("");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not disconnect");
@@ -426,6 +454,11 @@ export function Integrations() {
   const slackConnected = Boolean(slackWebhook.trim());
   const webhooksConnected = Boolean(webhookURL.trim());
   const githubConnected = Boolean(githubInstallationId.trim());
+  const linearConnected = Boolean(linearAPIKey.trim() && linearTeamID.trim());
+  const jiraConnected = Boolean(
+    jiraEmail.trim() && jiraToken.trim() && jiraSite.trim() && jiraProjectKey.trim(),
+  );
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   function statusFor(item: CatalogItem): "connected" | "none" {
     if (item.wired === "sentry") return sentryConnected ? "connected" : "none";
@@ -433,6 +466,8 @@ export function Integrations() {
     if (item.wired === "slack") return slackConnected ? "connected" : "none";
     if (item.wired === "webhooks") return webhooksConnected ? "connected" : "none";
     if (item.wired === "github_app") return githubConnected ? "connected" : "none";
+    if (item.wired === "linear") return linearConnected ? "connected" : "none";
+    if (item.wired === "jira") return jiraConnected ? "connected" : "none";
     if (item.id === "github_issues") return githubConnected ? "connected" : "none";
     return "none";
   }
@@ -518,15 +553,29 @@ export function Integrations() {
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
               <IntegrationGroup title="Notify and track">
-                {NOTIFY_CATALOG.map((item) => (
-                  <IntegrationCard
-                    key={item.id}
-                    item={item}
-                    status={statusFor(item)}
-                    actionLabel={actionLabel(item)}
-                    onAction={() => onCardAction(item)}
-                  />
-                ))}
+                {NOTIFY_CATALOG.map((item) => {
+                  const cardItem =
+                    item.id === "github_issues" && githubRepo.trim()
+                      ? {
+                          ...item,
+                          description: `${githubRepo.trim()} · create issues from tickets`,
+                        }
+                      : item.id === "slack" && slackConnected
+                        ? {
+                            ...item,
+                            description: "New reports and status changes to your channel",
+                          }
+                        : item;
+                  return (
+                    <IntegrationCard
+                      key={item.id}
+                      item={cardItem}
+                      status={statusFor(item)}
+                      actionLabel={actionLabel(item)}
+                      onAction={() => onCardAction(item)}
+                    />
+                  );
+                })}
               </IntegrationGroup>
 
               <IntegrationGroup title="Debugging context">
@@ -654,6 +703,179 @@ export function Integrations() {
                             className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
                           >
                             {saving === "slack" ? "Saving…" : "Save Slack"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {configureModal === "linear" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              Linear
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Paste a personal API key and team id. Point Linear webhooks to{" "}
+                              <code className="font-ds-mono text-[11px]">
+                                {apiBase}/webhooks/linear
+                              </code>{" "}
+                              for Done → fixed sync.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {linearConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "linear"}
+                            onClick={() => void clearProvider("linear")}
+                            className="mt-3 font-ds-ui text-[12px] text-[#DA314A]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 flex flex-col gap-3">
+                          <Field
+                            label="API key"
+                            value={linearAPIKey}
+                            onChange={setLinearAPIKey}
+                            placeholder="lin_api_…"
+                          />
+                          <Field
+                            label="Team ID"
+                            value={linearTeamID}
+                            onChange={setLinearTeamID}
+                            placeholder="UUID from Linear team settings"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              saving === "linear" || !linearAPIKey.trim() || !linearTeamID.trim()
+                            }
+                            onClick={() =>
+                              void saveAndClose("linear", {
+                                api_key: linearAPIKey.trim(),
+                                team_id: linearTeamID.trim(),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "linear" ? "Saving…" : "Save Linear"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {configureModal === "jira" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              Jira Cloud
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Use an Atlassian API token. Webhook URL:{" "}
+                              <code className="font-ds-mono text-[11px]">
+                                {apiBase}/webhooks/jira
+                              </code>
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {jiraConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "jira"}
+                            onClick={() => void clearProvider("jira")}
+                            className="mt-3 font-ds-ui text-[12px] text-[#DA314A]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 flex flex-col gap-3">
+                          <Field
+                            label="Atlassian email"
+                            value={jiraEmail}
+                            onChange={setJiraEmail}
+                            placeholder="you@company.com"
+                          />
+                          <Field
+                            label="API token"
+                            value={jiraToken}
+                            onChange={setJiraToken}
+                            placeholder="Atlassian API token"
+                          />
+                          <Field
+                            label="Site"
+                            value={jiraSite}
+                            onChange={setJiraSite}
+                            placeholder="acme.atlassian.net"
+                          />
+                          <Field
+                            label="Project key"
+                            value={jiraProjectKey}
+                            onChange={setJiraProjectKey}
+                            placeholder="ENG"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              saving === "jira" ||
+                              !jiraEmail.trim() ||
+                              !jiraToken.trim() ||
+                              !jiraSite.trim() ||
+                              !jiraProjectKey.trim()
+                            }
+                            onClick={() =>
+                              void saveAndClose("jira", {
+                                email: jiraEmail.trim(),
+                                api_token: jiraToken.trim(),
+                                site: jiraSite.trim(),
+                                project_key: jiraProjectKey.trim(),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "jira" ? "Saving…" : "Save Jira"}
                           </button>
                         </div>
                       </>

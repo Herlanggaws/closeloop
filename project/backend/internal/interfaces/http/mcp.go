@@ -135,6 +135,14 @@ func mcpTools() []map[string]any {
 	}
 }
 
+func (s *Server) auditMCP(c *gin.Context, projectID, tool, target string, payload map[string]any) {
+	p, err := s.Store.ProjectByID(c.Request.Context(), projectID)
+	if err != nil {
+		return
+	}
+	s.writeAudit(c, p.OrgID, "agent:mcp", "mcp."+tool, target, payload)
+}
+
 func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, name string, args map[string]any) (any, error) {
 	str := func(k string) string {
 		if v, ok := args[k].(string); ok {
@@ -200,6 +208,7 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 		}
 		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, statusEv)
 		_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), t.ProjectID, statusEv)
+		s.auditMCP(c, projectID, "update_status", t.ID, map[string]any{"from": fromStatus, "to": toStatus})
 		return s.Store.GetTicket(c.Request.Context(), t.ID)
 	case "add_note":
 		if !canWrite {
@@ -215,6 +224,7 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 		if err := s.Store.AddNote(c.Request.Context(), t.ID, "agent", str("body")); err != nil {
 			return nil, err
 		}
+		s.auditMCP(c, projectID, "add_note", t.ID, nil)
 		return map[string]any{"ok": true}, nil
 	case "mark_fixed":
 		if !canWrite {
@@ -245,6 +255,7 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 		}
 		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, fixedEv)
 		_ = s.Store.EnqueueOutboundWebhook(c.Request.Context(), t.ProjectID, fixedEv)
+		s.auditMCP(c, projectID, "mark_fixed", t.ID, map[string]any{"from": fromStatus})
 		return map[string]any{"queued": true, "ticket_id": t.ID}, nil
 	default:
 		return nil, application.ErrNotFound

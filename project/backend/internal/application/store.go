@@ -888,6 +888,76 @@ func (s *Store) AttachmentForUpload(ctx context.Context, attachmentID, token str
 	return
 }
 
+func (s *Store) OrgPlan(ctx context.Context, orgID string) (string, error) {
+	var plan string
+	err := s.DB.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1`, orgID).Scan(&plan)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	return NormalizePlan(plan), nil
+}
+
+// CreateReplayAttachment reserves a replay upload slot for an existing report (Studio/Business).
+func (s *Store) CreateReplayAttachment(ctx context.Context, projectID, reportID string) (attachmentID, uploadToken, storageKey string, err error) {
+	attachmentID = uuid.NewString()
+	uploadToken = auth.SHA256(uuid.NewString())[:32]
+	storageKey = fmt.Sprintf("%s/replay/%s", projectID, attachmentID)
+	_, err = s.DB.ExecContext(ctx, `
+		INSERT INTO attachments(id, report_id, kind, storage_key, upload_token)
+		VALUES ($1,$2,'replay',$3,$4)`, attachmentID, reportID, storageKey, uploadToken)
+	return
+}
+
+type ExpiredReplay struct {
+	ID         string
+	StorageKey string
+}
+
+// ListExpiredReplays returns uploaded replay attachments past plan retention.
+func (s *Store) ListExpiredReplays(ctx context.Context, limit int) ([]ExpiredReplay, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT a.id, a.storage_key, o.plan, a.uploaded_at
+		FROM attachments a
+		JOIN reports r ON r.id = a.report_id
+		JOIN tickets t ON t.id = r.ticket_id
+		JOIN projects p ON p.id = t.project_id
+		JOIN organizations o ON o.id = p.org_id
+		WHERE a.kind = 'replay'
+		  AND a.uploaded_at IS NOT NULL
+		ORDER BY a.uploaded_at ASC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	now := time.Now().UTC()
+	var out []ExpiredReplay
+	for rows.Next() {
+		var id, key, plan string
+		var uploadedAt time.Time
+		if err := rows.Scan(&id, &key, &plan, &uploadedAt); err != nil {
+			return nil, err
+		}
+		days := ReplayRetentionDays(plan)
+		if days <= 0 || !uploadedAt.Add(time.Duration(days) * 24 * time.Hour).After(now) {
+			out = append(out, ExpiredReplay{ID: id, StorageKey: key})
+		}
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) DeleteAttachment(ctx context.Context, attachmentID string) error {
+	_, err := s.DB.ExecContext(ctx, `DELETE FROM attachments WHERE id=$1`, attachmentID)
+	return err
+}
+
 const ticketSelectCols = `id, project_id, type, status, title, report_count,
 		(SELECT COUNT(*) FROM idea_votes v WHERE v.ticket_id=tickets.id AND v.confirmed_at IS NOT NULL),
 		is_public, fixed_at, fixed_note, created_at, updated_at`
@@ -1781,7 +1851,8 @@ func (s *Store) existingWebhookSecret(ctx context.Context, projectID string) (st
 
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
-	if provider != "sentry" && provider != "posthog" && provider != "slack" && provider != "webhooks" && provider != "github_app" {
+	if provider != "sentry" && provider != "posthog" && provider != "slack" && provider != "webhooks" &&
+		provider != "github_app" && provider != "linear" && provider != "jira" {
 		return Integration{}, ErrInvalidInput
 	}
 	if config == nil {
@@ -1844,6 +1915,26 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 			return Integration{}, err
 		}
 		cleaned = cfg
+	}
+	if provider == "linear" {
+		apiKey, _ := cleaned["api_key"].(string)
+		teamID, _ := cleaned["team_id"].(string)
+		if apiKey == "" || teamID == "" {
+			return Integration{}, ErrInvalidInput
+		}
+		cleaned = map[string]any{"api_key": apiKey, "team_id": teamID}
+	}
+	if provider == "jira" {
+		email, _ := cleaned["email"].(string)
+		token, _ := cleaned["api_token"].(string)
+		site, _ := cleaned["site"].(string)
+		projectKey, _ := cleaned["project_key"].(string)
+		if email == "" || token == "" || site == "" || projectKey == "" {
+			return Integration{}, ErrInvalidInput
+		}
+		cleaned = map[string]any{
+			"email": email, "api_token": token, "site": site, "project_key": projectKey,
+		}
 	}
 	body, err := json.Marshal(cleaned)
 	if err != nil {

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { SessionReplayPlayer } from "@/components/SessionReplayPlayer";
 import { api } from "@/lib/api";
 import {
   STATUS_META,
@@ -16,6 +17,7 @@ import {
   eventDescription,
   primaryReport,
   relativeTime,
+  replayUrl,
   reporterLine,
   screenshotUrl,
   shortId,
@@ -23,6 +25,8 @@ import {
   type TicketStatus,
 } from "@/lib/tickets";
 import type { MeResponse } from "@/lib/usage";
+
+type DetailTab = "activity" | "replay" | "sentry" | "posthog";
 
 type ProjectInfo = { id: string; name: string };
 
@@ -49,6 +53,13 @@ export function ReportDetail() {
   const [githubIssueBusy, setGithubIssueBusy] = useState(false);
   const [githubIssueUrl, setGithubIssueUrl] = useState("");
   const [githubAppConnected, setGithubAppConnected] = useState(false);
+  const [linearConnected, setLinearConnected] = useState(false);
+  const [jiraConnected, setJiraConnected] = useState(false);
+  const [linearIssueBusy, setLinearIssueBusy] = useState(false);
+  const [linearIssueUrl, setLinearIssueUrl] = useState("");
+  const [jiraIssueBusy, setJiraIssueBusy] = useState(false);
+  const [jiraIssueUrl, setJiraIssueUrl] = useState("");
+  const [detailTab, setDetailTab] = useState<DetailTab>("activity");
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -94,6 +105,30 @@ export function ReportDetail() {
         setGithubAppConnected(
           Boolean(ghCfg.installation_id) && Boolean(String(ghCfg.repo_full_name || "").trim()),
         );
+        const linear = (integRes.integrations || []).find((i) => i.provider === "linear");
+        const jira = (integRes.integrations || []).find((i) => i.provider === "jira");
+        setLinearConnected(Boolean(linear));
+        setJiraConnected(Boolean(jira));
+        const linearEv = [...(detail.events || [])]
+          .reverse()
+          .find((e) => e.kind === "linear_issue_created");
+        if (linearEv) {
+          const payload =
+            typeof linearEv.payload === "string"
+              ? (JSON.parse(linearEv.payload) as { url?: string })
+              : ((linearEv.payload || {}) as { url?: string });
+          if (payload.url) setLinearIssueUrl(payload.url);
+        }
+        const jiraEv = [...(detail.events || [])]
+          .reverse()
+          .find((e) => e.kind === "jira_issue_created");
+        if (jiraEv) {
+          const payload =
+            typeof jiraEv.payload === "string"
+              ? (JSON.parse(jiraEv.payload) as { url?: string })
+              : ((jiraEv.payload || {}) as { url?: string });
+          if (payload.url) setJiraIssueUrl(payload.url);
+        }
         const issueEv = [...(detail.events || [])]
           .reverse()
           .find((e) => e.kind === "github_issue_created");
@@ -171,6 +206,27 @@ export function ReportDetail() {
     }
   }
 
+  async function createTrackerIssue(
+    path: "linear-issue" | "jira-issue",
+    setBusy: (v: boolean) => void,
+    setUrl: (v: string) => void,
+  ) {
+    if (!ticketId) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api<{ issue: { url?: string }; existing?: boolean }>(
+        `/api/tickets/${ticketId}/${path}`,
+        { method: "POST" },
+      );
+      if (res.issue?.url) setUrl(res.issue.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create issue");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createGitHubIssue() {
     if (!ticketId || githubIssueBusy) return;
     setGithubIssueBusy(true);
@@ -242,6 +298,7 @@ export function ReportDetail() {
     dot: "#A3A3A3",
   };
   const shot = data ? screenshotUrl(data.attachments || []) : "";
+  const replay = data ? replayUrl(data.attachments || []) : "";
   const contextRows = contextEntries(report);
   const reporterTotal = data?.reporters?.total ?? ticket?.report_count ?? 0;
   const events = [...(data?.events || [])].reverse();
@@ -249,6 +306,7 @@ export function ReportDetail() {
   const posthogUrl = data ? buildPosthogUrl(report, data.integrations) : null;
   const hasSentryConfig = !!data?.integrations?.some((i) => i.provider === "sentry");
   const hasPosthogConfig = !!data?.integrations?.some((i) => i.provider === "posthog");
+  const replayPlanOk = plan === "studio" || plan === "business";
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -368,41 +426,100 @@ export function ReportDetail() {
               </div>
 
               <div className="flex gap-5 border-b border-[#17171714]">
-                <span className="border-b-2 border-[#171717] pb-2.5 font-ds-ui text-[13px] font-medium text-[#171717]">
-                  Activity
-                </span>
-                <span className="pb-2.5 font-ds-ui text-[13px] font-medium text-[#737373]">
-                  Session replay
-                </span>
-                <span className="pb-2.5 font-ds-ui text-[13px] font-medium text-[#737373]">
-                  Sentry
-                </span>
-                <span className="pb-2.5 font-ds-ui text-[13px] font-medium text-[#737373]">
-                  PostHog
-                </span>
+                {(
+                  [
+                    ["activity", "Activity"],
+                    ["replay", "Session replay"],
+                    ["sentry", "Sentry"],
+                    ["posthog", "PostHog"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setDetailTab(id)}
+                    className={
+                      detailTab === id
+                        ? "border-b-2 border-[#171717] pb-2.5 font-ds-ui text-[13px] font-medium text-[#171717]"
+                        : "border-b-2 border-transparent pb-2.5 font-ds-ui text-[13px] font-medium text-[#737373]"
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
               <div className="flex flex-col gap-3.5 pb-8">
-                {events.length === 0 ? (
-                  <p className="font-ds-ui text-[13px] text-[#A3A3A3]">No activity yet.</p>
-                ) : (
-                  events.map((event) => (
-                    <div key={event.id} className="flex items-center gap-2.5">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F5F5F5] font-ds-ui text-[10px] text-[#737373]">
-                        {event.kind === "note" ? "N" : event.kind === "status_changed" ? "S" : "•"}
+                {detailTab === "activity" &&
+                  (events.length === 0 ? (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">No activity yet.</p>
+                  ) : (
+                    events.map((event) => (
+                      <div key={event.id} className="flex items-center gap-2.5">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F5F5F5] font-ds-ui text-[10px] text-[#737373]">
+                          {event.kind === "note" ? "N" : event.kind === "status_changed" ? "S" : "•"}
+                        </div>
+                        <div className="min-w-0 flex-1 font-ds-ui text-[13px]">
+                          <span className="font-medium text-[#171717]">
+                            {actorLabel(event.actor)}
+                          </span>{" "}
+                          <span className="text-[#737373]">{eventDescription(event)}</span>
+                        </div>
+                        <span className="shrink-0 font-ds-mono text-[11px] text-[#A3A3A3]">
+                          {relativeTime(event.created_at)}
+                        </span>
                       </div>
-                      <div className="min-w-0 flex-1 font-ds-ui text-[13px]">
-                        <span className="font-medium text-[#171717]">
-                          {actorLabel(event.actor)}
-                        </span>{" "}
-                        <span className="text-[#737373]">{eventDescription(event)}</span>
-                      </div>
-                      <span className="shrink-0 font-ds-mono text-[11px] text-[#A3A3A3]">
-                        {relativeTime(event.created_at)}
-                      </span>
-                    </div>
-                  ))
-                )}
+                    ))
+                  ))}
+
+                {detailTab === "replay" &&
+                  (replay ? (
+                    <SessionReplayPlayer url={replay} />
+                  ) : replayPlanOk ? (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
+                      No session replay was attached to this report.
+                    </p>
+                  ) : (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
+                      Session replay is available on Studio and Business plans.
+                    </p>
+                  ))}
+
+                {detailTab === "sentry" &&
+                  (sentryUrl ? (
+                    <a
+                      href={sentryUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-ds-ui text-[13px] text-[#266DF0] no-underline"
+                    >
+                      Open related Sentry event
+                    </a>
+                  ) : (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
+                      {hasSentryConfig
+                        ? "No Sentry event id on this report."
+                        : "Connect Sentry in Integrations to deep-link events."}
+                    </p>
+                  ))}
+
+                {detailTab === "posthog" &&
+                  (posthogUrl ? (
+                    <a
+                      href={posthogUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-ds-ui text-[13px] text-[#266DF0] no-underline"
+                    >
+                      Open PostHog session
+                    </a>
+                  ) : (
+                    <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
+                      {hasPosthogConfig
+                        ? "No PostHog session id on this report."
+                        : "Connect PostHog in Integrations to deep-link sessions."}
+                    </p>
+                  ))}
               </div>
             </div>
 
@@ -437,90 +554,16 @@ export function ReportDetail() {
               </div>
 
               <div className="flex flex-col gap-2.5">
-                <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">GitHub</div>
-                <button
-                  type="button"
-                  disabled={githubIssueBusy || (!githubAppConnected && !githubIssueUrl)}
-                  title={
-                    githubAppConnected || githubIssueUrl
-                      ? undefined
-                      : "Connect GitHub App and pick a repo in Integrations"
-                  }
-                  onClick={() => {
-                    if (githubIssueUrl) {
-                      window.open(githubIssueUrl, "_blank", "noopener,noreferrer");
-                      return;
-                    }
-                    void createGitHubIssue();
-                  }}
-                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-xs font-medium text-[#171717] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {githubIssueBusy
-                    ? "Creating…"
-                    : githubIssueUrl
-                      ? "View GitHub Issue"
-                      : "Create GitHub Issue"}
-                </button>
-                {!githubAppConnected && !githubIssueUrl ? (
-                  <Link
-                    href="/app/settings/integrations"
-                    className="font-ds-ui text-[12px] text-[#737373] underline"
-                  >
-                    Connect GitHub App
-                  </Link>
-                ) : null}
-              </div>
-
-              <div className="flex flex-col gap-2.5">
-                <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Auto PR</div>
-                <button
-                  type="button"
-                  disabled={autoprBusy}
-                  onClick={() => void runAutopr()}
-                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md bg-[#171717] px-3 font-ds-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {autoprBusy ? "Starting…" : "Run Auto PR"}
-                </button>
-                {autoprMsg ? (
-                  <p className="font-ds-ui text-[12px] text-[#737373]">{autoprMsg}</p>
-                ) : null}
-                {latestAutopr ? (
-                  <p className="font-ds-ui text-[12px] text-[#737373]">
-                    Latest: {latestAutopr.status}
-                    {latestAutopr.pr_url ? (
-                      <>
-                        {" · "}
-                        <a
-                          href={latestAutopr.pr_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[#171717] underline"
-                        >
-                          Open PR
-                        </a>
-                      </>
-                    ) : null}
-                    {latestAutopr.error ? ` · ${latestAutopr.error}` : null}
-                  </p>
-                ) : null}
-                <Link
-                  href="/app/auto-pr"
-                  className="font-ds-ui text-[12px] text-[#737373] underline"
-                >
-                  View all runs
-                </Link>
-              </div>
-
-              <div className="flex flex-col gap-2.5">
                 <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Linked</div>
                 {sentryUrl ? (
-                  <LinkCard
+                  <LinkedRow
                     title="Sentry event"
-                    subtitle="Open related error"
+                    subtitle="Sentry · open related error"
+                    actionLabel="Open"
                     href={sentryUrl}
                   />
                 ) : (
-                  <StubCard
+                  <LinkedRow
                     title="Sentry"
                     subtitle={
                       hasSentryConfig
@@ -530,13 +573,14 @@ export function ReportDetail() {
                   />
                 )}
                 {posthogUrl ? (
-                  <LinkCard
-                    title="PostHog session"
-                    subtitle="Open session replay"
+                  <LinkedRow
+                    title="Session before report"
+                    subtitle="PostHog · open session replay"
+                    actionLabel="Play"
                     href={posthogUrl}
                   />
                 ) : (
-                  <StubCard
+                  <LinkedRow
                     title="Session before report"
                     subtitle={
                       hasPosthogConfig
@@ -545,6 +589,127 @@ export function ReportDetail() {
                     }
                   />
                 )}
+                <LinkedRow
+                  title={
+                    latestAutopr?.pr_url
+                      ? "Pull request ready"
+                      : latestAutopr
+                        ? `Auto PR · ${latestAutopr.status}`
+                        : "No pull request yet"
+                  }
+                  subtitle="Auto PR · 1 credit per run"
+                  actionLabel={autoprBusy ? "…" : "Run"}
+                  onAction={() => void runAutopr()}
+                  actionDisabled={autoprBusy}
+                  footer={
+                    <>
+                      {autoprMsg ? (
+                        <p className="mt-1 font-ds-ui text-[11px] text-[#737373]">{autoprMsg}</p>
+                      ) : null}
+                      {latestAutopr?.pr_url ? (
+                        <a
+                          href={latestAutopr.pr_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block font-ds-ui text-[11px] text-[#171717] underline"
+                        >
+                          Open PR
+                        </a>
+                      ) : null}
+                      {latestAutopr?.error ? (
+                        <p className="mt-1 font-ds-ui text-[11px] text-[#DA314A]">
+                          {latestAutopr.error}
+                        </p>
+                      ) : null}
+                      <Link
+                        href="/app/auto-pr"
+                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
+                      >
+                        View all runs
+                      </Link>
+                    </>
+                  }
+                />
+                <LinkedRow
+                  title={githubIssueUrl ? "GitHub Issue" : "No GitHub Issue yet"}
+                  subtitle="GitHub Issue · create from ticket"
+                  actionLabel={
+                    githubIssueBusy ? "…" : githubIssueUrl ? "View" : "Create"
+                  }
+                  href={githubIssueUrl || undefined}
+                  onAction={
+                    githubIssueUrl
+                      ? undefined
+                      : () => void createGitHubIssue()
+                  }
+                  actionDisabled={
+                    githubIssueBusy || (!githubAppConnected && !githubIssueUrl)
+                  }
+                  footer={
+                    !githubAppConnected && !githubIssueUrl ? (
+                      <Link
+                        href="/app/settings/integrations"
+                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
+                      >
+                        Connect GitHub App
+                      </Link>
+                    ) : null
+                  }
+                />
+                <LinkedRow
+                  title={linearIssueUrl ? "Linear issue" : "No Linear issue yet"}
+                  subtitle="Linear · create from ticket"
+                  actionLabel={linearIssueBusy ? "…" : linearIssueUrl ? "View" : "Create"}
+                  href={linearIssueUrl || undefined}
+                  onAction={
+                    linearIssueUrl
+                      ? undefined
+                      : () =>
+                          void createTrackerIssue(
+                            "linear-issue",
+                            setLinearIssueBusy,
+                            setLinearIssueUrl,
+                          )
+                  }
+                  actionDisabled={linearIssueBusy || (!linearConnected && !linearIssueUrl)}
+                  footer={
+                    !linearConnected && !linearIssueUrl ? (
+                      <Link
+                        href="/app/settings/integrations"
+                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
+                      >
+                        Connect Linear
+                      </Link>
+                    ) : null
+                  }
+                />
+                <LinkedRow
+                  title={jiraIssueUrl ? "Jira issue" : "No Jira issue yet"}
+                  subtitle="Jira · create from ticket"
+                  actionLabel={jiraIssueBusy ? "…" : jiraIssueUrl ? "View" : "Create"}
+                  href={jiraIssueUrl || undefined}
+                  onAction={
+                    jiraIssueUrl
+                      ? undefined
+                      : () =>
+                          void createTrackerIssue(
+                            "jira-issue",
+                            setJiraIssueBusy,
+                            setJiraIssueUrl,
+                          )
+                  }
+                  actionDisabled={jiraIssueBusy || (!jiraConnected && !jiraIssueUrl)}
+                  footer={
+                    !jiraConnected && !jiraIssueUrl ? (
+                      <Link
+                        href="/app/settings/integrations"
+                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
+                      >
+                        Connect Jira
+                      </Link>
+                    ) : null
+                  }
+                />
               </div>
 
               <div className="mt-auto flex flex-col gap-2 rounded-[10px] border border-[#1717171F] bg-white p-3">
@@ -650,39 +815,57 @@ function StatusSelect({
   );
 }
 
-function StubCard({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-[10px] border border-[#17171714] bg-white p-3">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#F5F5F5] font-ds-ui text-[10px] text-[#A3A3A3]">
-        ·
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-ds-ui text-[12.5px] font-medium text-[#171717]">
-          {title}
-        </div>
-        <div className="truncate font-ds-ui text-[11px] text-[#A3A3A3]">{subtitle}</div>
-      </div>
-    </div>
-  );
-}
+function LinkedRow({
+  title,
+  subtitle,
+  actionLabel,
+  href,
+  onAction,
+  actionDisabled,
+  footer,
+}: {
+  title: string;
+  subtitle: string;
+  actionLabel?: string;
+  href?: string;
+  onAction?: () => void;
+  actionDisabled?: boolean;
+  footer?: ReactNode;
+}) {
+  const actionClass =
+    "inline-flex h-7 shrink-0 cursor-pointer items-center rounded-md bg-[#171717] px-2.5 font-ds-sans text-[11px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-50";
 
-function LinkCard({ title, subtitle, href }: { title: string; subtitle: string; href: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="flex items-center gap-2.5 rounded-[10px] border border-[#17171714] bg-white p-3 hover:border-[#17171733]"
-    >
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#EFF6FF] font-ds-ui text-[10px] text-[#266DF0]">
-        ↗
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-ds-ui text-[12.5px] font-medium text-[#171717]">
-          {title}
+    <div className="rounded-[10px] border border-[#17171714] bg-white p-3">
+      <div className="flex items-center gap-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-ds-ui text-[12.5px] font-medium text-[#171717]">
+            {title}
+          </div>
+          <div className="truncate font-ds-ui text-[11px] text-[#737373]">{subtitle}</div>
         </div>
-        <div className="truncate font-ds-ui text-[11px] text-[#737373]">{subtitle}</div>
+        {href && actionLabel ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className={actionClass}
+          >
+            {actionLabel}
+          </a>
+        ) : null}
+        {!href && actionLabel && onAction ? (
+          <button
+            type="button"
+            disabled={actionDisabled}
+            onClick={onAction}
+            className={actionClass}
+          >
+            {actionLabel}
+          </button>
+        ) : null}
       </div>
-    </a>
+      {footer}
+    </div>
   );
 }

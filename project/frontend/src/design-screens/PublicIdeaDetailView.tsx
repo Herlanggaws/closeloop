@@ -251,6 +251,11 @@ export function PublicIdeaDetailView({ slug, ideaId }: { slug: string; ideaId: s
                   <h1 className="mt-3 font-ds-sans text-2xl font-medium tracking-[-0.4px] text-[#171717]">
                     {idea.title}
                   </h1>
+                  {idea.description ? (
+                    <p className="mt-3 whitespace-pre-wrap font-ds-ui text-[14px] leading-[21px] text-[#737373]">
+                      {idea.description}
+                    </p>
+                  ) : null}
                   {votedAs ? (
                     <p className="mt-4 rounded-lg bg-[#F0FDF4] px-3 py-2 font-ds-ui text-[12.5px] text-[#166534]">
                       You voted as {votedAs}. We&apos;ll email you when this ships.

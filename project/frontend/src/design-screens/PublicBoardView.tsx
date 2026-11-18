@@ -15,6 +15,7 @@ import {
 } from "./publicBoardShared";
 
 type FilterKey = "all" | "open" | "in_progress" | "fixed";
+type SortKey = "top" | "trending" | "new";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All ideas" },
@@ -23,12 +24,49 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "fixed", label: "Released" },
 ];
 
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "top", label: "Top" },
+  { key: "trending", label: "Trending" },
+  { key: "new", label: "New" },
+];
+
+function sortIdeas(list: PublicIdea[], sort: SortKey): PublicIdea[] {
+  const copy = [...list];
+  if (sort === "new") {
+    copy.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    return copy;
+  }
+  if (sort === "trending") {
+    // Approximate trending: votes weighted by recency (last 30 days boost).
+    const now = Date.now();
+    copy.sort((a, b) => {
+      const score = (idea: PublicIdea) => {
+        const votes = idea.vote_count ?? 0;
+        const ageDays = Math.max(
+          0,
+          (now - new Date(idea.created_at).getTime()) / (1000 * 60 * 60 * 24),
+        );
+        const recency = Math.max(0, 30 - ageDays) / 30;
+        return votes * (1 + recency);
+      };
+      return score(b) - score(a);
+    });
+    return copy;
+  }
+  copy.sort((a, b) => (b.vote_count ?? 0) - (a.vote_count ?? 0));
+  return copy;
+}
+
 export function PublicBoardView({ slug }: { slug: string }) {
   const [project, setProject] = useState<PublicProject | null>(null);
   const [ideas, setIdeas] = useState<PublicIdea[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [sort, setSort] = useState<SortKey>("top");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +105,18 @@ export function PublicBoardView({ slug }: { slug: string }) {
     return base;
   }, [ideas]);
 
-  const visible = filter === "all" ? ideas : ideas.filter((i) => i.status === filter);
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = filter === "all" ? ideas : ideas.filter((i) => i.status === filter);
+    if (q) {
+      list = list.filter(
+        (i) =>
+          i.title.toLowerCase().includes(q) ||
+          (i.description || "").toLowerCase().includes(q),
+      );
+    }
+    return sortIdeas(list, sort);
+  }, [ideas, filter, query, sort]);
 
   return (
     <div className="min-h-screen bg-[#F7F7F7]">
@@ -83,7 +132,7 @@ export function PublicBoardView({ slug }: { slug: string }) {
           </div>
         ) : (
           <>
-            <div className="min-w-0 flex-1 flex-col gap-6">
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
               <div>
                 <h1 className="font-ds-sans text-2xl font-medium tracking-[-0.4px] text-[#171717]">
                   Help shape {project?.name}
@@ -93,10 +142,43 @@ export function PublicBoardView({ slug }: { slug: string }) {
                 </p>
               </div>
 
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="relative min-w-0 flex-1">
+                  <span className="sr-only">Search ideas</span>
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search ideas"
+                    className="h-9 w-full rounded-md border border-[#1717171F] bg-white px-3 font-ds-ui text-[13px] text-[#171717] outline-none placeholder:text-[#A3A3A3] focus:border-[#171717]"
+                  />
+                </label>
+                <div className="flex items-center gap-1">
+                  {SORTS.map((s) => (
+                    <button
+                      key={s.key}
+                      type="button"
+                      onClick={() => setSort(s.key)}
+                      className={`h-9 cursor-pointer rounded-md px-3 font-ds-ui text-[13px] font-medium ${
+                        sort === s.key
+                          ? "bg-[#171717] text-white"
+                          : "bg-white text-[#737373] hover:text-[#171717]"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex flex-col gap-3">
                 {visible.length === 0 ? (
                   <div className="rounded-xl border border-[#17171714] bg-white p-8 text-center">
-                    <p className="font-ds-ui text-sm text-[#737373]">No published ideas yet.</p>
+                    <p className="font-ds-ui text-sm text-[#737373]">
+                      {ideas.length === 0
+                        ? "No published ideas yet."
+                        : "No ideas match your search."}
+                    </p>
                   </div>
                 ) : (
                   visible.map((idea) => {
@@ -116,6 +198,11 @@ export function PublicBoardView({ slug }: { slug: string }) {
                             <h2 className="font-ds-sans text-[16px] font-semibold text-[#171717]">
                               {idea.title}
                             </h2>
+                            {idea.description ? (
+                              <p className="mt-1 line-clamp-2 font-ds-ui text-[13px] leading-[19px] text-[#737373]">
+                                {idea.description}
+                              </p>
+                            ) : null}
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                               <span
                                 className="inline-flex rounded-md px-2 py-0.5 font-ds-ui text-[11px] font-medium"

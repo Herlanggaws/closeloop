@@ -23,6 +23,28 @@ func LimitsForPlan(plan string) PlanLimits {
 	}
 }
 
+// ReplayAllowed is true for Studio and Business (F11 session replay).
+func ReplayAllowed(plan string) bool {
+	switch NormalizePlan(plan) {
+	case "studio", "business":
+		return true
+	default:
+		return false
+	}
+}
+
+// ReplayRetentionDays returns how long uploaded replays are kept. Zero means no replay storage.
+func ReplayRetentionDays(plan string) int {
+	switch NormalizePlan(plan) {
+	case "studio":
+		return 7
+	case "business":
+		return 30
+	default:
+		return 0
+	}
+}
+
 func ValidPlan(plan string) bool {
 	switch strings.ToLower(strings.TrimSpace(plan)) {
 	case "free", "indie", "studio", "business":

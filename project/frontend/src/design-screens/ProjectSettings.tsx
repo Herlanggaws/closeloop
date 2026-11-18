@@ -10,6 +10,7 @@ import type { MeResponse } from "@/lib/usage";
 type ProjectInfo = {
   id: string;
   name: string;
+  board_slug?: string;
   platforms?: string[];
   notify_enabled: boolean;
   banner_enabled: boolean;
@@ -517,30 +518,108 @@ export function ProjectSettings() {
               </SettingsSection>
 
               <SettingsSection
+                title="Widget"
+                description="How the Report button looks inside your app."
+              >
+                <Field label="Button label">
+                  <input
+                    type="text"
+                    value="Report a problem"
+                    disabled
+                    className="box-border h-9 w-full rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5 font-ds-ui text-[13px] text-[#A3A3A3] outline-none"
+                  />
+                </Field>
+                <Field label="Position">
+                  <input
+                    type="text"
+                    value="Bottom right"
+                    disabled
+                    className="box-border h-9 w-full rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5 font-ds-ui text-[13px] text-[#A3A3A3] outline-none"
+                  />
+                </Field>
+                <Field label="Accent">
+                  <div className="flex h-9 items-center gap-2 rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5">
+                    <span
+                      className="h-4 w-4 rounded-full"
+                      style={{ background: "#F59E0B" }}
+                      aria-hidden
+                    />
+                    <span className="font-ds-ui text-[13px] text-[#A3A3A3]">Saidloop amber</span>
+                  </div>
+                </Field>
+                <p className="font-ds-ui text-[12px] text-[#A3A3A3]">
+                  Custom branding on Studio · Coming soon
+                </p>
+              </SettingsSection>
+
+              <SettingsSection
                 title="Reporter notifications"
                 description="Who hears back when a ticket is marked fixed."
               >
                 <ToggleRow
                   title="Email reporters who left an address"
-                  description="Sent when a ticket is marked fixed"
+                  description="Sent from updates@closeloop.dev with your project name"
                   checked={notifyEnabled}
                   disabled={savingNotify || !project}
                   onToggle={toggleNotify}
                 />
                 <ToggleRow
                   title="Show an in-app banner"
-                  description="Shown once the next time they open your app"
+                  description="Shown once, the next time they open your app"
                   checked={bannerEnabled}
                   disabled={savingBanner || !project}
                   onToggle={toggleBanner}
                 />
                 <ToggleRow
-                  title="Email voters when an idea is released"
-                  description="Confirmed public-board voters get a release note on mark fixed"
+                  title="Notify voters on the public board"
+                  description="When an idea moves to Released"
                   checked={voterNotifyEnabled}
                   disabled={savingVoterNotify || !project}
                   onToggle={toggleVoterNotify}
                 />
+              </SettingsSection>
+
+              <SettingsSection
+                title="Public board domain"
+                description="Where visitors see ideas and the roadmap."
+              >
+                <Field label="Board path">
+                  <div className="flex h-9 items-center gap-2 rounded-md border border-[#1717171F] bg-white px-2.5">
+                    <code className="min-w-0 flex-1 truncate font-ds-mono text-[13px] text-[#171717]">
+                      {project?.board_slug
+                        ? `/board/${project.board_slug}`
+                        : "Set a slug on Public board"}
+                    </code>
+                    {project?.board_slug ? (
+                      <Link
+                        href={`/board/${encodeURIComponent(project.board_slug)}`}
+                        target="_blank"
+                        className="shrink-0 font-ds-ui text-[12px] font-medium text-[#171717] underline-offset-2 hover:underline"
+                      >
+                        Open
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/app/board"
+                        className="shrink-0 font-ds-ui text-[12px] font-medium text-[#171717] underline-offset-2 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    )}
+                  </div>
+                </Field>
+                <Field label="Custom domain">
+                  <input
+                    type="text"
+                    value=""
+                    disabled
+                    placeholder="feedback.yourapp.com"
+                    className="box-border h-9 w-full rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5 font-ds-ui text-[13px] text-[#A3A3A3] outline-none placeholder:text-[#A3A3A3]"
+                  />
+                </Field>
+                <p className="font-ds-ui text-[12px] text-[#A3A3A3]">
+                  CNAME · Studio — custom domains coming soon
+                </p>
               </SettingsSection>
 
               <SettingsSection

@@ -42,10 +42,10 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-10 Auto PR runs | `/app/auto-pr` | **Wired** runs list + credits + GitHub repo panel |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + Ideas vote counts + comment moderation + roadmap DnD columns |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + email/banner/voter notify kill switches + public key + mask-all-text-inputs + soft-delete (30d purge) live; board domain shell |
-| S-13 Integrations | `/app/settings/integrations` | **Partial** pen-aligned catalog; Sentry/PostHog + Slack + Webhooks + GitHub App + GitHub Issues (one-way) wired; Linear/Jira stubs (F8) |
+| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry/PostHog + Slack + Webhooks + GitHub App + GitHub Issues + Linear/Jira (API key + webhook status sync) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage + Auto PR credit balance; manual plan change until Polar; buy credits stub |
-| S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
+| S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business); SSO SAML/OIDC still Coming soon |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |
 | S-18…S-20 Widget UX | `/preview/widget/*` + `@closeloop/widget` | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet env |
 | S-21 Fixed banner | `/preview/widget/fixed` + `@closeloop/widget` | **Wired** ingest updates → S-21 banner; identify refetch |
@@ -101,7 +101,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F8** Outbound Webhooks (HTTPS + HMAC, ticket.created / status_changed / fixed)
 - [ ] **F8** Slack OAuth channel picker
 - [x] **F8** GitHub Issues one-way create from ticket (reuse GitHub App)
-- [ ] **F8** Linear / Jira create + bi-directional status
+- [x] **F8** Linear / Jira create (API key) + inbound webhook status → fixed
 - [x] **F9** Builder publish controls + public ideas list (`/app/board`, `/board/[slug]`)
 - [x] **F9** Email-verified votes on public board (S-27 verify)
 - [x] **F9** Release emails to voters on mark fixed (S-27 released)
@@ -110,14 +110,14 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F9** Ideas tab live `vote_count` from confirmed votes (R-UI-15)
 - [x] **F9** Voter release-email kill switch (S-12 `voter_notify_enabled`)
 - [x] **F9** Suggest an idea (S-24 moderated: email confirm → private idea until publish)
-- [ ] **F11** rrweb replay module, attach to ticket, default masking
+- [x] **F11** rrweb replay module, attach to ticket, default masking (Studio 7d / Business 30d)
 
 #### M4 · AI & Business (F10, F12)
 - [x] **F10** GitHub App connect (S-13)
 - [x] **F10** Stub auto-PR runner + credits ledger (S-10, S-15) — opens never-merge markdown context PR; Agent SDK / Fly sandbox later
 - [x] **F10** Never-merge policy + flat cost accounting
 - [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
-- [ ] **F12** Audit log + export
+- [x] **F12** Audit log + export (Business; SSO UI still stub)
 - [ ] **F12** Docker / Helm self-host + license activation (S-17)
 
 #### M5 · Beta publik
@@ -143,8 +143,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation email shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
-| M3 | F8 F9 F11 | Slack + public board + votes/comments + roadmap DnD; OAuth/replay still open |
-| M4 | F10 F12 | F10 wired (GitHub App + Auto PR); F12 todo |
+| M3 | F8 F9 F11 | Slack + Linear/Jira + public board + rrweb replay; Slack OAuth still open |
+| M4 | F10 F12 | F10 + audit log wired; SSO/self-host still open |
 | M5 | Billing + public beta | Todo |
 
 ---

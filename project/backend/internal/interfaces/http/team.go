@@ -111,6 +111,9 @@ func (s *Server) createOrgInvites(c *gin.Context) {
 			}),
 		)
 	}
+	s.writeAudit(c, org.ID, "", "team.invite_created", org.ID, map[string]any{
+		"emails": body.Emails, "role": body.Role, "count": len(invites),
+	})
 	c.JSON(201, gin.H{"invites": invites})
 }
 
@@ -173,6 +176,9 @@ func (s *Server) patchOrgMember(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	s.writeAudit(c, org.ID, "", "team.role_changed", c.Param("userId"), map[string]any{
+		"role": body.Role,
+	})
 	c.JSON(200, gin.H{"ok": true})
 }
 

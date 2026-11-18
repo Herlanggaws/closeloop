@@ -97,6 +97,18 @@ func (s *FSStore) RemoveProject(projectID string) error {
 	return nil
 }
 
+func (s *FSStore) Delete(key string) error {
+	key = filepath.ToSlash(strings.TrimSpace(key))
+	if key == "" || strings.Contains(key, "..") {
+		return fmt.Errorf("invalid storage key")
+	}
+	path := filepath.Join(s.Root, filepath.FromSlash(key))
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 func splitLines(s string) []string {
 	var out []string
 	start := 0

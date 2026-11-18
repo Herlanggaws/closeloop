@@ -39478,7 +39478,7 @@
                                       "id": "xloua",
                                       "name": "Label",
                                       "fill": "$text-inverse",
-                                      "content": "Start Free Trial",
+                                      "content": "Suggest an idea",
                                       "fontFamily": "$font-sans",
                                       "fontSize": 14,
                                       "fontWeight": "500",

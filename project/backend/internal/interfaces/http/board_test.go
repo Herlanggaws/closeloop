@@ -48,8 +48,20 @@ func TestR_BOARD_01_PublishAppearsOnPublicBoard(t *testing.T) {
 	if idea["title"] != "dark mode please" {
 		t.Fatalf("title=%v", idea["title"])
 	}
+	if idea["description"] != "dark mode please" {
+		t.Fatalf("description=%v", idea["description"])
+	}
 	if idea["id"] != ticketID {
 		t.Fatalf("id=%v", idea["id"])
+	}
+
+	code, detail := h.do(http.MethodGet, "/api/public/boards/"+slug+"/ideas/"+ticketID, nil, nil)
+	if code != 200 {
+		t.Fatalf("public idea detail: %d %v", code, detail)
+	}
+	detailIdea := detail["idea"].(map[string]any)
+	if detailIdea["description"] != "dark mode please" {
+		t.Fatalf("detail description=%v", detailIdea["description"])
 	}
 }
 

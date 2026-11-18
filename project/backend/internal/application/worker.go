@@ -23,6 +23,10 @@ type ProjectFileCleaner interface {
 	RemoveProject(projectID string) error
 }
 
+type AttachmentFileCleaner interface {
+	Delete(key string) error
+}
+
 type WorkerDeps struct {
 	Mail     MailSender
 	Slack    slack.Poster
@@ -42,6 +46,11 @@ func RunWorker(ctx context.Context, store *Store, mail MailSender, files Project
 	defer purgeTicker.Stop()
 
 	purgeDeletedProjects(ctx, store, files)
+	var fileDeleter AttachmentFileCleaner
+	if d, ok := files.(AttachmentFileCleaner); ok {
+		fileDeleter = d
+	}
+	purgeExpiredReplays(ctx, store, fileDeleter)
 
 	for {
 		select {
@@ -53,6 +62,7 @@ func RunWorker(ctx context.Context, store *Store, mail MailSender, files Project
 			}
 		case <-purgeTicker.C:
 			purgeDeletedProjects(ctx, store, files)
+			purgeExpiredReplays(ctx, store, fileDeleter)
 		}
 	}
 }
@@ -92,6 +102,32 @@ func purgeDeletedProjects(ctx context.Context, store *Store, files ProjectFileCl
 		}
 		slog.Info("purged deleted project", "project_id", id)
 	}
+}
+
+func purgeExpiredReplays(ctx context.Context, store *Store, files AttachmentFileCleaner) {
+	list, err := store.ListExpiredReplays(ctx, 100)
+	if err != nil {
+		slog.Error("list expired replays", "err", err)
+		return
+	}
+	for _, item := range list {
+		if files != nil && item.StorageKey != "" {
+			if err := files.Delete(item.StorageKey); err != nil {
+				slog.Error("delete replay file", "attachment_id", item.ID, "err", err)
+				continue
+			}
+		}
+		if err := store.DeleteAttachment(ctx, item.ID); err != nil {
+			slog.Error("delete replay row", "attachment_id", item.ID, "err", err)
+			continue
+		}
+		slog.Info("purged expired replay", "attachment_id", item.ID)
+	}
+}
+
+// PurgeExpiredReplaysOnce runs retention cleanup (tests + manual ops).
+func PurgeExpiredReplaysOnce(ctx context.Context, store *Store, files AttachmentFileCleaner) {
+	purgeExpiredReplays(ctx, store, files)
 }
 
 func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, payload json.RawMessage) error {

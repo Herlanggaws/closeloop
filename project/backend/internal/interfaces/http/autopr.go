@@ -313,6 +313,11 @@ func (s *Server) startAutoprRun(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	if org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID")); err == nil {
+		s.writeAudit(c, org.ID, "", "autopr.started", ticketID, map[string]any{
+			"run_id": run.ID, "project_id": ticket.ProjectID,
+		})
+	}
 	c.JSON(201, gin.H{"run": run})
 }
 
