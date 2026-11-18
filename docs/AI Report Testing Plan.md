@@ -135,6 +135,8 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-FIX-04 | Kill switch | `notify_enabled=false` | mark_fixed | No email; ticket still fixed | worker guard |
 | R-FIX-05 | In-app updates | Reporter identified | `GET /v1/ingest/updates?reporter=` | Fixed payload once; second poll empty/seen | ingestUpdates |
 | R-FIX-06 | Free plan MCP write | Free plan read-only token | mark_fixed via MCP | Rejected / gated; UI badge path not required in L1 | scope gate |
+| R-FIX-07 | Per-action channels | PATCH `notify: {email:false,in_app:true}` | mark fixed | No mail; banner still via updates | EnqueueNotify payload |
+| R-FIX-08 | Banner kill switch | `banner_enabled=false` | mark fixed | Email still sent; no in-app updates | NotifyReporters gate |
 
 ### 4.4b Slack notify (F8 · S-13)
 

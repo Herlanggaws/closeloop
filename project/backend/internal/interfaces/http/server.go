@@ -735,6 +735,7 @@ func (s *Server) patchProject(c *gin.Context) {
 		Name               *string   `json:"name"`
 		Platforms          *[]string `json:"platforms"`
 		NotifyEnabled      *bool     `json:"notify_enabled"`
+		BannerEnabled      *bool     `json:"banner_enabled"`
 		SensitiveSelectors *[]string `json:"sensitive_selectors"`
 		BoardSlug          *string   `json:"board_slug"`
 	}
@@ -767,7 +768,7 @@ func (s *Server) patchProject(c *gin.Context) {
 		trimmed := strings.TrimSpace(*body.BoardSlug)
 		body.BoardSlug = &trimmed
 	}
-	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.SensitiveSelectors, body.BoardSlug); err != nil {
+	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.BannerEnabled, body.SensitiveSelectors, body.BoardSlug); err != nil {
 		mapErr(c, err)
 		return
 	}
@@ -954,6 +955,10 @@ func (s *Server) patchTicket(c *gin.Context) {
 		Status   *string `json:"status"`
 		Note     string  `json:"note"`
 		IsPublic *bool   `json:"is_public"`
+		Notify   *struct {
+			Email *bool `json:"email"`
+			InApp *bool `json:"in_app"`
+		} `json:"notify"`
 	}
 	if err := c.BindJSON(&body); err != nil {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
@@ -990,7 +995,16 @@ func (s *Server) patchTicket(c *gin.Context) {
 			return
 		}
 		if status == "fixed" {
-			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID)
+			channels := application.DefaultNotifyChannels()
+			if body.Notify != nil {
+				if body.Notify.Email != nil {
+					channels.Email = *body.Notify.Email
+				}
+				if body.Notify.InApp != nil {
+					channels.InApp = *body.Notify.InApp
+				}
+			}
+			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID, channels)
 			_ = s.Store.EnqueueVoteReleased(c.Request.Context(), t.ID)
 		}
 		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{

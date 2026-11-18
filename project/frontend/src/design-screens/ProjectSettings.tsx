@@ -12,6 +12,7 @@ type ProjectInfo = {
   name: string;
   platforms?: string[];
   notify_enabled: boolean;
+  banner_enabled: boolean;
   sensitive_selectors?: string[];
 };
 
@@ -41,7 +42,9 @@ export function ProjectSettings() {
   const [nameDraft, setNameDraft] = useState("");
   const [platforms, setPlatforms] = useState<string[]>(["web"]);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
+  const [bannerEnabled, setBannerEnabled] = useState(true);
   const [savingNotify, setSavingNotify] = useState(false);
+  const [savingBanner, setSavingBanner] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [selectors, setSelectors] = useState<string[]>([]);
   const [selectorDraft, setSelectorDraft] = useState("");
@@ -75,6 +78,7 @@ export function ProjectSettings() {
         const nextPlatforms = normalizePlatforms(projectRes.project.platforms);
         setPlatforms(nextPlatforms);
         setNotifyEnabled(projectRes.project.notify_enabled);
+        setBannerEnabled(projectRes.project.banner_enabled !== false);
         setSelectors(projectRes.project.sensitive_selectors || []);
         localStorage.setItem("closeloop_public_key", projectRes.public_key);
         localStorage.setItem(
@@ -190,6 +194,28 @@ export function ProjectSettings() {
       setError(err instanceof Error ? err.message : "Failed to update notifications");
     } finally {
       setSavingNotify(false);
+    }
+  }
+
+  async function toggleBanner() {
+    if (!project || savingBanner) return;
+    const next = !bannerEnabled;
+    const previous = bannerEnabled;
+    setBannerEnabled(next);
+    setSavingBanner(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ banner_enabled: next }),
+      });
+      setProject(res.project);
+      setBannerEnabled(res.project.banner_enabled);
+    } catch (err) {
+      setBannerEnabled(previous);
+      setError(err instanceof Error ? err.message : "Failed to update banner setting");
+    } finally {
+      setSavingBanner(false);
     }
   }
 
@@ -450,9 +476,10 @@ export function ProjectSettings() {
                 />
                 <ToggleRow
                   title="Show an in-app banner"
-                  description="Coming later — shown once the next time they open your app"
-                  checked={false}
-                  disabled
+                  description="Shown once the next time they open your app"
+                  checked={bannerEnabled}
+                  disabled={savingBanner || !project}
+                  onToggle={toggleBanner}
                 />
               </SettingsSection>
 

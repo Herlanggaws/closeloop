@@ -189,7 +189,7 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 			return nil, err
 		}
 		if toStatus == "fixed" {
-			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID)
+			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID, application.DefaultNotifyChannels())
 			_ = s.Store.EnqueueVoteReleased(c.Request.Context(), t.ID)
 		}
 		_ = s.Store.EnqueueSlackNotify(c.Request.Context(), t.ProjectID, application.SlackNotifyEvent{
@@ -230,7 +230,7 @@ func (s *Server) callMCPTool(c *gin.Context, projectID string, canWrite bool, na
 		if err := s.Store.UpdateTicketStatus(c.Request.Context(), t.ID, "fixed", "agent", note); err != nil {
 			return nil, err
 		}
-		if err := s.Store.EnqueueNotify(c.Request.Context(), t.ID); err != nil {
+		if err := s.Store.EnqueueNotify(c.Request.Context(), t.ID, application.DefaultNotifyChannels()); err != nil {
 			return nil, err
 		}
 		_ = s.Store.EnqueueVoteReleased(c.Request.Context(), t.ID)

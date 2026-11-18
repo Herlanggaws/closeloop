@@ -38,10 +38,10 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |
 | S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Sentry/PostHog deep links when configured; Auto PR stub |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
-| S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed (notify enqueue); channel toggles visual |
+| S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed with Email/In-app channel toggles |
 | S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + Ideas vote counts + comment moderation + roadmap DnD columns |
-| S-12 Project settings | `/app/settings` | **Partial** general name + platforms + notify + public key + masking + soft-delete (30d purge) live; board domain shell |
+| S-12 Project settings | `/app/settings` | **Partial** general name + platforms + email/banner notify kill switches + public key + masking + soft-delete (30d purge) live; board domain shell |
 | S-13 Integrations | `/app/settings/integrations` | **Partial** pen-aligned catalog; Sentry/PostHog + Slack webhook wired; GitHub/Linear/Jira/App/Webhooks stubs (F8/F10) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
@@ -83,7 +83,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [x] **F5** Free-plan read-only MCP (create scopes + write tools gated; UI badge)
 - [x] **F6** Resend email on fixed (S-23 template)
 - [x] **F6** In-app fixed banner via ingest updates (S-21)
-- [x] **F6** Per-project notify kill switch (S-12)
+- [x] **F6** Per-project notify kill switches — email + in-app banner (S-12)
+- [x] **F6** Mark-fixed Email / In-app channel toggles (S-09)
 - [x] Dogfood: Bear Budget Web feedback loop verified via demo host & R-UI-01 smoke
 
 #### M2 · Mobile (F3, F7)

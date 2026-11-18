@@ -96,11 +96,24 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 	case "notify_reporters":
 		var p struct {
 			TicketID string `json:"ticket_id"`
+			Notify   *struct {
+				Email *bool `json:"email"`
+				InApp *bool `json:"in_app"`
+			} `json:"notify"`
 		}
 		if err := json.Unmarshal(payload, &p); err != nil {
 			return err
 		}
-		_, mails, err := store.NotifyReporters(ctx, p.TicketID, "")
+		channels := DefaultNotifyChannels()
+		if p.Notify != nil {
+			if p.Notify.Email != nil {
+				channels.Email = *p.Notify.Email
+			}
+			if p.Notify.InApp != nil {
+				channels.InApp = *p.Notify.InApp
+			}
+		}
+		_, mails, err := store.NotifyReporters(ctx, p.TicketID, "", channels.Email, channels.InApp)
 		if err != nil {
 			return err
 		}
