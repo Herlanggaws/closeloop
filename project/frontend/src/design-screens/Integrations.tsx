@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { api } from "@/lib/api";
 import type { MeResponse } from "@/lib/usage";
@@ -131,7 +131,8 @@ export function Integrations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<WiredProvider | null>(null);
+  const [configureModal, setConfigureModal] = useState<WiredProvider | null>(null);
+  const configureTitleId = useId();
 
   const [sentryOrg, setSentryOrg] = useState("");
   const [sentryProject, setSentryProject] = useState("");
@@ -197,7 +198,7 @@ export function Integrations() {
   }, [router]);
 
   async function saveProvider(provider: WiredProvider, config: Record<string, string>) {
-    if (!projectId) return;
+    if (!projectId) return false;
     setSaving(provider);
     setError("");
     try {
@@ -205,8 +206,10 @@ export function Integrations() {
         method: "PUT",
         body: JSON.stringify({ config }),
       });
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
+      return false;
     } finally {
       setSaving(null);
     }
@@ -249,17 +252,30 @@ export function Integrations() {
     return "none";
   }
 
+  useEffect(() => {
+    if (!configureModal) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setConfigureModal(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [configureModal]);
+
   function onCardAction(item: CatalogItem) {
     if (item.action === "configure" && item.wired) {
-      setExpanded((prev) => (prev === item.wired ? null : item.wired!));
-      return;
+      setConfigureModal(item.wired);
     }
   }
 
   function actionLabel(item: CatalogItem): string {
     if (item.action === "upgrade") return "Upgrade";
     if (item.action === "coming_soon") return "Coming soon";
-    return expanded === item.wired ? "Close" : "Configure";
+    return "Configure";
+  }
+
+  async function saveAndClose(provider: WiredProvider, config: Record<string, string>) {
+    const ok = await saveProvider(provider, config);
+    if (ok) setConfigureModal(null);
   }
 
   return (
@@ -318,184 +334,278 @@ export function Integrations() {
                 ))}
               </IntegrationGroup>
 
-              {expanded === "slack" && (
-                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
-                        Slack · Incoming webhook
-                      </h3>
-                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                        Choose which events post to the channel. Paste a Slack Incoming Webhook URL
-                        to connect.
-                      </p>
-                    </div>
-                    {slackConnected && (
-                      <button
-                        type="button"
-                        disabled={saving === "slack"}
-                        onClick={() => void clearProvider("slack")}
-                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
-                      >
-                        Disconnect
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {(
-                      [
-                        ["new_bug", "New bug"],
-                        ["new_idea", "New idea"],
-                        ["status_changed", "Status changed"],
-                        ["marked_fixed", "Marked fixed"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label
-                        key={key}
-                        className="flex cursor-pointer items-center justify-between rounded-lg border border-[#17171714] bg-white px-3 py-2.5"
-                      >
-                        <span className="font-ds-ui text-[13px] text-[#171717]">{label}</span>
-                        <input
-                          type="checkbox"
-                          checked={slackEvents[key]}
-                          onChange={(e) =>
-                            setSlackEvents((prev) => ({ ...prev, [key]: e.target.checked }))
-                          }
-                          className="h-4 w-4 accent-[#16A34A]"
-                          title="Coming soon — all connected events post today"
-                        />
-                      </label>
-                    ))}
-                  </div>
-                  <div className="mt-4">
-                    <Field
-                      label="Incoming Webhook URL"
-                      value={slackWebhook}
-                      onChange={setSlackWebhook}
-                      placeholder="https://hooks.slack.com/services/…"
-                    />
-                  </div>
+              {configureModal ? (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                  role="presentation"
+                >
                   <button
                     type="button"
-                    disabled={
-                      saving === "slack" ||
-                      !slackWebhook.trim().startsWith("https://hooks.slack.com/")
-                    }
-                    onClick={() =>
-                      void saveProvider("slack", {
-                        webhook_url: slackWebhook.trim(),
-                      })
-                    }
-                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                    aria-label="Close configure"
+                    className="absolute inset-0 border-0 bg-[#0A0A0A66]"
+                    onClick={() => setConfigureModal(null)}
+                  />
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={configureTitleId}
+                    className="relative z-10 max-h-[90vh] w-full max-w-[520px] overflow-y-auto rounded-2xl border border-[#17171714] bg-white p-6 shadow-lg"
                   >
-                    {saving === "slack" ? "Saving…" : "Save Slack"}
-                  </button>
-                </div>
-              )}
+                    {error ? (
+                      <p className="mb-3 font-ds-ui text-sm text-[#DA314A]">{error}</p>
+                    ) : null}
+                    {configureModal === "slack" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              Slack · Incoming webhook
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Choose which events post to the channel. Paste a Slack Incoming
+                              Webhook URL to connect.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {slackConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "slack"}
+                            onClick={() => void clearProvider("slack")}
+                            className="mt-3 cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          {(
+                            [
+                              ["new_bug", "New bug"],
+                              ["new_idea", "New idea"],
+                              ["status_changed", "Status changed"],
+                              ["marked_fixed", "Marked fixed"],
+                            ] as const
+                          ).map(([key, label]) => (
+                            <label
+                              key={key}
+                              className="flex cursor-pointer items-center justify-between rounded-lg border border-[#17171714] bg-[#FAFAFA] px-3 py-2.5"
+                            >
+                              <span className="font-ds-ui text-[13px] text-[#171717]">{label}</span>
+                              <input
+                                type="checkbox"
+                                checked={slackEvents[key]}
+                                onChange={(e) =>
+                                  setSlackEvents((prev) => ({
+                                    ...prev,
+                                    [key]: e.target.checked,
+                                  }))
+                                }
+                                className="h-4 w-4 accent-[#16A34A]"
+                                title="Coming soon — all connected events post today"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-4">
+                          <Field
+                            label="Incoming Webhook URL"
+                            value={slackWebhook}
+                            onChange={setSlackWebhook}
+                            placeholder="https://hooks.slack.com/services/…"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              saving === "slack" ||
+                              !slackWebhook.trim().startsWith("https://hooks.slack.com/")
+                            }
+                            onClick={() =>
+                              void saveAndClose("slack", {
+                                webhook_url: slackWebhook.trim(),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "slack" ? "Saving…" : "Save Slack"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
 
-              {expanded === "sentry" && (
-                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
-                        Sentry
-                      </h3>
-                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                        Links use <code className="font-ds-mono text-[12px]">sentry_event_id</code>{" "}
-                        from report context.
-                      </p>
-                    </div>
-                    {sentryConnected && (
-                      <button
-                        type="button"
-                        disabled={saving === "sentry"}
-                        onClick={() => void clearProvider("sentry")}
-                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
-                      >
-                        Disconnect
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <Field label="Org slug" value={sentryOrg} onChange={setSentryOrg} placeholder="acme" />
-                    <Field
-                      label="Project slug"
-                      value={sentryProject}
-                      onChange={setSentryProject}
-                      placeholder="web-app"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    disabled={saving === "sentry" || !sentryOrg.trim()}
-                    onClick={() =>
-                      void saveProvider("sentry", {
-                        org: sentryOrg.trim(),
-                        project: sentryProject.trim(),
-                      })
-                    }
-                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
-                  >
-                    {saving === "sentry" ? "Saving…" : "Save Sentry"}
-                  </button>
-                </div>
-              )}
+                    {configureModal === "sentry" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              Sentry
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Links use{" "}
+                              <code className="font-ds-mono text-[12px]">sentry_event_id</code> from
+                              report context.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {sentryConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "sentry"}
+                            onClick={() => void clearProvider("sentry")}
+                            className="mt-3 cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <Field
+                            label="Org slug"
+                            value={sentryOrg}
+                            onChange={setSentryOrg}
+                            placeholder="acme"
+                          />
+                          <Field
+                            label="Project slug"
+                            value={sentryProject}
+                            onChange={setSentryProject}
+                            placeholder="web-app"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving === "sentry" || !sentryOrg.trim()}
+                            onClick={() =>
+                              void saveAndClose("sentry", {
+                                org: sentryOrg.trim(),
+                                project: sentryProject.trim(),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "sentry" ? "Saving…" : "Save Sentry"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
 
-              {expanded === "posthog" && (
-                <div className="rounded-xl border border-[#17171714] bg-[#FAFAFA] p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-ds-sans text-[15px] font-semibold text-[#171717]">
-                        PostHog
-                      </h3>
-                      <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                        Links use{" "}
-                        <code className="font-ds-mono text-[12px]">posthog_session_id</code> from
-                        report context.
-                      </p>
-                    </div>
-                    {posthogConnected && (
-                      <button
-                        type="button"
-                        disabled={saving === "posthog"}
-                        onClick={() => void clearProvider("posthog")}
-                        className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
-                      >
-                        Disconnect
-                      </button>
-                    )}
+                    {configureModal === "posthog" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              PostHog
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Links use{" "}
+                              <code className="font-ds-mono text-[12px]">posthog_session_id</code>{" "}
+                              from report context.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {posthogConnected && (
+                          <button
+                            type="button"
+                            disabled={saving === "posthog"}
+                            onClick={() => void clearProvider("posthog")}
+                            className="mt-3 cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <Field
+                            label="Host"
+                            value={posthogHost}
+                            onChange={setPosthogHost}
+                            placeholder="https://us.posthog.com"
+                          />
+                          <Field
+                            label="Project id"
+                            value={posthogProject}
+                            onChange={setPosthogProject}
+                            placeholder="12345"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              saving === "posthog" ||
+                              !posthogHost.trim() ||
+                              !posthogProject.trim()
+                            }
+                            onClick={() =>
+                              void saveAndClose("posthog", {
+                                host: posthogHost.trim().replace(/\/$/, ""),
+                                project_id: posthogProject.trim(),
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "posthog" ? "Saving…" : "Save PostHog"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
                   </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <Field
-                      label="Host"
-                      value={posthogHost}
-                      onChange={setPosthogHost}
-                      placeholder="https://us.posthog.com"
-                    />
-                    <Field
-                      label="Project id"
-                      value={posthogProject}
-                      onChange={setPosthogProject}
-                      placeholder="12345"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    disabled={
-                      saving === "posthog" || !posthogHost.trim() || !posthogProject.trim()
-                    }
-                    onClick={() =>
-                      void saveProvider("posthog", {
-                        host: posthogHost.trim().replace(/\/$/, ""),
-                        project_id: posthogProject.trim(),
-                      })
-                    }
-                    className="mt-4 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
-                  >
-                    {saving === "posthog" ? "Saving…" : "Save PostHog"}
-                  </button>
                 </div>
-              )}
+              ) : null}
             </>
           )}
         </div>

@@ -240,6 +240,8 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(page.getByText("Slack", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Sentry", { exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: "Configure" }).first().click();
-    await expect(page.getByLabel("Incoming Webhook URL")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("Incoming Webhook URL")).toBeVisible();
   });
 });
