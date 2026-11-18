@@ -229,6 +229,25 @@ func TestR_BOARD_05_VoteConfirmIncrementsCount(t *testing.T) {
 		t.Fatalf("vote_count=%v", idea["vote_count"])
 	}
 
+	code, ticketsBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID+"/tickets", nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("list tickets: %d %v", code, ticketsBody)
+	}
+	found := false
+	for _, raw := range ticketsBody["tickets"].([]any) {
+		tkt := raw.(map[string]any)
+		if tkt["id"] == ticketID {
+			found = true
+			if tkt["vote_count"] != float64(1) {
+				t.Fatalf("auth ticket vote_count=%v", tkt["vote_count"])
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatal("voted ticket missing from project list")
+	}
+
 	code, again := h.do(http.MethodGet, "/api/public/votes/confirm?t="+token, nil, nil)
 	if code != 409 {
 		t.Fatalf("reuse token want 409, got %d %v", code, again)

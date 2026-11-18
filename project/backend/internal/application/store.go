@@ -59,6 +59,7 @@ type Ticket struct {
 	Status      string         `json:"status"`
 	Title       string         `json:"title"`
 	ReportCount int            `json:"report_count"`
+	VoteCount   int            `json:"vote_count"`
 	IsPublic    bool           `json:"is_public"`
 	FixedAt     sql.NullTime   `json:"-"`
 	FixedNote   sql.NullString `json:"-"`
@@ -82,6 +83,7 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 		"status":       t.Status,
 		"title":        t.Title,
 		"report_count": t.ReportCount,
+		"vote_count":   t.VoteCount,
 		"is_public":    t.IsPublic,
 		"fixed_at":     fixedAt,
 		"fixed_note":   fixedNote,
@@ -872,8 +874,12 @@ func (s *Store) AttachmentForUpload(ctx context.Context, attachmentID, token str
 	return
 }
 
+const ticketSelectCols = `id, project_id, type, status, title, report_count,
+		(SELECT COUNT(*) FROM idea_votes v WHERE v.ticket_id=tickets.id AND v.confirmed_at IS NOT NULL),
+		is_public, fixed_at, fixed_note, created_at, updated_at`
+
 func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platform string) ([]Ticket, error) {
-	q := `SELECT id, project_id, type, status, title, report_count, is_public, fixed_at, fixed_note, created_at, updated_at
+	q := `SELECT ` + ticketSelectCols + `
 		FROM tickets WHERE project_id=$1
 		AND EXISTS (
 			SELECT 1 FROM reports r
@@ -908,7 +914,7 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 	var out []Ticket
 	for rows.Next() {
 		var t Ticket
-		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.VoteCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -919,9 +925,9 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 func (s *Store) GetTicket(ctx context.Context, ticketID string) (Ticket, error) {
 	var t Ticket
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT id, project_id, type, status, title, report_count, is_public, fixed_at, fixed_note, created_at, updated_at
+		SELECT `+ticketSelectCols+`
 		FROM tickets WHERE id=$1`, ticketID).
-		Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt)
+		Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.VoteCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Ticket{}, ErrNotFound
 	}

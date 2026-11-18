@@ -14,6 +14,7 @@ type Ticket = {
   status: string;
   title: string;
   is_public: boolean;
+  vote_count?: number;
   created_at: string;
 };
 
@@ -389,8 +390,11 @@ export function ManagePublicBoard() {
                               {ticket.type}
                             </div>
                           </div>
-                          <span className="font-ds-ui text-[13px] text-[#A3A3A3]" title="Voting coming soon">
-                            —
+                          <span
+                            data-vote-count={ticket.id}
+                            className="font-ds-ui text-[13px] text-[#171717]"
+                          >
+                            {ticket.vote_count ?? 0}
                           </span>
                           <span className="inline-flex items-center gap-1.5 font-ds-ui text-[12px] text-[#737373]">
                             <span
@@ -509,7 +513,7 @@ export function ManagePublicBoard() {
                                         {typeStyle.label}
                                       </span>
                                       <span className="font-ds-ui text-[11px] text-[#A3A3A3]">
-                                        —
+                                        {ticket.vote_count ?? 0} votes
                                       </span>
                                     </div>
                                   </div>
