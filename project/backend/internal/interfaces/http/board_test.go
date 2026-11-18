@@ -394,8 +394,182 @@ func TestR_BOARD_06_VoteUnpublishedAndBadEmail(t *testing.T) {
 	}
 }
 
+func TestR_BOARD_08_CommentConfirmAndReply(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+
+	code, projectBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("get project: %d %v", code, projectBody)
+	}
+	slug := projectBody["project"].(map[string]any)["board_slug"].(string)
+
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "comment me", "platform": "web",
+	})
+	h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{"is_public": true}, h.authHeaders(seed.AccessToken))
+
+	h.mailer.Reset()
+	code, post := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", map[string]any{
+		"email":        "Commenter@Example.COM",
+		"display_name": "Ayu",
+		"body":         "Please keep category colors",
+	}, nil)
+	if code != 202 {
+		t.Fatalf("post comment: %d %v", code, post)
+	}
+	if h.drainNotifyJobs() < 1 {
+		t.Fatal("expected comment verify job")
+	}
+	sent := h.mailer.Sent()
+	if len(sent) != 1 || !strings.Contains(sent[0].Subject, "Confirm your comment") {
+		t.Fatalf("verify mail=%#v", sent)
+	}
+	token := extractCommentToken(sent[0].HTML)
+	if token == "" {
+		t.Fatal("missing comment token")
+	}
+
+	code, listed := h.do(http.MethodGet, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", nil, nil)
+	if code != 200 {
+		t.Fatalf("list before confirm: %d %v", code, listed)
+	}
+	if comments := listed["comments"].([]any); len(comments) != 0 {
+		t.Fatalf("unconfirmed should be hidden, got %v", comments)
+	}
+
+	code, confirmed := h.do(http.MethodGet, "/api/public/comments/confirm?t="+token, nil, nil)
+	if code != 200 {
+		t.Fatalf("confirm: %d %v", code, confirmed)
+	}
+
+	code, listed = h.do(http.MethodGet, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", nil, nil)
+	if code != 200 {
+		t.Fatalf("list after confirm: %d %v", code, listed)
+	}
+	roots := listed["comments"].([]any)
+	if len(roots) != 1 {
+		t.Fatalf("want 1 root, got %v", listed)
+	}
+	root := roots[0].(map[string]any)
+	rootID := root["id"].(string)
+	if root["display_name"] != "Ayu" || root["body"] != "Please keep category colors" {
+		t.Fatalf("root=%v", root)
+	}
+
+	h.mailer.Reset()
+	code, replyPost := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", map[string]any{
+		"email":     "reply@example.com",
+		"body":      "Agreed",
+		"parent_id": rootID,
+	}, nil)
+	if code != 202 {
+		t.Fatalf("reply: %d %v", code, replyPost)
+	}
+	h.drainNotifyJobs()
+	replyToken := extractCommentToken(h.mailer.Sent()[0].HTML)
+	h.do(http.MethodGet, "/api/public/comments/confirm?t="+replyToken, nil, nil)
+
+	code, listed = h.do(http.MethodGet, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", nil, nil)
+	if code != 200 {
+		t.Fatalf("list with reply: %d %v", code, listed)
+	}
+	root = listed["comments"].([]any)[0].(map[string]any)
+	replies := root["replies"].([]any)
+	if len(replies) != 1 {
+		t.Fatalf("want 1 reply, got %v", root)
+	}
+
+	code, team := h.do(http.MethodPost, "/api/tickets/"+ticketID+"/comments", map[string]any{
+		"body": "Planned for 2.6",
+	}, h.authHeaders(seed.AccessToken))
+	if code != 201 {
+		t.Fatalf("team comment: %d %v", code, team)
+	}
+	teamComment := team["comment"].(map[string]any)
+	if teamComment["is_team"] != true {
+		t.Fatalf("team flag=%v", teamComment)
+	}
+
+	code, mod := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID+"/board-comments?status=visible", nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("moderation list: %d %v", code, mod)
+	}
+	visible := mod["comments"].([]any)
+	if len(visible) < 3 {
+		t.Fatalf("want >=3 visible, got %d", len(visible))
+	}
+
+	code, hide := h.do(http.MethodPatch, "/api/comments/"+rootID, map[string]any{"hidden": true}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("hide: %d %v", code, hide)
+	}
+	code, listed = h.do(http.MethodGet, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", nil, nil)
+	if code != 200 {
+		t.Fatalf("public after hide: %d", code)
+	}
+	for _, item := range listed["comments"].([]any) {
+		if item.(map[string]any)["id"] == rootID {
+			t.Fatal("hidden root still public")
+		}
+	}
+}
+
+func TestR_BOARD_09_CommentGuards(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	code, projectBody := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("get project: %d %v", code, projectBody)
+	}
+	slug := projectBody["project"].(map[string]any)["board_slug"].(string)
+
+	hiddenID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "private comment", "platform": "web",
+	})
+	code, hidden := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/"+hiddenID+"/comments", map[string]any{
+		"email": "a@b.co", "body": "nope",
+	}, nil)
+	if code != 404 {
+		t.Fatalf("unpublished want 404, got %d %v", code, hidden)
+	}
+
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "public comment target", "platform": "web",
+	})
+	h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{"is_public": true}, h.authHeaders(seed.AccessToken))
+
+	code, bad := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", map[string]any{
+		"email": "not-an-email", "body": "hi",
+	}, nil)
+	if code != 400 {
+		t.Fatalf("bad email want 400, got %d %v", code, bad)
+	}
+
+	code, empty := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", map[string]any{
+		"email": "ok@example.com", "body": "   ",
+	}, nil)
+	if code != 400 {
+		t.Fatalf("empty body want 400, got %d %v", code, empty)
+	}
+
+	code, badParent := h.do(http.MethodPost, "/api/public/boards/"+slug+"/ideas/"+ticketID+"/comments", map[string]any{
+		"email": "ok@example.com", "body": "reply", "parent_id": "00000000-0000-0000-0000-000000000001",
+	}, nil)
+	if code != 404 && code != 400 {
+		t.Fatalf("bad parent want 404/400, got %d %v", code, badParent)
+	}
+}
+
 func extractVoteToken(htmlBody string) string {
-	const marker = "/vote/confirm?t="
+	return extractTokenMarker(htmlBody, "/vote/confirm?t=")
+}
+
+func extractCommentToken(htmlBody string) string {
+	return extractTokenMarker(htmlBody, "/comment/confirm?t=")
+}
+
+func extractTokenMarker(htmlBody, marker string) string {
 	i := strings.Index(htmlBody, marker)
 	if i < 0 {
 		return ""
