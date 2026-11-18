@@ -133,6 +133,24 @@ func TestR_ING_06_ConfigSelectors(t *testing.T) {
 	if len(got) != 2 || got[0] != ".balance" {
 		t.Fatalf("selectors=%v", got)
 	}
+	if cfg["mask_text_inputs"] != true {
+		t.Fatalf("default mask_text_inputs=%v", cfg["mask_text_inputs"])
+	}
+
+	off := false
+	code, body = h.do(http.MethodPatch, "/api/projects/"+seed.ProjectID, map[string]any{
+		"mask_text_inputs": off,
+	}, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("patch mask: %d %v", code, body)
+	}
+	code, cfg = h.do(http.MethodGet, "/v1/ingest/config", nil, h.keyHeaders(seed.PublicKey))
+	if code != 200 {
+		t.Fatalf("config2: %d %v", code, cfg)
+	}
+	if cfg["mask_text_inputs"] != false {
+		t.Fatalf("want mask_text_inputs=false, got %v", cfg["mask_text_inputs"])
+	}
 }
 
 func TestR_ING_07_ContextJSON(t *testing.T) {

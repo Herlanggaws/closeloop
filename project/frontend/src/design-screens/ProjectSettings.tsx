@@ -13,6 +13,7 @@ type ProjectInfo = {
   platforms?: string[];
   notify_enabled: boolean;
   banner_enabled: boolean;
+  mask_text_inputs: boolean;
   sensitive_selectors?: string[];
 };
 
@@ -43,8 +44,10 @@ export function ProjectSettings() {
   const [platforms, setPlatforms] = useState<string[]>(["web"]);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
   const [bannerEnabled, setBannerEnabled] = useState(true);
+  const [maskTextInputs, setMaskTextInputs] = useState(true);
   const [savingNotify, setSavingNotify] = useState(false);
   const [savingBanner, setSavingBanner] = useState(false);
+  const [savingMask, setSavingMask] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [selectors, setSelectors] = useState<string[]>([]);
   const [selectorDraft, setSelectorDraft] = useState("");
@@ -79,6 +82,7 @@ export function ProjectSettings() {
         setPlatforms(nextPlatforms);
         setNotifyEnabled(projectRes.project.notify_enabled);
         setBannerEnabled(projectRes.project.banner_enabled !== false);
+        setMaskTextInputs(projectRes.project.mask_text_inputs !== false);
         setSelectors(projectRes.project.sensitive_selectors || []);
         localStorage.setItem("closeloop_public_key", projectRes.public_key);
         localStorage.setItem(
@@ -216,6 +220,28 @@ export function ProjectSettings() {
       setError(err instanceof Error ? err.message : "Failed to update banner setting");
     } finally {
       setSavingBanner(false);
+    }
+  }
+
+  async function toggleMaskTextInputs() {
+    if (!project || savingMask) return;
+    const next = !maskTextInputs;
+    const previous = maskTextInputs;
+    setMaskTextInputs(next);
+    setSavingMask(true);
+    setError("");
+    try {
+      const res = await api<{ project: ProjectInfo }>(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ mask_text_inputs: next }),
+      });
+      setProject(res.project);
+      setMaskTextInputs(res.project.mask_text_inputs);
+    } catch (err) {
+      setMaskTextInputs(previous);
+      setError(err instanceof Error ? err.message : "Failed to update masking");
+    } finally {
+      setSavingMask(false);
     }
   }
 
@@ -410,8 +436,9 @@ export function ProjectSettings() {
                 <ToggleRow
                   title="Mask all text inputs"
                   description="Passwords and card fields are always masked"
-                  checked
-                  disabled
+                  checked={maskTextInputs}
+                  disabled={savingMask || !project}
+                  onToggle={toggleMaskTextInputs}
                 />
                 <Field label="Also mask these selectors">
                   <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-[#1717171F] p-2">

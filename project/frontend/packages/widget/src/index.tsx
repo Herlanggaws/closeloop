@@ -62,19 +62,47 @@ function readConfig(): Config {
   };
 }
 
-async function fetchProjectSelectors(cfg: Config): Promise<string[]> {
-  if (!cfg.key) return [];
+type IngestMaskConfig = {
+  selectors: string[];
+  maskTextInputs: boolean;
+};
+
+const ALWAYS_MASK_SELECTORS = [
+  ".closeloop-mask",
+  "[data-closeloop-mask]",
+  "input[type=password]",
+  "input[autocomplete^=cc-]",
+];
+
+const TEXT_INPUT_MASK_SELECTORS = [
+  "input:not([type])",
+  "input[type=text]",
+  "input[type=email]",
+  "input[type=search]",
+  "input[type=url]",
+  "input[type=tel]",
+  "input[type=number]",
+  "textarea",
+];
+
+async function fetchProjectMaskConfig(cfg: Config): Promise<IngestMaskConfig> {
+  if (!cfg.key) return { selectors: [], maskTextInputs: true };
   try {
     const res = await fetch(`${cfg.api}/v1/ingest/config`, {
       headers: { "X-Closeloop-Key": cfg.key },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { selectors: [], maskTextInputs: true };
     const data = await res.json();
     const list = data?.sensitive_selectors;
-    if (!Array.isArray(list)) return [];
-    return list.filter((s: unknown): s is string => typeof s === "string" && s.trim() !== "");
+    const selectors = Array.isArray(list)
+      ? list.filter((s: unknown): s is string => typeof s === "string" && s.trim() !== "")
+      : [];
+    return {
+      selectors,
+      maskTextInputs: data?.mask_text_inputs !== false,
+    };
   } catch {
-    return [];
+    return { selectors: [], maskTextInputs: true };
   }
 }
 
@@ -83,11 +111,22 @@ function isCloseloopWidgetNode(node: Node) {
   return node.id === "closeloop-root" || Boolean(node.closest("#closeloop-root"));
 }
 
-async function maskAndShot(selectors: string[]) {
+async function maskAndShot(selectors: string[], maskTextInputs: boolean) {
   const nodes: HTMLElement[] = [];
-  for (const sel of [".closeloop-mask", "[data-closeloop-mask]", ...selectors]) {
+  const seen = new Set<HTMLElement>();
+  const pushNode = (n: Element) => {
+    if (!(n instanceof HTMLElement) || isCloseloopWidgetNode(n) || seen.has(n)) return;
+    seen.add(n);
+    nodes.push(n);
+  };
+  const list = [
+    ...ALWAYS_MASK_SELECTORS,
+    ...(maskTextInputs ? TEXT_INPUT_MASK_SELECTORS : []),
+    ...selectors,
+  ];
+  for (const sel of list) {
     try {
-      document.querySelectorAll(sel).forEach((n) => nodes.push(n as HTMLElement));
+      document.querySelectorAll(sel).forEach(pushNode);
     } catch {
       // ignore invalid selectors from project settings
     }
@@ -222,9 +261,9 @@ function Widget({ cfg }: { cfg: Config }) {
     let cancelled = false;
 
     async function loadConfigAndUpdates() {
-      const projectSelectors = await fetchProjectSelectors(cfg);
-      if (!cancelled && projectSelectors.length) {
-        cfg.selectors = uniqueSelectors(cfg.selectors, projectSelectors);
+      const maskCfg = await fetchProjectMaskConfig(cfg);
+      if (!cancelled && maskCfg.selectors.length) {
+        cfg.selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
       }
       try {
         const update = await fetchUpdates(cfg);
@@ -296,10 +335,10 @@ function Widget({ cfg }: { cfg: Config }) {
     setCapturing(true);
     setError("");
     try {
-      const projectSelectors = await fetchProjectSelectors(cfg);
-      const selectors = uniqueSelectors(cfg.selectors, projectSelectors);
+      const maskCfg = await fetchProjectMaskConfig(cfg);
+      const selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
       cfg.selectors = selectors;
-      const next = await maskAndShot(selectors);
+      const next = await maskAndShot(selectors, maskCfg.maskTextInputs);
       setShot(next);
       setStrokes([]);
       setDraft(null);

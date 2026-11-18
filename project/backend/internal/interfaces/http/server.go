@@ -736,6 +736,7 @@ func (s *Server) patchProject(c *gin.Context) {
 		Platforms          *[]string `json:"platforms"`
 		NotifyEnabled      *bool     `json:"notify_enabled"`
 		BannerEnabled      *bool     `json:"banner_enabled"`
+		MaskTextInputs     *bool     `json:"mask_text_inputs"`
 		SensitiveSelectors *[]string `json:"sensitive_selectors"`
 		BoardSlug          *string   `json:"board_slug"`
 	}
@@ -768,7 +769,7 @@ func (s *Server) patchProject(c *gin.Context) {
 		trimmed := strings.TrimSpace(*body.BoardSlug)
 		body.BoardSlug = &trimmed
 	}
-	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.BannerEnabled, body.SensitiveSelectors, body.BoardSlug); err != nil {
+	if err := s.Store.UpdateProjectSettings(c.Request.Context(), id, body.Name, body.Platforms, body.NotifyEnabled, body.BannerEnabled, body.MaskTextInputs, body.SensitiveSelectors, body.BoardSlug); err != nil {
 		mapErr(c, err)
 		return
 	}
@@ -1301,7 +1302,10 @@ func (s *Server) ingestConfig(c *gin.Context) {
 	if selectors == nil {
 		selectors = []string{}
 	}
-	c.JSON(200, gin.H{"sensitive_selectors": selectors})
+	c.JSON(200, gin.H{
+		"sensitive_selectors": selectors,
+		"mask_text_inputs":    p.MaskTextInputs,
+	})
 }
 
 func (s *Server) ingestReport(c *gin.Context) {
