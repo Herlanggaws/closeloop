@@ -6,6 +6,7 @@ export type PublicIdea = {
   title: string;
   type: string;
   status: string;
+  vote_count?: number;
   created_at: string;
 };
 
@@ -33,6 +34,10 @@ export const TYPE_STYLE: Record<string, { bg: string; text: string; label: strin
   idea: { bg: "#FFF7ED", text: "#EA6C0C", label: "Idea" },
   question: { bg: "#EFF6FF", text: "#266DF0", label: "Question" },
 };
+
+export function votedStorageKey(ideaId: string) {
+  return `saidloop_voted_${ideaId}`;
+}
 
 export function PublicBoardHeader({
   projectName,
@@ -110,14 +115,43 @@ export function formatIdeaDate(iso: string): string {
   });
 }
 
-export function VoteStub() {
+export function VoteCountBox({
+  count,
+  onClick,
+  voted,
+}: {
+  count: number;
+  onClick?: () => void;
+  voted?: boolean;
+}) {
+  const interactive = Boolean(onClick);
+  const className = `flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg border ${
+    voted
+      ? "border-[#16A34A33] bg-[#F0FDF4]"
+      : "border-[#17171714] bg-[#FAFAFA]"
+  } ${interactive ? "cursor-pointer hover:border-[#17171733]" : ""}`;
+
+  const inner = (
+    <>
+      <span className={`font-ds-ui text-[11px] ${voted ? "text-[#16A34A]" : "text-[#A3A3A3]"}`}>
+        ▲
+      </span>
+      <span
+        className={`font-ds-ui text-[12px] font-medium ${
+          voted ? "text-[#16A34A]" : "text-[#171717]"
+        }`}
+      >
+        {count}
+      </span>
+    </>
+  );
+
+  if (!interactive) {
+    return <div className={className}>{inner}</div>;
+  }
   return (
-    <div
-      className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg border border-[#17171714] bg-[#FAFAFA]"
-      title="Voting coming soon"
-    >
-      <span className="font-ds-ui text-[11px] text-[#A3A3A3]">▲</span>
-      <span className="font-ds-ui text-[12px] font-medium text-[#A3A3A3]">—</span>
-    </div>
+    <button type="button" onClick={onClick} className={className} aria-label="Vote for this idea">
+      {inner}
+    </button>
   );
 }

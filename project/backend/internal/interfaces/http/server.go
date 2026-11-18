@@ -77,6 +77,8 @@ func (s *Server) Router() *gin.Engine {
 
 		api.GET("/public/boards/:slug", s.getPublicBoard)
 		api.GET("/public/boards/:slug/ideas/:id", s.getPublicIdea)
+		api.POST("/public/boards/:slug/ideas/:id/votes", s.requestPublicVote)
+		api.GET("/public/votes/confirm", s.confirmPublicVote)
 	}
 
 	ingest := r.Group("/v1/ingest")
@@ -1011,6 +1013,51 @@ func (s *Server) getPublicIdea(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"project": board, "idea": idea})
+}
+
+func (s *Server) requestPublicVote(c *gin.Context) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	req, err := s.Store.RequestIdeaVote(c.Request.Context(), c.Param("slug"), c.Param("id"), body.Email)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if req.SendEmail {
+		_ = s.Store.EnqueueVoteVerify(
+			c.Request.Context(),
+			req.TicketID,
+			req.Email,
+			req.RawToken,
+			req.ProjectName,
+			req.IdeaTitle,
+			req.BoardSlug,
+		)
+	}
+	c.JSON(202, gin.H{"ok": true, "message": "Check your email to confirm your vote."})
+}
+
+func (s *Server) confirmPublicVote(c *gin.Context) {
+	result, err := s.Store.ConfirmIdeaVote(c.Request.Context(), c.Query("t"))
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrNotFound):
+			writeErr(c, 404, "NOT_FOUND", "invalid vote link")
+		case errors.Is(err, application.ErrConflict):
+			writeErr(c, 409, "ALREADY_USED", "this vote link was already used")
+		case errors.Is(err, application.ErrGone):
+			writeErr(c, 410, "EXPIRED", "this vote link has expired")
+		default:
+			mapErr(c, err)
+		}
+		return
+	}
+	c.JSON(200, gin.H{"vote": result})
 }
 
 func (s *Server) addNote(c *gin.Context) {

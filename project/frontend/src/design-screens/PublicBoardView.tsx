@@ -11,7 +11,7 @@ import {
   STATUS_DOT,
   STATUS_LABEL,
   TYPE_STYLE,
-  VoteStub,
+  VoteCountBox,
 } from "./publicBoardShared";
 
 type FilterKey = "all" | "open" | "in_progress" | "fixed";
@@ -111,7 +111,7 @@ export function PublicBoardView({ slug }: { slug: string }) {
                           aria-label={idea.title}
                           className="flex gap-4 px-5 py-4 no-underline"
                         >
-                          <VoteStub />
+                          <VoteCountBox count={idea.vote_count ?? 0} />
                           <div className="min-w-0 flex-1">
                             <h2 className="font-ds-sans text-[16px] font-semibold text-[#171717]">
                               {idea.title}

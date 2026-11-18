@@ -50,9 +50,9 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-18…S-20 Widget UX | `/preview/widget/*` + `@closeloop/widget` | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet env |
 | S-21 Fixed banner | `/preview/widget/fixed` + `@closeloop/widget` | **Wired** ingest updates → S-21 banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` | Needs F3 SDK |
-| S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed + waitlist confirmation wired (Go + Resend); S-27 vote verify/released HTML ready (no board wire yet) |
+| S-23 / S-27 Emails | `/preview/email/*` | S-23 fixed + waitlist confirmation wired; S-27 vote verify wired (board); released-to-voters HTML ready (enqueue later) |
 | S-28 Join Waitlist | `/` modal + `/preview/waitlist` | Enter / invalid / joined / already + resend; CTAs open modal (`?join=1`) |
-| S-24…S-26 Public board | `/board/[slug]` | **Partial** pen-aligned S-24 list + S-25 detail + S-26 roadmap columns (read-only); votes/comments later |
+| S-24…S-26 Public board | `/board/[slug]` | **Partial** pen-aligned list/detail/roadmap + email-verified votes; comments later |
 
 ### Todo — by PRD feature
 
@@ -99,7 +99,8 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] **F8** Slack OAuth channel picker
 - [ ] **F8** GitHub Issues / Linear / Jira create + bi-directional status
 - [x] **F9** Builder publish controls + public ideas list (`/app/board`, `/board/[slug]`)
-- [ ] **F9** Votes, comments, release emails (S-24…S-26 pen-aligned; S-27 open)
+- [x] **F9** Email-verified votes on public board (S-27 verify)
+- [ ] **F9** Comments + release emails to voters
 - [ ] **F11** rrweb replay module, attach to ticket, default masking
 
 #### M4 · AI & Business (F10, F12)
@@ -133,7 +134,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation email shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
-| M3 | F8 F9 F11 | Slack + public board list/detail/roadmap pen-aligned; votes/OAuth/replay still open |
+| M3 | F8 F9 F11 | Slack + public board + votes shipped; comments/OAuth/replay still open |
 | M4 | F10 F12 | Design only |
 | M5 | Billing + public beta | Todo |
 

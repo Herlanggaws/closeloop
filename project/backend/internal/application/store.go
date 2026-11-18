@@ -21,6 +21,7 @@ var (
 	ErrPlanRequired   = errors.New("plan required")
 	ErrSeatLimit      = errors.New("seat limit reached")
 	ErrInvalidInput   = errors.New("invalid input")
+	ErrGone           = errors.New("gone")
 )
 
 type Store struct {

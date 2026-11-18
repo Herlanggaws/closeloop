@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { API_URL } from "@/lib/api";
+import { VoteEmailModal } from "./VoteEmailModal";
 import {
   formatIdeaDate,
   PublicBoardFooter,
@@ -12,7 +13,8 @@ import {
   STATUS_DOT,
   STATUS_LABEL,
   TYPE_STYLE,
-  VoteStub,
+  VoteCountBox,
+  votedStorageKey,
 } from "./publicBoardShared";
 
 export function PublicIdeaDetailView({ slug, ideaId }: { slug: string; ideaId: string }) {
@@ -20,6 +22,9 @@ export function PublicIdeaDetailView({ slug, ideaId }: { slug: string; ideaId: s
   const [idea, setIdea] = useState<PublicIdea | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [voteOpen, setVoteOpen] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [votedAs, setVotedAs] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -50,8 +55,18 @@ export function PublicIdeaDetailView({ slug, ideaId }: { slug: string; ideaId: s
     };
   }, [slug, ideaId]);
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(votedStorageKey(ideaId));
+      if (saved) setVotedAs(saved);
+    } catch {
+      /* ignore */
+    }
+  }, [ideaId]);
+
   const typeStyle = TYPE_STYLE[idea?.type || ""] || TYPE_STYLE.idea;
   const createdLabel = idea ? formatIdeaDate(idea.created_at) : "";
+  const voteCount = idea?.vote_count ?? 0;
 
   return (
     <div className="min-h-screen bg-[#F7F7F7]">
@@ -82,7 +97,11 @@ export function PublicIdeaDetailView({ slug, ideaId }: { slug: string; ideaId: s
 
             <article className="rounded-xl border border-[#17171714] bg-white px-6 py-6">
               <div className="flex gap-4">
-                <VoteStub />
+                <VoteCountBox
+                  count={voteCount}
+                  voted={Boolean(votedAs)}
+                  onClick={votedAs || pendingEmail ? undefined : () => setVoteOpen(true)}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -107,9 +126,19 @@ export function PublicIdeaDetailView({ slug, ideaId }: { slug: string; ideaId: s
                   <h1 className="mt-3 font-ds-sans text-2xl font-medium tracking-[-0.4px] text-[#171717]">
                     {idea.title}
                   </h1>
-                  <p className="mt-4 rounded-lg bg-[#F0FDF4] px-3 py-2 font-ds-ui text-[12.5px] text-[#166534]">
-                    Voting is coming soon. We&apos;ll email verified voters when this ships.
-                  </p>
+                  {votedAs ? (
+                    <p className="mt-4 rounded-lg bg-[#F0FDF4] px-3 py-2 font-ds-ui text-[12.5px] text-[#166534]">
+                      You voted as {votedAs}. We&apos;ll email you when this ships.
+                    </p>
+                  ) : pendingEmail ? (
+                    <p className="mt-4 rounded-lg bg-[#EFF6FF] px-3 py-2 font-ds-ui text-[12.5px] text-[#1D4ED8]">
+                      Check {pendingEmail} for a confirm link. Your vote counts after you click it.
+                    </p>
+                  ) : (
+                    <p className="mt-4 font-ds-ui text-[13px] text-[#737373]">
+                      Tap the vote button and confirm your email so we can tell you when this ships.
+                    </p>
+                  )}
                 </div>
               </div>
             </article>
@@ -141,6 +170,19 @@ export function PublicIdeaDetailView({ slug, ideaId }: { slug: string; ideaId: s
       </main>
 
       <PublicBoardFooter />
+
+      {voteOpen && idea ? (
+        <VoteEmailModal
+          slug={slug}
+          ideaId={idea.id}
+          ideaTitle={idea.title}
+          onClose={() => setVoteOpen(false)}
+          onSubmitted={(email) => {
+            setPendingEmail(email);
+            setVoteOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

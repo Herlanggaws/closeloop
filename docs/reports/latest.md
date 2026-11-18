@@ -1,14 +1,15 @@
-# Report test run — 2026-11-18T032400Z
+# Report test run — 2026-11-18T033820Z
 
-Branch: dev @ pending
+Branch: dev @ 67c4bdd
 Result: PASS
-Duration: Go ~12s + UI ~11s
+Duration: 25s
 
 ## Summary
 
-- Suite: `go test` report L0/L1/L2 + Playwright `R-UI-01`…`R-UI-10`
-- Notes: pen-aligned S-11/S-13/S-24/S-25 (+ thin S-26 roadmap columns)
-- Command: `pnpm test:reports` + `pnpm test:reports:ui`
+- Suite: Playwright L3 report UI (`R-UI-01`…`R-UI-11`)
+- Base URL: `http://localhost:3000`
+- API: `http://localhost:8080`
+- Command: `pnpm test:reports:ui` / `bash scripts/test-reports-ui.sh`
 
 ## Next human action
 

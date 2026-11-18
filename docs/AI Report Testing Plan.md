@@ -51,7 +51,7 @@ MCP: list_open_feedback → get_feedback_context → mark_fixed / update_status 
 - Sentry/PostHog deep links, rrweb, Slack/Linear, F10 auto-PR
 - Pixel match vs `closeloop.pen`
 
-**Related (bukan report loop):** waitlist — `W-01` / `W-02` / `W-03` in `waitlist_test.go` (send once on insert + `inserted`/`created_at`; invalid email no send; resend for existing email). S-27 vote HTML unit tests in `vote_test.go` (no board wire yet).
+**Related (bukan report loop):** waitlist — `W-01` / `W-02` / `W-03` in `waitlist_test.go` (send once on insert + `inserted`/`created_at`; invalid email no send; resend for existing email). S-27 vote verify: HTML unit tests in `vote_test.go`; board wire covered by `R-BOARD-05`/`06` + `R-UI-11`.
 
 ---
 
@@ -153,6 +153,8 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-BOARD-02 | Unpublished / bad slug | Ticket not public / unknown slug | GET public board | Empty list / 404 | is_public filter |
 | R-BOARD-03 | No private fields | Published ticket with email/context | GET public board + idea | Payload has no message/context/email/attachments | PublicIdea DTO |
 | R-BOARD-04 | Idea detail 404 | Unpublished / wrong slug / unknown id | GET public idea | 404 | PublicIdeaBySlug |
+| R-BOARD-05 | Vote confirm | Publish + POST vote | Process job + GET confirm | vote_count=1; reuse 409 | RequestIdeaVote + ConfirmIdeaVote |
+| R-BOARD-06 | Vote guards | Unpublished / bad email | POST votes | 404 / 400 | PublicIdeaBySlug + NormalizeVoterEmail |
 
 ### 4.5 MCP read path (F5 · SC-2)
 
@@ -176,6 +178,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-07 | Public board | Publish idea via API | Open `/board/{slug}` | Published title visible |
 | R-UI-08 | Idea detail | Publish idea via API | Open list → click idea | Detail title + back to list |
 | R-UI-10 | Integrations catalog | Seed session | Open `/app/settings/integrations` | Notify/Debugging sections + Slack Configure webhook field |
+| R-UI-11 | Board vote | Publish idea | Vote modal → confirm token → idea | Voted banner + count path | S-27 verify |
 
 ---
 
@@ -270,7 +273,7 @@ Manusia **tidak** perlu re-klik flow; cukup buka file ini.
 
 ### Phase B — L0/L1/L2 cases (prioritas)
 
-- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…04 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
+- [x] Implement R-ING-01…08, R-INB-01…07, R-MRG-01…03, R-FIX-01…06, R-MCP-01…04, R-SLACK-01…05, R-BOARD-01…06 sebagai Go tests (+ `TestR_GOLDEN_SC2`)
 - [x] Mail sink assert untuk R-FIX-03/04
 - [x] MCP JSON-RPC client helper
 
