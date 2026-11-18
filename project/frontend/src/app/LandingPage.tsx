@@ -108,8 +108,18 @@ function FaqList() {
   );
 }
 
+type BillingPeriod = "monthly" | "yearly";
+
+const PLAN_PRICES = {
+  indie: { monthly: 12, yearly: 10 },
+  studio: { monthly: 39, yearly: 33 },
+  business: { monthly: 149, yearly: 124 },
+} as const;
+
 export function LandingPageDesign({ onJoinWaitlist }: Props) {
   const openWaitlist = onJoinWaitlist ?? (() => {});
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
+  const isYearly = billingPeriod === "yearly";
 
   return (
     <>
@@ -3288,30 +3298,50 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </h2>
           <div
             data-pencil-name="Billing Toggle"
+            role="group"
+            aria-label="Billing period"
             className="box-border w-fit h-fit shrink-0 flex flex-row gap-[2px] p-[3px] justify-start items-start bg-[#F5F5F5] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px]"
           >
-            <div
+            <button
+              type="button"
               data-pencil-name="Monthly"
-              className="box-border w-fit shrink-0 h-[28px] [box-shadow:0px_1px_2px_#0000000F] flex flex-row gap-[6px] p-[0px_10px] justify-start items-center bg-[#FFFFFF] rounded-[6px]"
+              aria-pressed={!isYearly}
+              onClick={() => setBillingPeriod("monthly")}
+              className={`cursor-pointer border-0 box-border w-fit shrink-0 h-[28px] flex flex-row gap-[6px] p-[0px_10px] justify-start items-center rounded-[6px] transition-[background-color,box-shadow,color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                isYearly
+                  ? "bg-[#FFFFFF00] [box-shadow:none]"
+                  : "bg-[#FFFFFF] [box-shadow:0px_1px_2px_#0000000F]"
+              }`}
             >
-              <div
+              <span
                 data-pencil-name="Label"
-                className="text-[12px]/[normal] box-border text-[#171717] font-ds-ui font-medium text-left [white-space:nowrap]"
+                className={`text-[12px]/[normal] box-border font-ds-ui font-medium text-left [white-space:nowrap] ${
+                  isYearly ? "text-[#737373]" : "text-[#171717]"
+                }`}
               >
                 Monthly
-              </div>
-            </div>
-            <div
+              </span>
+            </button>
+            <button
+              type="button"
               data-pencil-name="Yearly"
-              className="box-border w-fit shrink-0 h-[28px] flex flex-row gap-[6px] p-[0px_10px] justify-start items-center bg-[#FFFFFF00] rounded-[6px]"
+              aria-pressed={isYearly}
+              onClick={() => setBillingPeriod("yearly")}
+              className={`cursor-pointer border-0 box-border w-fit shrink-0 h-[28px] flex flex-row gap-[6px] p-[0px_10px] justify-start items-center rounded-[6px] transition-[background-color,box-shadow,color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                isYearly
+                  ? "bg-[#FFFFFF] [box-shadow:0px_1px_2px_#0000000F]"
+                  : "bg-[#FFFFFF00] [box-shadow:none]"
+              }`}
             >
-              <div
+              <span
                 data-pencil-name="Label"
-                className="text-[12px]/[normal] box-border text-[#737373] font-ds-ui font-medium text-left [white-space:nowrap]"
+                className={`text-[12px]/[normal] box-border font-ds-ui font-medium text-left [white-space:nowrap] ${
+                  isYearly ? "text-[#171717]" : "text-[#737373]"
+                }`}
               >
                 Yearly · 2 months free
-              </div>
-            </div>
+              </span>
+            </button>
           </div>
         </div>
         <div
@@ -3529,7 +3559,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 data-pencil-name="Amount"
                 className="text-[44px]/[44px] box-border text-[#FFFFFF] font-ds-sans font-medium tracking-[-1.4px] text-left [white-space:nowrap]"
               >
-                $12
+                ${PLAN_PRICES.indie[billingPeriod]}
               </div>
               <div
                 data-pencil-name="Period"
@@ -3731,7 +3761,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 data-pencil-name="Amount"
                 className="text-[44px]/[44px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.4px] text-left [white-space:nowrap]"
               >
-                $39
+                ${PLAN_PRICES.studio[billingPeriod]}
               </div>
               <div
                 data-pencil-name="Period"
@@ -3933,7 +3963,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 data-pencil-name="Amount"
                 className="text-[44px]/[44px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.4px] text-left [white-space:nowrap]"
               >
-                $149
+                ${PLAN_PRICES.business[billingPeriod]}
               </div>
               <div
                 data-pencil-name="Period"

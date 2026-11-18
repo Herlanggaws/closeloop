@@ -12,6 +12,7 @@ if ! pg_isready -h localhost -q; then
   exit 1
 fi
 
+export DATABASE_URL="${DATABASE_URL:-postgres://localhost:5432/closeloop?sslmode=disable}"
 MAINT_URL="${DATABASE_URL%/closeloop*}"
 MAINT_URL="${MAINT_URL:-postgres://localhost:5432}/postgres?sslmode=disable"
 
