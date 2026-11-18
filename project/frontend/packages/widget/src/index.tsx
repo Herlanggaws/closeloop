@@ -15,7 +15,7 @@ import {
   startReplayRecording,
 } from "./replay";
 
-type State = "launcher" | "form" | "sent" | "banner";
+type State = "launcher" | "form" | "sent" | "banner" | "snip";
 
 type Config = {
   key: string;
@@ -118,7 +118,11 @@ function isCloseloopWidgetNode(node: Node) {
   return node.id === "closeloop-root" || Boolean(node.closest("#closeloop-root"));
 }
 
-async function maskAndShot(selectors: string[], maskTextInputs: boolean) {
+async function maskAndShot(
+  selectors: string[],
+  maskTextInputs: boolean,
+  cropRegion?: { x: number; y: number; w: number; h: number },
+) {
   const nodes: HTMLElement[] = [];
   const seen = new Set<HTMLElement>();
   const pushNode = (n: Element) => {
@@ -143,18 +147,32 @@ async function maskAndShot(selectors: string[], maskTextInputs: boolean) {
   try {
     const fullCanvas = await domToCanvas(document.body, {
       scale: 1,
+      timeout: 2500,
+      font: false,
       filter: (node) => !isCloseloopWidgetNode(node),
     });
 
     const scrollX = Math.round(window.scrollX || window.pageXOffset || 0);
     const scrollY = Math.round(window.scrollY || window.pageYOffset || 0);
-    const vw = Math.round(window.innerWidth || document.documentElement.clientWidth || 1024);
-    const vh = Math.round(window.innerHeight || document.documentElement.clientHeight || 768);
 
-    const sx = Math.max(0, Math.min(scrollX, fullCanvas.width - 1));
-    const sy = Math.max(0, Math.min(scrollY, fullCanvas.height - 1));
-    const sw = Math.max(1, Math.min(vw, fullCanvas.width - sx));
-    const sh = Math.max(1, Math.min(vh, fullCanvas.height - sy));
+    let sx: number;
+    let sy: number;
+    let sw: number;
+    let sh: number;
+
+    if (cropRegion) {
+      sx = Math.max(0, Math.min(scrollX + cropRegion.x, fullCanvas.width - 1));
+      sy = Math.max(0, Math.min(scrollY + cropRegion.y, fullCanvas.height - 1));
+      sw = Math.max(1, Math.min(cropRegion.w, fullCanvas.width - sx));
+      sh = Math.max(1, Math.min(cropRegion.h, fullCanvas.height - sy));
+    } else {
+      const vw = Math.round(window.innerWidth || document.documentElement.clientWidth || 1024);
+      const vh = Math.round(window.innerHeight || document.documentElement.clientHeight || 768);
+      sx = Math.max(0, Math.min(scrollX, fullCanvas.width - 1));
+      sy = Math.max(0, Math.min(scrollY, fullCanvas.height - 1));
+      sw = Math.max(1, Math.min(vw, fullCanvas.width - sx));
+      sh = Math.max(1, Math.min(vh, fullCanvas.height - sy));
+    }
 
     // Cap max dimensions so 4K / retina displays don't produce oversized images
     const MAX_W = 1920;
@@ -322,12 +340,18 @@ function Widget({ cfg }: { cfg: Config }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const drawing = useRef(false);
+  const maskConfigRef = useRef<IngestMaskConfig | null>(null);
+  const [snipRect, setSnipRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [snipFlash, setSnipFlash] = useState(false);
+  const snipStart = useRef<{ x: number; y: number } | null>(null);
+  const snipping = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadConfigAndUpdates() {
       const maskCfg = await fetchProjectMaskConfig(cfg);
+      maskConfigRef.current = maskCfg;
       if (cancelled) return;
       if (maskCfg.selectors.length) {
         cfg.selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
@@ -408,7 +432,8 @@ function Widget({ cfg }: { cfg: Config }) {
     setCapturing(true);
     setError("");
     try {
-      const maskCfg = await fetchProjectMaskConfig(cfg);
+      const maskCfg = maskConfigRef.current ?? (await fetchProjectMaskConfig(cfg));
+      maskConfigRef.current = maskCfg;
       const selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
       cfg.selectors = selectors;
       const next = await maskAndShot(selectors, maskCfg.maskTextInputs);
@@ -429,6 +454,85 @@ function Widget({ cfg }: { cfg: Config }) {
     setStrokes([]);
     setDraft(null);
     setState("form");
+  }
+
+  function startSnip() {
+    setSnipRect(null);
+    setSnipFlash(false);
+    snipStart.current = null;
+    snipping.current = false;
+    setState("snip");
+  }
+
+  function cancelSnip() {
+    setSnipRect(null);
+    setSnipFlash(false);
+    snipStart.current = null;
+    snipping.current = false;
+    setState("form");
+  }
+
+  useEffect(() => {
+    if (state !== "snip") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        cancelSnip();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [state]);
+
+  function onSnipPointerDown(e: PointerEvent) {
+    if (snipFlash) return;
+    snipping.current = true;
+    snipStart.current = { x: e.clientX, y: e.clientY };
+    setSnipRect({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
+    (e.target as HTMLElement)?.setPointerCapture?.(e.pointerId);
+  }
+
+  function onSnipPointerMove(e: PointerEvent) {
+    if (!snipping.current || !snipStart.current || snipFlash) return;
+    const x = Math.min(snipStart.current.x, e.clientX);
+    const y = Math.min(snipStart.current.y, e.clientY);
+    const w = Math.abs(e.clientX - snipStart.current.x);
+    const h = Math.abs(e.clientY - snipStart.current.y);
+    setSnipRect({ x, y, w, h });
+  }
+
+  async function onSnipPointerUp(e: PointerEvent) {
+    if (!snipping.current || snipFlash) return;
+    snipping.current = false;
+    (e.target as HTMLElement)?.releasePointerCapture?.(e.pointerId);
+    const rect = snipRect;
+    if (!rect || rect.w < 20 || rect.h < 20) {
+      setSnipRect(null);
+      return;
+    }
+
+    // Trigger visual capture flash on the selected area so the user gets clear feedback
+    setSnipFlash(true);
+    await new Promise((r) => setTimeout(r, 260));
+    setSnipFlash(false);
+
+    setState("form");
+    setCapturing(true);
+    setError("");
+    try {
+      const maskCfg = maskConfigRef.current ?? (await fetchProjectMaskConfig(cfg));
+      maskConfigRef.current = maskCfg;
+      const selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
+      cfg.selectors = selectors;
+      const next = await maskAndShot(selectors, maskCfg.maskTextInputs, rect);
+      setShot(next);
+      setStrokes([]);
+      setDraft(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Snip capture failed");
+    } finally {
+      setCapturing(false);
+      setSnipRect(null);
+    }
   }
 
   function pointerPos(e: PointerEvent, canvas: HTMLCanvasElement) {
@@ -537,12 +641,92 @@ function Widget({ cfg }: { cfg: Config }) {
     .chip.on { background:#171717; color:#fff; }
     .shot-head { display:flex; justify-content:space-between; align-items:center; margin:4px 0 8px; }
     .shot-label { font-size:12px; font-weight:600; color:#171717; }
+    .shot-actions { display:flex; gap:10px; align-items:center; }
     .link { background:none; border:0; color:#2563eb; font-size:12px; font-weight:500; cursor:pointer; padding:0; }
+    .link:disabled { opacity:.5; cursor:default; }
+    .snip-overlay {
+      position:fixed; inset:0; z-index:2147483640;
+      cursor:crosshair; touch-action:none; user-select:none;
+      background:rgba(0,0,0,0.22);
+    }
+    .snip-bar {
+      position:fixed; top:20px; left:50%; transform:translateX(-50%);
+      display:flex; align-items:center; gap:12px;
+      background:#171717; color:#fff; padding:8px 16px; border-radius:999px;
+      font-size:13px; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,0.25);
+      z-index:2147483647; pointer-events:auto;
+    }
+    .snip-cancel {
+      background:#333; color:#fff; border:0; border-radius:999px;
+      padding:4px 10px; font-size:12px; cursor:pointer; font-weight:500;
+    }
+    .snip-cancel:hover { background:#444; }
+    .snip-box {
+      position:absolute;
+      box-shadow:0 0 0 9999px rgba(0,0,0,0.45);
+      border:2px dashed #da314a;
+      pointer-events:none;
+      border-radius:2px;
+    }
+    @keyframes snipFlash {
+      0% {
+        background: rgba(255, 255, 255, 0.85);
+        border-color: #2563eb;
+      }
+      50% {
+        background: rgba(37, 99, 235, 0.25);
+        border-color: #2563eb;
+      }
+      100% {
+        background: rgba(22, 163, 74, 0.15);
+        border-color: #16a34a;
+      }
+    }
+    .snip-box.flash {
+      animation: snipFlash 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      border: 2px solid #2563eb;
+    }
+    .snip-badge {
+      position:absolute; left:0; bottom:-24px;
+      background:#171717; color:#fff; font-size:11px;
+      padding:2px 6px; border-radius:4px; font-family:monospace;
+      white-space:nowrap; pointer-events:none;
+    }
+    .snip-flash-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 2px;
+      animation: shotPop 0.2s ease-out;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes shotPop {
+      0% { opacity: 0; transform: scale(0.98); }
+      100% { opacity: 1; transform: scale(1); }
+    }
     .preview {
       position:relative; width:100%; border-radius:12px; overflow:hidden;
       border:1px solid #17171714; background:#f5f5f5; min-height:160px;
     }
-    .preview canvas { display:block; width:100%; height:auto; cursor:crosshair; touch-action:none; }
+    .preview-loading {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:8px; background:linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%);
+      color:#525252; font-size:12px; font-weight:500;
+      z-index:2;
+    }
+    .preview-loading-spinner {
+      width:22px; height:22px; border:2px solid #d4d4d4;
+      border-top-color:#171717; border-radius:50%;
+      animation:spin 0.75s linear infinite;
+    }
+    .preview canvas {
+      display:block; width:100%; height:auto;
+      cursor:crosshair; touch-action:none;
+      animation: shotPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
     .preview .empty { padding:28px 12px; text-align:center; color:#a3a3a3; font-size:12px; }
     .dock {
       position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
@@ -564,6 +748,8 @@ function Widget({ cfg }: { cfg: Config }) {
       font-size:12px; font-weight:500; color:#171717;
     }
     .powered { margin-top:12px; text-align:center; color:#a3a3a3; font-size:11px; }
+    .powered a { color:#737373; text-decoration:none; font-weight:500; }
+    .powered a:hover { color:#171717; text-decoration:underline; }
     .banner {
       position:fixed; left:50%; top:24px; transform:translateX(-50%);
       display:flex; align-items:center; gap:14px;
@@ -619,12 +805,23 @@ function Widget({ cfg }: { cfg: Config }) {
 
             <div class="shot-head">
               <span class="shot-label">Screenshot</span>
-              <button type="button" class="link" disabled={capturing || busy} onClick={() => void captureShot()}>
-                {capturing ? "Capturing…" : "Retake"}
-              </button>
+              <div class="shot-actions">
+                <button type="button" class="link" disabled={capturing || busy} onClick={startSnip}>
+                  ✂ Snip area
+                </button>
+                <button type="button" class="link" disabled={capturing || busy} onClick={() => void captureShot()}>
+                  {capturing ? "Capturing…" : "Visible area"}
+                </button>
+              </div>
             </div>
             <div class="preview" ref={previewRef}>
-              {!shot && <div class="empty">{capturing ? "Capturing page…" : "No screenshot yet"}</div>}
+              {capturing && (
+                <div class="preview-loading">
+                  <div class="preview-loading-spinner" />
+                  <span>Processing capture…</span>
+                </div>
+              )}
+              {!shot && !capturing && <div class="empty">No screenshot yet</div>}
               {shot && (
                 <>
                   <canvas
@@ -680,7 +877,12 @@ function Widget({ cfg }: { cfg: Config }) {
                 Cancel
               </button>
             </div>
-            <div class="powered">Powered by Saidloop</div>
+            <div class="powered">
+              Powered by{" "}
+              <a href="https://saidloop.com" target="_blank" rel="noopener noreferrer">
+                Saidloop
+              </a>
+            </div>
           </div>
         </>
       )}
@@ -698,7 +900,12 @@ function Widget({ cfg }: { cfg: Config }) {
           >
             Done
           </button>
-          <div class="powered">Powered by Saidloop</div>
+          <div class="powered">
+            Powered by{" "}
+            <a href="https://saidloop.com" target="_blank" rel="noopener noreferrer">
+              Saidloop
+            </a>
+          </div>
         </div>
       )}
       {state === "banner" && banner && (
@@ -727,6 +934,43 @@ function Widget({ cfg }: { cfg: Config }) {
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
+        </div>
+      )}
+      {state === "snip" && (
+        <div
+          class="snip-overlay"
+          onPointerDown={onSnipPointerDown}
+          onPointerMove={onSnipPointerMove}
+          onPointerUp={onSnipPointerUp}
+        >
+          <div class="snip-bar">
+            <span>Drag a box around what you want to capture</span>
+            <button type="button" class="snip-cancel" onClick={cancelSnip}>
+              Cancel (Esc)
+            </button>
+          </div>
+          {snipRect && snipRect.w > 0 && snipRect.h > 0 && (
+            <div
+              class={`snip-box ${snipFlash ? "flash" : ""}`}
+              style={{
+                left: `${snipRect.x}px`,
+                top: `${snipRect.y}px`,
+                width: `${snipRect.w}px`,
+                height: `${snipRect.h}px`,
+              }}
+            >
+              <span class="snip-badge">
+                {snipFlash ? "✓ Captured!" : `${snipRect.w} × ${snipRect.h}`}
+              </span>
+              {snipFlash && (
+                <div class="snip-flash-center">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </>
