@@ -272,6 +272,19 @@ func (h *reportHarness) uploadScreenshot(attachmentID, uploadToken string, data 
 	}
 }
 
+func (h *reportHarness) uploadScreenshotDataURL(attachmentID, uploadToken, dataURL string) {
+	h.t.Helper()
+	path := fmt.Sprintf("/v1/ingest/attachments/%s/upload?token=%s", attachmentID, uploadToken)
+	body, _ := json.Marshal(map[string]string{"data_url": dataURL})
+	req := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.router.ServeHTTP(w, req)
+	if w.Code != 200 {
+		h.t.Fatalf("upload json: %d %s", w.Code, w.Body.String())
+	}
+}
+
 func (h *reportHarness) drainNotifyJobs() int {
 	h.t.Helper()
 	n, err := application.ProcessJobsOnce(context.Background(), h.store, application.WorkerDeps{

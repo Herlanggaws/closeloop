@@ -103,6 +103,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-ING-06 | Config selectors | Project has `sensitive_selectors` | `GET /v1/ingest/config` | Selectors returned for widget | ingestConfig |
 | R-ING-07 | Context JSON | context.url / browser set | Create report | Stored in report.context; detail API returns it | JSONB round-trip |
 | R-ING-08 | Platform tag | platform=web | Create | Inbox filter `?platform=web` includes it | listTickets filter |
+| R-ING-09 | JSON data_url upload | Report created | PUT upload `Content-Type: application/json` + `{data_url}` | attachment uploaded (WAF-safe path) | decodeAttachmentBody |
 
 ### 4.2 Inbox & detail (F4 · S-06 / S-07)
 

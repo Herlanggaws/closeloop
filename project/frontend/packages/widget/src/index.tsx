@@ -96,15 +96,6 @@ async function maskAndShot(selectors: string[]) {
   }
 }
 
-function dataURLtoBlob(dataUrl: string) {
-  const [header, data] = dataUrl.split(",");
-  const mime = header.match(/:(.*?);/)?.[1] || "image/png";
-  const bin = atob(data);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return new Blob([arr], { type: mime });
-}
-
 function harvestContextIds() {
   const context: Record<string, unknown> = {
     url: location.href,
@@ -159,10 +150,13 @@ async function submitReport(
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
   if (data.upload_url) {
-    await fetch(data.upload_url, {
+    // JSON + base64: DNSCloud/WAF blocks raw image/png PUT bodies on api.saidloop.com.
+    const up = await fetch(data.upload_url, {
       method: "PUT",
-      body: dataURLtoBlob(payload.screenshot),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data_url: payload.screenshot }),
     });
+    if (!up.ok) throw new Error(await up.text());
   }
   await fetch(`${cfg.api}/v1/ingest/reports/${data.report_id}/complete`, {
     method: "POST",

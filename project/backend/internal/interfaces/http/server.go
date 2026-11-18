@@ -1188,9 +1188,18 @@ func (s *Server) uploadAttachment(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	n, err := s.Files.Put(key, c.Request.Body)
+	body, size, err := decodeAttachmentBody(c.GetHeader("Content-Type"), c.Request.Body)
 	if err != nil {
 		mapErr(c, err)
+		return
+	}
+	n, err := s.Files.Put(key, body)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if n != size {
+		writeErr(c, 500, "INTERNAL", "upload size mismatch")
 		return
 	}
 	if err := s.Store.CompleteUpload(c.Request.Context(), c.Param("id"), token, n); err != nil {
