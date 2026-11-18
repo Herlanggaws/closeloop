@@ -176,18 +176,18 @@ test.describe("Report UI smoke (R-UI)", () => {
     expect(secondBody.updates || []).toHaveLength(0);
   });
 
-  test("R-UI-06 post-M1 nav: board live, Auto PR still hidden", async ({ page, request }) => {
+  test("R-UI-06 post-M1 nav: board + Auto PR live", async ({ page, request }) => {
     const session = await seedSession(request);
     await gotoInbox(page, session);
 
     const nav = page.locator("aside nav");
     await expect(nav.getByRole("link", { name: "Inbox" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Public board" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Auto PR runs" })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "Auto PR runs" })).toBeVisible();
 
     await page.goto("/app/auto-pr");
-    await expect(page).toHaveURL(/\/app\/inbox/);
-    await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+    await expect(page).toHaveURL(/\/app\/auto-pr/);
+    await expect(page.getByRole("heading", { name: "Auto PR runs" })).toBeVisible();
 
     await page.goto("/app/board");
     await expect(page).toHaveURL(/\/app\/board/);

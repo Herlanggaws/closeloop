@@ -9,6 +9,7 @@ export { ReportDetail } from "./ReportDetail";
 export { MergeDuplicates } from "./MergeDuplicates";
 export { MarkFixed } from "./MarkFixed";
 export { AutoPR } from "./AutoPR";
+export { AutoPRRuns } from "./AutoPRRuns";
 export { PublicBoard } from "./PublicBoard";
 export { ProjectSettings } from "./ProjectSettings";
 export { Integrations } from "./Integrations";

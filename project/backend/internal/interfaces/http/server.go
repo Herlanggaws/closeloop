@@ -71,9 +71,17 @@ func (s *Server) Router() *gin.Engine {
 		api.GET("/projects/:id/integrations", s.authRequired(), s.listIntegrations)
 		api.PUT("/projects/:id/integrations/:provider", s.authRequired(), s.putIntegration)
 		api.DELETE("/projects/:id/integrations/:provider", s.authRequired(), s.deleteIntegration)
+		api.GET("/integrations/github/install", s.authRequired(), s.githubInstall)
+		api.GET("/integrations/github/callback", s.githubSetupCallback)
+		api.POST("/projects/:id/integrations/github_app/complete", s.authRequired(), s.completeGitHubApp)
+		api.GET("/projects/:id/integrations/github_app/repos", s.authRequired(), s.listGitHubRepos)
+		api.GET("/projects/:id/autopr/runs", s.authRequired(), s.listAutoprRuns)
+		api.GET("/org/credits", s.authRequired(), s.listOrgCredits)
 		api.GET("/tickets/:id", s.authRequired(), s.getTicket)
 		api.PATCH("/tickets/:id", s.authRequired(), s.patchTicket)
 		api.POST("/tickets/:id/notes", s.authRequired(), s.addNote)
+		api.POST("/tickets/:id/autopr", s.authRequired(), s.startAutoprRun)
+		api.GET("/tickets/:id/autopr", s.authRequired(), s.listTicketAutoprRuns)
 		api.POST("/tickets/:id/comments", s.authRequired(), s.createTeamComment)
 		api.POST("/tickets/merge", s.authRequired(), s.mergeTickets)
 		api.GET("/projects/:id/board-comments", s.authRequired(), s.listBoardComments)
@@ -101,6 +109,7 @@ func (s *Server) Router() *gin.Engine {
 	}
 
 	r.GET("/v1/files/:token", s.readFile)
+	r.POST("/webhooks/github", s.githubWebhook)
 	r.Any("/mcp", s.mcpHandler)
 	r.Any("/mcp/*path", s.mcpHandler)
 	return r

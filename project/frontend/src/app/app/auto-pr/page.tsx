@@ -1,5 +1,7 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { AutoPRRuns } from "@/design-screens/AutoPRRuns";
 
 export default function Page() {
-  redirect("/app/inbox");
+  return <AutoPRRuns />;
 }

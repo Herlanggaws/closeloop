@@ -204,6 +204,32 @@ export function Billing() {
 
               <section className="rounded-2xl border border-[#17171714] bg-white p-6">
                 <h2 className="font-ds-sans text-[16px] font-medium tracking-[-0.3px] text-[#171717]">
+                  Auto PR credits
+                </h2>
+                <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
+                  1 credit = 1 Auto PR run. Paid plans get a starter pack; Polar purchase packs ship
+                  in M5.
+                </p>
+                <div className="mt-4 flex items-end justify-between gap-4">
+                  <div>
+                    <div className="font-ds-ui text-[11px] text-[#A3A3A3]">Balance</div>
+                    <div className="font-ds-sans text-[28px] font-medium tracking-[-0.6px] text-[#171717]">
+                      {usage?.auto_pr_credits ?? 0}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    title="Polar packs in M5"
+                    className="inline-flex h-9 cursor-not-allowed items-center rounded-md border border-[#1717171F] bg-[#FAFAFA] px-3 font-ds-sans text-[13px] font-medium text-[#A3A3A3]"
+                  >
+                    Buy credits · soon
+                  </button>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-[#17171714] bg-white p-6">
+                <h2 className="font-ds-sans text-[16px] font-medium tracking-[-0.3px] text-[#171717]">
                   Change plan
                 </h2>
                 <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">

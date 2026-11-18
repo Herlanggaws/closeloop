@@ -1628,6 +1628,22 @@ type Integration struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
+func (s *Store) GetIntegrationConfig(ctx context.Context, projectID, provider string) (json.RawMessage, error) {
+	var raw json.RawMessage
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT config FROM integrations WHERE project_id=$1 AND provider=$2`, projectID, provider).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) == 0 {
+		raw = json.RawMessage(`{}`)
+	}
+	return raw, nil
+}
+
 func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integration, error) {
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT id, project_id, provider, config, updated_at
@@ -1765,7 +1781,7 @@ func (s *Store) existingWebhookSecret(ctx context.Context, projectID string) (st
 
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
-	if provider != "sentry" && provider != "posthog" && provider != "slack" && provider != "webhooks" {
+	if provider != "sentry" && provider != "posthog" && provider != "slack" && provider != "webhooks" && provider != "github_app" {
 		return Integration{}, ErrInvalidInput
 	}
 	if config == nil {
@@ -1821,6 +1837,13 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 			}
 		}
 		cleaned = map[string]any{"url": url, "secret": secret, "events": events}
+	}
+	if provider == "github_app" {
+		cfg, err := normalizeGitHubAppConfig(cleaned)
+		if err != nil {
+			return Integration{}, err
+		}
+		cleaned = cfg
 	}
 	body, err := json.Marshal(cleaned)
 	if err != nil {
@@ -1884,16 +1907,18 @@ type UsageCounter struct {
 }
 
 type OrgUsage struct {
-	Plan        string       `json:"plan"`
-	Projects    UsageCounter `json:"projects"`
-	Reports     UsageCounter `json:"reports"`
-	Seats       UsageCounter `json:"seats"`
-	PeriodStart time.Time    `json:"period_start"`
+	Plan           string       `json:"plan"`
+	Projects       UsageCounter `json:"projects"`
+	Reports        UsageCounter `json:"reports"`
+	Seats          UsageCounter `json:"seats"`
+	AutoPRCredits  int          `json:"auto_pr_credits"`
+	PeriodStart    time.Time    `json:"period_start"`
 }
 
 func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
 	var plan string
-	if err := s.DB.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1`, orgID).Scan(&plan); err != nil {
+	var credits int
+	if err := s.DB.QueryRowContext(ctx, `SELECT plan, auto_pr_credits FROM organizations WHERE id=$1`, orgID).Scan(&plan, &credits); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return OrgUsage{}, ErrNotFound
 		}
@@ -1928,11 +1953,12 @@ func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
 	}
 
 	return OrgUsage{
-		Plan:        plan,
-		Projects:    UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
-		Reports:     UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
-		Seats:       UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},
-		PeriodStart: periodStart,
+		Plan:          plan,
+		Projects:      UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
+		Reports:       UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
+		Seats:         UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},
+		AutoPRCredits: credits,
+		PeriodStart:   periodStart,
 	}, nil
 }
 
@@ -1950,6 +1976,16 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 		return Org{}, err
 	}
 	defer tx.Rollback()
+
+	var prevPlan string
+	var prevCredits int
+	if err := tx.QueryRowContext(ctx, `SELECT plan, auto_pr_credits FROM organizations WHERE id=$1`, orgID).
+		Scan(&prevPlan, &prevCredits); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Org{}, ErrNotFound
+		}
+		return Org{}, err
+	}
 
 	var org Org
 	err = tx.QueryRowContext(ctx, `
@@ -1972,10 +2008,59 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 		return Org{}, err
 	}
 
+	// Seed starter Auto PR credits once when moving free → paid with empty balance.
+	seed := StarterCreditsForPlan(plan)
+	if seed > 0 && NormalizePlan(prevPlan) == "free" && prevCredits == 0 {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE organizations SET auto_pr_credits = $2 WHERE id=$1`, orgID, seed); err != nil {
+			return Org{}, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO credit_ledger(org_id, delta, reason) VALUES ($1,$2,'plan_upgrade_seed')`,
+			orgID, seed); err != nil {
+			return Org{}, err
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return Org{}, err
 	}
 	return org, nil
+}
+
+func normalizeGitHubAppConfig(cleaned map[string]any) (map[string]any, error) {
+	var installationID int64
+	switch v := cleaned["installation_id"].(type) {
+	case float64:
+		installationID = int64(v)
+	case int64:
+		installationID = v
+	case int:
+		installationID = int64(v)
+	case string:
+		fmt.Sscan(strings.TrimSpace(v), &installationID)
+	case json.Number:
+		n, _ := v.Int64()
+		installationID = n
+	}
+	if installationID == 0 {
+		return nil, ErrInvalidInput
+	}
+	account, _ := cleaned["account_login"].(string)
+	repo, _ := cleaned["repo_full_name"].(string)
+	branch, _ := cleaned["default_branch"].(string)
+	account = strings.TrimSpace(account)
+	repo = strings.TrimSpace(repo)
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		branch = "main"
+	}
+	return map[string]any{
+		"installation_id": installationID,
+		"account_login":   account,
+		"repo_full_name":  repo,
+		"default_branch":  branch,
+	}, nil
 }
 
 func normalizeWaitlistEmail(email string) (string, error) {

@@ -13,6 +13,7 @@ import (
 	"github.com/closeloop/api/internal/config"
 	"github.com/closeloop/api/internal/infrastructure/db"
 	"github.com/closeloop/api/internal/infrastructure/email"
+	"github.com/closeloop/api/internal/infrastructure/githubapp"
 	"github.com/closeloop/api/internal/infrastructure/storage"
 	httpapi "github.com/closeloop/api/internal/interfaces/http"
 	"github.com/joho/godotenv"
@@ -58,8 +59,20 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	var autoprExec application.AutoprExecutor
+	if pem, err := githubapp.LoadPrivateKey([]byte(cfg.GitHubAppPrivateKey), cfg.GitHubAppPrivateKeyPath); err == nil {
+		if gh, err := githubapp.New(githubapp.Config{
+			AppID:         cfg.GitHubAppID,
+			Slug:          cfg.GitHubAppSlug,
+			WebhookSecret: cfg.GitHubAppWebhookSecret,
+			PrivateKeyPEM: pem,
+		}); err == nil {
+			autoprExec = &application.GitHubAutoprExecutor{Client: gh}
+		}
+	}
+
 	if *mode == "worker" || *mode == "all" {
-		go application.RunWorker(ctx, store, mailer, files, cfg.WebURL, nil)
+		go application.RunWorker(ctx, store, mailer, files, cfg.WebURL, nil, autoprExec)
 	}
 	if *mode == "worker" {
 		<-ctx.Done()

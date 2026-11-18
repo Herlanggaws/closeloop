@@ -18,7 +18,7 @@ type IntegrationRow = {
   config: Record<string, unknown> | string;
 };
 
-type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks";
+type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks" | "github_app";
 
 type CatalogItem = {
   id: string;
@@ -93,7 +93,8 @@ const DEBUG_CATALOG: CatalogItem[] = [
     description: "Repository access for AI auto PR",
     icon: "GA",
     iconBg: "#171717",
-    action: "coming_soon",
+    action: "configure",
+    wired: "github_app",
   },
   {
     id: "webhooks",
@@ -207,6 +208,13 @@ export function Integrations() {
     "ticket.status_changed": true,
     "ticket.fixed": true,
   });
+  const [githubInstallationId, setGithubInstallationId] = useState("");
+  const [githubRepo, setGithubRepo] = useState("");
+  const [githubBranch, setGithubBranch] = useState("main");
+  const [githubAccount, setGithubAccount] = useState("");
+  const [githubRepos, setGithubRepos] = useState<
+    { full_name: string; default_branch: string }[]
+  >([]);
 
   useEffect(() => {
     const id = localStorage.getItem("closeloop_project");
@@ -222,7 +230,7 @@ export function Integrations() {
       api<{ project: { name: string } }>(`/api/projects/${id}`),
       api<{ integrations: IntegrationRow[] }>(`/api/projects/${id}/integrations`),
     ])
-      .then(([meRes, projectRes, integRes]) => {
+      .then(async ([meRes, projectRes, integRes]) => {
         if (cancelled) return;
         setMe(meRes);
         setProjectName(projectRes.project.name || "Project");
@@ -254,6 +262,25 @@ export function Integrations() {
           const row = (integRes.integrations || []).find((i) => i.provider === "webhooks");
           if (row) setWebhookEvents(webhookEventsFromConfig(row.config));
         }
+        const gh = list.find((i) => i.provider === "github_app");
+        if (gh) {
+          applyGitHubConfig(gh.config);
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const installationId = params.get("installation_id");
+        if (installationId) {
+          await finishGitHubInstall(id, Number(installationId));
+          params.delete("installation_id");
+          params.delete("setup_action");
+          params.delete("state");
+          const next = params.toString();
+          window.history.replaceState(
+            {},
+            "",
+            next ? `${window.location.pathname}?${next}` : window.location.pathname,
+          );
+        }
         setError("");
       })
       .catch((err) => {
@@ -267,6 +294,61 @@ export function Integrations() {
       cancelled = true;
     };
   }, [router]);
+
+  function applyGitHubConfig(config: Record<string, string>) {
+    setGithubInstallationId(String(config.installation_id || ""));
+    setGithubRepo(config.repo_full_name || "");
+    setGithubBranch(config.default_branch || "main");
+    setGithubAccount(config.account_login || "");
+  }
+
+  async function finishGitHubInstall(project: string, installationId: number) {
+    setSaving("github_app");
+    try {
+      const res = await api<{
+        integration: { config: Record<string, unknown> | string };
+      }>(`/api/projects/${project}/integrations/github_app/complete`, {
+        method: "POST",
+        body: JSON.stringify({ installation_id: installationId }),
+      });
+      applyGitHubConfig(asConfig(res.integration.config));
+      setConfigureModal("github_app");
+      await loadGitHubRepos(project, installationId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not connect GitHub App");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function loadGitHubRepos(project: string, installationId?: number) {
+    const q =
+      installationId && installationId > 0 ? `?installation_id=${installationId}` : "";
+    try {
+      const res = await api<{
+        repos: { full_name: string; default_branch: string }[];
+      }>(`/api/projects/${project}/integrations/github_app/repos${q}`);
+      setGithubRepos(res.repos || []);
+    } catch {
+      setGithubRepos([]);
+    }
+  }
+
+  async function connectGitHubApp() {
+    if (!projectId) return;
+    setSaving("github_app");
+    setError("");
+    try {
+      const res = await api<{ url: string }>(
+        `/api/integrations/github/install?project_id=${encodeURIComponent(projectId)}`,
+      );
+      if (!res.url) throw new Error("Install URL missing");
+      window.location.href = res.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start GitHub install");
+      setSaving(null);
+    }
+  }
 
   async function saveProvider(
     provider: WiredProvider,
@@ -321,6 +403,12 @@ export function Integrations() {
           "ticket.status_changed": true,
           "ticket.fixed": true,
         });
+      } else if (provider === "github_app") {
+        setGithubInstallationId("");
+        setGithubRepo("");
+        setGithubBranch("main");
+        setGithubAccount("");
+        setGithubRepos([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not disconnect");
@@ -335,12 +423,14 @@ export function Integrations() {
   const posthogConnected = Boolean(posthogHost.trim() && posthogProject.trim());
   const slackConnected = Boolean(slackWebhook.trim());
   const webhooksConnected = Boolean(webhookURL.trim());
+  const githubConnected = Boolean(githubInstallationId.trim());
 
   function statusFor(item: CatalogItem): "connected" | "none" {
     if (item.wired === "sentry") return sentryConnected ? "connected" : "none";
     if (item.wired === "posthog") return posthogConnected ? "connected" : "none";
     if (item.wired === "slack") return slackConnected ? "connected" : "none";
     if (item.wired === "webhooks") return webhooksConnected ? "connected" : "none";
+    if (item.wired === "github_app") return githubConnected ? "connected" : "none";
     return "none";
   }
 
@@ -354,6 +444,15 @@ export function Integrations() {
   }, [configureModal]);
 
   function onCardAction(item: CatalogItem) {
+    if (item.action === "configure" && item.wired === "github_app") {
+      if (!githubConnected) {
+        void connectGitHubApp();
+        return;
+      }
+      void loadGitHubRepos(projectId, Number(githubInstallationId) || undefined);
+      setConfigureModal("github_app");
+      return;
+    }
     if (item.action === "configure" && item.wired) {
       setConfigureModal(item.wired);
     }
@@ -362,6 +461,7 @@ export function Integrations() {
   function actionLabel(item: CatalogItem): string {
     if (item.action === "upgrade") return "Upgrade";
     if (item.action === "coming_soon") return "Coming soon";
+    if (item.wired === "github_app") return githubConnected ? "Configure" : "Connect";
     return "Configure";
   }
 
@@ -658,6 +758,131 @@ export function Integrations() {
                             className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
                           >
                             {saving === "webhooks" ? "Saving…" : "Save webhooks"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {configureModal === "github_app" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              GitHub App
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Choose the repo Auto PR may open branches and pull requests in. Saidloop
+                              never merges.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {githubConnected && (
+                          <div className="mt-3 flex flex-wrap gap-3">
+                            <button
+                              type="button"
+                              disabled={saving === "github_app"}
+                              onClick={() => void clearProvider("github_app")}
+                              className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                            >
+                              Disconnect
+                            </button>
+                            <button
+                              type="button"
+                              disabled={saving === "github_app"}
+                              onClick={() => void connectGitHubApp()}
+                              className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                            >
+                              Reinstall / change repos
+                            </button>
+                          </div>
+                        )}
+                        {githubAccount || githubInstallationId ? (
+                          <p className="mt-3 font-ds-ui text-[12px] text-[#737373]">
+                            Installation {githubInstallationId}
+                            {githubAccount ? ` · ${githubAccount}` : ""}
+                          </p>
+                        ) : null}
+                        <div className="mt-4">
+                          <label className="flex flex-col gap-1.5">
+                            <span className="font-ds-ui text-[11px] font-medium text-[#737373]">
+                              Repository
+                            </span>
+                            {githubRepos.length > 0 ? (
+                              <select
+                                value={githubRepo}
+                                onChange={(e) => {
+                                  const full = e.target.value;
+                                  setGithubRepo(full);
+                                  const match = githubRepos.find((r) => r.full_name === full);
+                                  if (match?.default_branch) setGithubBranch(match.default_branch);
+                                  if (full.includes("/")) {
+                                    setGithubAccount(full.split("/")[0] || "");
+                                  }
+                                }}
+                                className="h-10 rounded-md border border-[#1717171F] bg-white px-3 font-ds-ui text-[13px] text-[#171717]"
+                              >
+                                <option value="">Select a repository…</option>
+                                {githubRepos.map((r) => (
+                                  <option key={r.full_name} value={r.full_name}>
+                                    {r.full_name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <Field
+                                label=""
+                                value={githubRepo}
+                                onChange={setGithubRepo}
+                                placeholder="owner/repo"
+                              />
+                            )}
+                          </label>
+                        </div>
+                        <div className="mt-3">
+                          <Field
+                            label="Base branch"
+                            value={githubBranch}
+                            onChange={setGithubBranch}
+                            placeholder="main"
+                          />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              saving === "github_app" ||
+                              !githubInstallationId ||
+                              !githubRepo.trim()
+                            }
+                            onClick={() =>
+                              void saveAndClose("github_app", {
+                                installation_id: githubInstallationId,
+                                account_login: githubAccount || githubRepo.split("/")[0] || "",
+                                repo_full_name: githubRepo.trim(),
+                                default_branch: githubBranch.trim() || "main",
+                              })
+                            }
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "github_app" ? "Saving…" : "Save repository"}
                           </button>
                         </div>
                       </>

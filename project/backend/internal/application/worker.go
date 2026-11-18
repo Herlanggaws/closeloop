@@ -28,13 +28,14 @@ type WorkerDeps struct {
 	Slack    slack.Poster
 	Webhook  webhook.Poster
 	WebURL   string
+	Autopr   AutoprExecutor
 }
 
-func RunWorker(ctx context.Context, store *Store, mail MailSender, files ProjectFileCleaner, webURL string, slackPoster slack.Poster) {
+func RunWorker(ctx context.Context, store *Store, mail MailSender, files ProjectFileCleaner, webURL string, slackPoster slack.Poster, autopr AutoprExecutor) {
 	if slackPoster == nil {
 		slackPoster = slack.NewClient()
 	}
-	deps := WorkerDeps{Mail: mail, Slack: slackPoster, Webhook: webhook.NewClient(), WebURL: webURL}
+	deps := WorkerDeps{Mail: mail, Slack: slackPoster, Webhook: webhook.NewClient(), WebURL: webURL, Autopr: autopr}
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	purgeTicker := time.NewTicker(time.Hour)
@@ -293,6 +294,14 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 			slog.Error("send suggest verify mail", "err", err, "to", p.Email)
 		}
 		return nil
+	case "autopr_run":
+		var p struct {
+			RunID string `json:"run_id"`
+		}
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return err
+		}
+		return ProcessAutoprRun(ctx, store, deps.Autopr, deps.WebURL, p.RunID)
 	default:
 		return fmt.Errorf("unknown job %s", kind)
 	}

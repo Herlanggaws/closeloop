@@ -36,15 +36,15 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** wizard token + scopes + Cursor/Claude copy + test connection |
 | S-05b MCP status | `/app/mcp` | **Wired** app-shell status, multi-client install, token list, revoke, generate |
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status filters + empty + test report; multi-select → S-08 |
-| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Sentry/PostHog deep links when configured; Auto PR stub |
+| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity; Sentry/PostHog deep links; Run Auto PR |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** multi-select → pick parent → merge API |
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + PATCH fixed with Email/In-app channel toggles |
-| S-10 Auto PR runs | `/app/auto-pr` | Runs list when F10 ships |
+| S-10 Auto PR runs | `/app/auto-pr` | **Wired** runs list + credits + GitHub repo panel |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + Ideas vote counts + comment moderation + roadmap DnD columns |
 | S-12 Project settings | `/app/settings` | **Partial** general name + platforms + email/banner/voter notify kill switches + public key + mask-all-text-inputs + soft-delete (30d purge) live; board domain shell |
-| S-13 Integrations | `/app/settings/integrations` | **Partial** pen-aligned catalog; Sentry/PostHog + Slack + outbound Webhooks wired; GitHub/Linear/Jira/App stubs (F8/F10) |
+| S-13 Integrations | `/app/settings/integrations` | **Partial** pen-aligned catalog; Sentry/PostHog + Slack + Webhooks + GitHub App wired; Linear/Jira/GitHub Issues stubs (F8) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** S-14 layout (invite chips, merged roster, role cards); invite/accept/resend/revoke + role change; seat caps by plan |
-| S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage wired; manual plan change until Polar; credits stub |
+| S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage + Auto PR credit balance; manual plan change until Polar; buy credits stub |
 | S-16 SSO & audit | `/app/settings/sso` | Business (F12) |
 | S-17 Self-host license | `/app/settings/self-host` | Business (F12) |
 | S-18…S-20 Widget UX | `/preview/widget/*` + `@closeloop/widget` | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet env |
@@ -65,7 +65,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 
 #### M1 · Inti web (F1, F2, F4, F5, F6) — priority
 
-> Live app surface: M1 + M3 Slack + public board list/detail. Auto PR (`/app/auto-pr`), SSO, self-host, and Auto PR credits stay **hidden** (nav stripped + routes redirect to inbox). Design screens remain under `/preview`.
+> Live app surface: M1 + M3 Slack + public board + F10 Auto PR / GitHub App. SSO and self-host stay **hidden** (routes redirect to inbox). Design screens remain under `/preview`.
 - [x] **F1** Google OAuth
 - [x] **F1** Wire create project (S-03) + install (S-04) + `/demo.html` widget host
 - [x] **F1** Log out (revoke refresh + clear session)
@@ -112,9 +112,9 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 - [ ] **F11** rrweb replay module, attach to ticket, default masking
 
 #### M4 · AI & Business (F10, F12)
-- [ ] **F10** GitHub App connect (S-13)
-- [ ] **F10** Sandboxed auto-PR runner + credits ledger (S-10, S-15)
-- [ ] **F10** Never-merge policy + cost caps
+- [x] **F10** GitHub App connect (S-13)
+- [x] **F10** Sandboxed auto-PR runner + credits ledger (S-10, S-15) — worker-local sandbox (Fly Machines later)
+- [x] **F10** Never-merge policy + cost caps
 - [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
 - [ ] **F12** Audit log + export
 - [ ] **F12** Docker / Helm self-host + license activation (S-17)
@@ -143,7 +143,7 @@ Legend: **Done** = shipped and usable · **Design** = pixel-perfect UI from `clo
 | M1 | F1 F2 F4 F5 F6 | Complete & validated on Bear Budget Web |
 | M2 | F3 F7 mobile | Todo |
 | M3 | F8 F9 F11 | Slack + public board + votes/comments + roadmap DnD; OAuth/replay still open |
-| M4 | F10 F12 | Design only |
+| M4 | F10 F12 | F10 wired (GitHub App + Auto PR); F12 todo |
 | M5 | Billing + public beta | Todo |
 
 ---
