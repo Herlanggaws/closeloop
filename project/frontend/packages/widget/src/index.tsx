@@ -342,6 +342,7 @@ function Widget({ cfg }: { cfg: Config }) {
   const drawing = useRef(false);
   const maskConfigRef = useRef<IngestMaskConfig | null>(null);
   const [snipRect, setSnipRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [snipFlash, setSnipFlash] = useState(false);
   const snipStart = useRef<{ x: number; y: number } | null>(null);
   const snipping = useRef(false);
 
@@ -457,6 +458,7 @@ function Widget({ cfg }: { cfg: Config }) {
 
   function startSnip() {
     setSnipRect(null);
+    setSnipFlash(false);
     snipStart.current = null;
     snipping.current = false;
     setState("snip");
@@ -464,6 +466,7 @@ function Widget({ cfg }: { cfg: Config }) {
 
   function cancelSnip() {
     setSnipRect(null);
+    setSnipFlash(false);
     snipStart.current = null;
     snipping.current = false;
     setState("form");
@@ -481,6 +484,7 @@ function Widget({ cfg }: { cfg: Config }) {
   }, [state]);
 
   function onSnipPointerDown(e: PointerEvent) {
+    if (snipFlash) return;
     snipping.current = true;
     snipStart.current = { x: e.clientX, y: e.clientY };
     setSnipRect({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
@@ -488,7 +492,7 @@ function Widget({ cfg }: { cfg: Config }) {
   }
 
   function onSnipPointerMove(e: PointerEvent) {
-    if (!snipping.current || !snipStart.current) return;
+    if (!snipping.current || !snipStart.current || snipFlash) return;
     const x = Math.min(snipStart.current.x, e.clientX);
     const y = Math.min(snipStart.current.y, e.clientY);
     const w = Math.abs(e.clientX - snipStart.current.x);
@@ -497,7 +501,7 @@ function Widget({ cfg }: { cfg: Config }) {
   }
 
   async function onSnipPointerUp(e: PointerEvent) {
-    if (!snipping.current) return;
+    if (!snipping.current || snipFlash) return;
     snipping.current = false;
     (e.target as HTMLElement)?.releasePointerCapture?.(e.pointerId);
     const rect = snipRect;
@@ -505,6 +509,12 @@ function Widget({ cfg }: { cfg: Config }) {
       setSnipRect(null);
       return;
     }
+
+    // Trigger visual capture flash on the selected area so the user gets clear feedback
+    setSnipFlash(true);
+    await new Promise((r) => setTimeout(r, 260));
+    setSnipFlash(false);
+
     setState("form");
     setCapturing(true);
     setError("");
@@ -658,17 +668,74 @@ function Widget({ cfg }: { cfg: Config }) {
       pointer-events:none;
       border-radius:2px;
     }
+    @keyframes snipFlash {
+      0% {
+        background: rgba(255, 255, 255, 0.85);
+        border-color: #2563eb;
+      }
+      50% {
+        background: rgba(37, 99, 235, 0.25);
+        border-color: #2563eb;
+      }
+      100% {
+        background: rgba(22, 163, 74, 0.15);
+        border-color: #16a34a;
+      }
+    }
+    .snip-box.flash {
+      animation: snipFlash 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      border: 2px solid #2563eb;
+    }
     .snip-badge {
       position:absolute; left:0; bottom:-24px;
       background:#171717; color:#fff; font-size:11px;
       padding:2px 6px; border-radius:4px; font-family:monospace;
       white-space:nowrap; pointer-events:none;
     }
+    .snip-flash-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 2px;
+      animation: shotPop 0.2s ease-out;
+    }
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(400%); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes shotPop {
+      0% { opacity: 0; transform: scale(0.98); }
+      100% { opacity: 1; transform: scale(1); }
+    }
     .preview {
       position:relative; width:100%; border-radius:12px; overflow:hidden;
       border:1px solid #17171714; background:#f5f5f5; min-height:160px;
     }
-    .preview canvas { display:block; width:100%; height:auto; cursor:crosshair; touch-action:none; }
+    .preview-loading {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:8px; background:linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%);
+      color:#525252; font-size:12px; font-weight:500;
+      z-index:2;
+    }
+    .preview-loading-spinner {
+      width:22px; height:22px; border:2px solid #d4d4d4;
+      border-top-color:#171717; border-radius:50%;
+      animation:spin 0.75s linear infinite;
+    }
+    .preview-loading-bar {
+      position:absolute; left:0; right:0; height:2px;
+      background:linear-gradient(90deg, transparent, #2563eb, transparent);
+      animation:scanline 1.6s ease-in-out infinite;
+    }
+    .preview canvas {
+      display:block; width:100%; height:auto;
+      cursor:crosshair; touch-action:none;
+      animation: shotPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
     .preview .empty { padding:28px 12px; text-align:center; color:#a3a3a3; font-size:12px; }
     .dock {
       position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
@@ -755,7 +822,14 @@ function Widget({ cfg }: { cfg: Config }) {
               </div>
             </div>
             <div class="preview" ref={previewRef}>
-              {!shot && <div class="empty">{capturing ? "Capturing page…" : "No screenshot yet"}</div>}
+              {capturing && (
+                <div class="preview-loading">
+                  <div class="preview-loading-bar" />
+                  <div class="preview-loading-spinner" />
+                  <span>Processing capture…</span>
+                </div>
+              )}
+              {!shot && !capturing && <div class="empty">No screenshot yet</div>}
               {shot && (
                 <>
                   <canvas
@@ -875,7 +949,7 @@ function Widget({ cfg }: { cfg: Config }) {
           </div>
           {snipRect && snipRect.w > 0 && snipRect.h > 0 && (
             <div
-              class="snip-box"
+              class={`snip-box ${snipFlash ? "flash" : ""}`}
               style={{
                 left: `${snipRect.x}px`,
                 top: `${snipRect.y}px`,
@@ -884,8 +958,15 @@ function Widget({ cfg }: { cfg: Config }) {
               }}
             >
               <span class="snip-badge">
-                {snipRect.w} × {snipRect.h}
+                {snipFlash ? "✓ Captured!" : `${snipRect.w} × ${snipRect.h}`}
               </span>
+              {snipFlash && (
+                <div class="snip-flash-center">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+              )}
             </div>
           )}
         </div>
