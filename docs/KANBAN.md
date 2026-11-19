@@ -119,7 +119,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] Polar credit packs (buy credits is a stub)
 - [ ] Annual pricing, early-access Indie 3 months
 - [x] Quota soft-block when over plan
-- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Badge (D-20) dan seat Indie (D-21) masih nunggu keputusan
+- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 1 (D-21) done. Badge (D-20) masih nunggu keputusan
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
 
 #### M6 · Business (F12)
@@ -138,7 +138,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 
 ## PRD Update Pricing dan Batas Fitur (Nov 19)
 
-Updated Nov 19 after D-01…D-09, D-22. Only the badge (D-20), Indie seats (D-21) and Polar (`usage.subscribed`, D-10) are left.
+Updated Nov 19 after D-01…D-09, D-22. Indie seats done (D-21, 1 seat). Only the badge (D-20) and Polar (`usage.subscribed`, D-10) are left.
 
 | ID | Item | Status | Story |
 | --- | --- | --- | --- |
