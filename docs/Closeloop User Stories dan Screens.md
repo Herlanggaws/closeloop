@@ -50,9 +50,9 @@ Ada 44 story yang dikelompokkan per fitur PRD. Peran: **Builder** (pemilik app, 
 | US-38 | F10 Auto PR | Builder | membeli dan memantau kredit | biaya terkendali | M4 |
 | US-39 | F11 Replay | Builder | memutar ulang sesi sebelum laporan dikirim | lihat langkah yang memicu bug | M3 |
 | US-40 | F11 Replay | Builder | input sensitif dimasking otomatis | replay aman dari data pribadi | M3 |
-| US-41 | F12 Business | Admin | login tim lewat SSO SAML atau OIDC | akses mengikuti aturan perusahaan | M4 |
-| US-42 | F12 Business | Admin | melihat dan mengekspor audit log | kebutuhan audit terpenuhi | M4 |
-| US-43 | F12 Business | Admin | memasang Closeloop di server sendiri | data tidak keluar dari infrastruktur kami | M4 |
+| US-41 | F12 Business | Admin | login tim lewat SSO SAML atau OIDC | akses mengikuti aturan perusahaan | M6 |
+| US-42 | F12 Business | Admin | melihat dan mengekspor audit log | kebutuhan audit terpenuhi | M6 |
+| US-43 | F12 Business | Admin | memasang Closeloop di server sendiri | data tidak keluar dari infrastruktur kami | M6 |
 | US-44 | Billing | Builder | upgrade, downgrade, dan melihat pemakaian kuota | bayar sesuai kebutuhan | M5 |
 
 ## User scenarios
@@ -162,8 +162,8 @@ Total 27 screen. Dashboard dan pengaturan builder adalah bagian terbesar (15 scr
 | S-13 | Integrasi | Settings | Slack, GitHub (App dan Issues), Linear, Jira, Sentry, PostHog | US-29 sampai US-31, US-35 | M3 |
 | S-14 | Tim dan role | Settings | Undang anggota, role owner, member, viewer | US-05 | M1 |
 | S-15 | Billing dan kredit | Settings | Plan saat ini, kuota terpakai, upgrade, beli kredit auto PR, invoice | US-38, US-44 | M5 |
-| S-16 | SSO dan audit log | Settings (Business) | Konfigurasi SAML/OIDC, paksa SSO, tabel audit log, ekspor | US-41, US-42 | M4 |
-| S-17 | Aktivasi lisensi self-host | Self-host | Masukkan kunci lisensi, status versi, info update | US-43 | M4 |
+| S-16 | SSO dan audit log | Settings (Business) | Konfigurasi SAML/OIDC, paksa SSO, tabel audit log, ekspor | US-41, US-42 | M6 |
+| S-17 | Aktivasi lisensi self-host | Self-host | Masukkan kunci lisensi, status versi, info update | US-43 | M6 |
 | S-18 | Tombol lapor (launcher) | Widget web | Tombol mengambang, posisi dan warna dari pengaturan | US-06 | M1 |
 | S-19 | Form lapor | Widget web | Tipe, pesan, screenshot dengan coretan, email opsional | US-07, US-08 | M1 |
 | S-20 | Konfirmasi terkirim | Widget web | Pesan sukses, nomor laporan | US-09 | M1 |
@@ -180,3 +180,79 @@ Total 27 screen. Dashboard dan pengaturan builder adalah bagian terbesar (15 scr
 &#91;embedded content: peta screen dashboard builder · 15 screen\]
 
 Onboarding dilewati sekali, lalu builder bolak-balik antara inbox dan detail laporan. Screen user akhir (S-18 sampai S-23), board publik (S-24 sampai S-27), landing, dan lisensi self-host berdiri sendiri di luar dashboard.
+
+## Referensi desain (closeloop.pen)
+
+Semua screen didesain di `closeloop.pen` (root repo). File ini terenkripsi, jadi **baca hanya lewat Pencil MCP**, jangan `cat` atau grep. Cara pakai di Cursor atau Claude Code:
+
+1. Buka `closeloop.pen` di editor Pencil (Cursor) supaya MCP bisa mengaksesnya. Pastikan file sudah di-save; MCP membaca versi yang ada di disk.
+2. Ambil struktur frame: `execute` dengan `Print(Get("<node id>", {depth: 3}))`.
+3. Lihat visualnya: `execute` dengan `TakeScreenshot(["<node id>"])`.
+4. Token warna, radius dan spacing: `Print(GetVariables())`. Komponen ada di frame `kKCiJ` (Saidloop — Components), brand di `r8tLc` (Saidloop — Brand Guidelines).
+5. Peta story US-45 sampai US-69 ke frame ada di frame `SimGS` (PRD Coverage · Multi-repo + Pricing).
+
+Node ID stabil selama frame tidak dihapus dan dibuat ulang. Status dari audit ulang 19 Nov 2026:
+
+- **Siap**: boleh diimplementasikan persis dari frame.
+- **Siap, kecuali**: layout dan komponen dipakai, bagian yang disebut jangan diikuti.
+- **Belum dicek visual**: teks sudah dicek, visual detail belum diaudit.
+
+Frame **v2** adalah versi setelah PRD Multi-repo dan Update Pricing. Frame M1 (tanpa v2) tetap jadi acuan build saat ini; saat mengerjakan story multi-repo atau pricing, pakai frame v2.
+
+Nama di snippet kode (`data-closeloop-mask`) mengikuti kode, bukan desain. Domain final masih terbuka: desain memakai `saidloop.com` (MCP, badge) dan `saidloop.dev` (pengirim email); ikuti konfigurasi di kode.
+
+### Screen MVP
+
+| ID | Frame | Node ID | Status | Bagian yang bisa dirujuk langsung | Jangan diikuti |
+| --- | --- | --- | --- | --- | --- |
+| S-01 | S-01 Landing Page | `p4Rhi` | Siap | Nav `FgwyK`, Hero `mQtu5`, Platforms `O7RYXV`, How It Works `jjFvA`, Features `P8WS7g`, MCP Section `I4gxN`, Before After `E1Ooe0`, Pricing `BPPVw` (kartu `Hnt6T`), FAQ `ZHDSD`, CTA `dLtsh`, Footer `IcEY1` | |
+| S-02 | S-02 Sign Up and Log In | `Z4o79` | Belum dicek visual | Form side `U72Yu`, story side `tDjXe` | |
+| S-03 | S-03 Create Project | `ta8n0` | Siap | Seluruh frame | |
+| S-04 | S-04 Install Widget | `o1TJBV` | Siap | Stepper `Naze6`, guide `ynYlL`, kolom status `TgB7M` | |
+| S-05 | S-05 Connect MCP | `HcHA7` | Siap | Stepper `bDm2n`, Step 1 `EDQ2I`, Step 2 `CA7rP`, Step 3 `Ph7dX`, footer `J8j3y` | |
+| S-06 | S-06 Inbox | `KTEN5` | Siap | Header `XKf4k`, filter bar `zj5OG`, list `PQ3HR`, bulk actions `wukIy` | |
+| S-06 | S-06 Inbox — Empty State | `PN6mj` | Siap | Empty state `FWxue`, checklist `c1NiLS` (gating Free sudah benar) | |
+| S-07 | S-07 Report Detail | `mxSU2` | Siap | Title block `vu654`, message `s9lvUr`, screenshot `YwBWW`, tabs `LYrbW`, timeline `oUhh7`, status `D5c6S`, reporters + context `klkk8`, linked `v0Res`, note composer `AJX7i` | |
+| S-08 | S-08 Merge Duplicates | `PGxbA` | Siap | Modal `taWha` | |
+| S-09 | S-09 Mark Fixed and Notify | `fdt3t` | Siap | Modal `BYA9K` (note `NIEZ2`, channels `dLtcL`, preview `mZzT4`, footer `AWNu2`). Untuk tiket lintas platform pakai S-09 v2 | |
+| S-10 | S-10 Auto PR Runs | `aDGPC` | Siap | Tabel run `eQIBZ`, panel samping `zfcoE` | |
+| S-11 | S-11 Manage Public Board | `wzwAQ` | Belum dicek visual | Seluruh frame | |
+| S-12 | S-12 Project Settings | `DZHRA` | Siap | General `g5sMan`, Keys `h6E7e`, Privacy `R2lGuS`, Widget `nZUSl`, Reporter notifications `Zw1nZ`, Board domain `c6Kf8`, Delete `c1pE9` | |
+| S-13 | S-13 Integrations | `wAub0` | Siap | Grid kartu `vf3rD`, Slack detail `uhXUb`. Linear dan Jira sudah berlabel Studio. Untuk repo pakai S-13 v2 | |
+| S-14 | S-14 Team and Roles | `k4JbSl` | Siap, kecuali | Invite `e35w4`, members `I8s1oA`, role table `NG0tk` | Kuota sidebar 312 / 1,000 di akun Studio (harusnya 10,000) |
+| S-15 | S-15 Billing and Credits | `jRMCb` | Siap | Current plan `aEDyd`, usage `zgz4m` (Reports, Projects, Credits, Seats, Repos), beli kredit `blaPN`, Change plan (baris sekunder limit), invoices `Ho69c` |  |
+| S-16 | S-16 SSO and Audit Log | `o2XU2F` | Belum dicek visual · M6 | Seluruh frame | Jangan dirilis sebelum M6 (plan Business disembunyikan) |
+| S-17 | S-17 Self-host License | `dCW7L` | Belum dicek visual · M6 | Seluruh frame | Jangan dirilis sebelum M6 |
+| S-18 | S-18 Widget Launcher | `p6yPO` | Belum dicek visual | Launcher `ZjKcM` | |
+| S-19 | S-19 Report Form | `Z0n10` | Siap | Widget `hjYg2` (type `GwNYv`, message `W10wE`, screenshot `AhiTM`, email `l9FjCR`, send `hOoJk`). Versi Indie tanpa badge | |
+| S-20 | S-20 Report Sent | `skxsQ` | Belum dicek visual | Widget `tlw8a` (Indie, tanpa badge) | |
+| S-21 | S-21 Fixed Banner | `QkmxJ` | Belum dicek visual | Banner `i0dY1L` | |
+| S-22 | S-22 Mobile Report Sheet | `TmTzZ` | Belum dicek visual | Shake `Y2hq51`, offline queue `Dc4hU` | |
+| S-23 | S-23 Email: Report Fixed | `cXJSw` | Belum dicek visual | Email `rDnlq` (Indie, tanpa badge) | |
+| S-24 | S-24 Public Board: Ideas | `McGCV` | Belum dicek visual | Header `U2CTZ`, body `xUX3H` | |
+| S-25 | S-25 Public Board: Idea Detail | `vI1RK` | Belum dicek visual | Header `CG39M`, body `YkZPo` | |
+| S-26 | S-26 Public Board: Roadmap | `FgnMs` | Belum dicek visual | Header `GAqP1`, body `Bcktj` | |
+| S-27 | S-27 Email: Vote Verify and Released | `ztvpN` | Belum dicek visual | Verify `smWkK`, released `SDLP6` | |
+| S-28 | Join Waitlist a/b/c/d | `dBcSs`, `owTA7`, `mWTt7`, `jEGiX` | Siap | Modal waitlist per state | |
+| – | Email: Waitlist | `yG6BP` | Belum dicek visual | Email `m3UDh` | |
+| S-30 | Coach mark F1 sampai F13, 1 sampai 3 langkah per fitur | contoh F1 `s4aWY` `NOl1X` `Cbg06`, F5 `ObRdo` `KdiK2` `nMRDS`, F13 `imxl2` `bbLS5` `K7PX3g` (daftar lengkap: frame bernama "S-30 …") | Siap, kecuali | Komponen Coach Mark `LVCwL` | F5 (`ObRdo`, `KdiK2`, `nMRDS`): latar S-05 masih footer lama "Free plan includes read-only tools" |
+
+### Multi-repo dan Pricing (v2)
+
+| ID | Frame | Node ID | Status | Story | Jangan diikuti |
+| --- | --- | --- | --- | --- | --- |
+| S-13 v2 | Integrations · Repositories | `ho9Yy` | Siap, kecuali | US-45, US-47, US-48, US-58 | Kartu GitHub Issues masih menyebut `herlangga/bear-budget` (repo lama); issue dibuat di repo tiket (US-59) |
+| S-13 v2 | Add Repository · Platform conflict | `DMYRO` | Siap | US-45, US-46, US-47 | |
+| S-13 v2 | Integrations · Free plan limits | `dmcSk` | Siap | US-45, US-48, US-64 | |
+| S-13 v2 | Downgrade · Choose repos to keep | `vZyTd` | Belum dicek visual | US-48 | |
+| S-06 v2 | Inbox · Repo filter | `z9TjRd` | Siap | US-49, US-50 | |
+| S-07 v2 | Report Detail · Repo and reroute | `HMFLR` | Belum dicek visual | US-49, US-51, US-53, US-54, US-59 | |
+| S-07 v2 | Report Detail · No repo yet | `ajZz9` | Belum dicek visual | US-51, US-56, US-59 | |
+| S-09 v2 | Mark Fixed · Platform not covered | `Mixlu` | Siap, kecuali | US-55 | Kartu In-app banner tetap bilang "3 reporters on Web and iOS" saat checkbox iOS mati; harus ikut jumlah yang dikabari (2) |
+| S-10 v2 | Auto PR · Needs reroute | `aHJCX` | Siap, kecuali | US-56, US-57, US-58 | Baris Needs reroute menampilkan PR `#318`, padahal tidak ada PR dibuka; harus "—" |
+| S-05 v2 | Connect MCP · Repo-aware | `G05BeG` | Belum dicek visual | US-52 | |
+| S-14 v2 | Team · Indie seat limit | `APr9x` | Siap, kecuali | US-67 (menunggu keputusan seat) | Project switcher sidebar "Pixel Studio · Studio" padahal halaman Indie |
+| S-31 | Free plan · Powered by Saidloop badge | `s67yG` | Siap | US-62, US-65, US-66 (menunggu keputusan badge) | |
+| – | PRD Coverage · Multi-repo + Pricing | `SimGS` | Referensi | US-45 sampai US-69 | |
+
+Frame `LJ5TF`, `SpQhF` dan `OuBz2` (Peec AI) hanya referensi gaya, bukan desain Saidloop. Jangan diimplementasikan.

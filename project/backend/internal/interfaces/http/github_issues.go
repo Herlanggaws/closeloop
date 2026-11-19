@@ -44,6 +44,10 @@ func (s *Server) createGitHubIssue(c *gin.Context) {
 	if !s.requireProjectAccess(c, t.ProjectID) {
 		return
 	}
+	if err := s.Store.RequireIntegrationUse(c.Request.Context(), t.ProjectID, "github_issues", "github_app"); err != nil {
+		s.mapErr(c, err)
+		return
+	}
 
 	var creator application.GitHubIssueCreator
 	if s.GitHubIssueCreator != nil {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { logout } from "@/lib/api";
 import { displayName, initials } from "@/lib/tickets";
+import { businessSurfacesVisible } from "@/lib/plans";
 import { formatUsage, type OrgUsage } from "@/lib/usage";
 
 export type AppSidebarActive =
@@ -146,12 +147,14 @@ export function AppSidebar({
           active={active === "billing"}
           icon={<IconCreditCard />}
         />
-        <NavItem
-          href="/app/settings/sso"
-          label="SSO & audit"
-          active={active === "sso"}
-          icon={<IconShield />}
-        />
+        {businessSurfacesVisible(plan) && (
+          <NavItem
+            href="/app/settings/sso"
+            label="SSO & audit"
+            active={active === "sso"}
+            icon={<IconShield />}
+          />
+        )}
       </nav>
 
       <div className="mt-auto flex w-full flex-col gap-2">
@@ -176,11 +179,14 @@ export function AppSidebar({
                 style={{ width: `${reportsPct}%` }}
               />
             </div>
-            <div className="font-ds-ui text-[11px] text-[#A3A3A3]">
-              {typeof usage.auto_pr_credits === "number"
-                ? `${usage.auto_pr_credits} auto PR credit${usage.auto_pr_credits === 1 ? "" : "s"} left`
-                : "Auto PR credits"}
-            </div>
+            {/* Free has no auto PR credits, so the line stays hidden there (D-02). */}
+            {(usage.auto_pr_credits ?? 0) > 0 || (usage.plan || plan) !== "free" ? (
+              <div className="font-ds-ui text-[11px] text-[#A3A3A3]">
+                {typeof usage.auto_pr_credits === "number"
+                  ? `${usage.auto_pr_credits} auto PR credit${usage.auto_pr_credits === 1 ? "" : "s"} left`
+                  : "Auto PR credits"}
+              </div>
+            ) : null}
           </div>
         )}
 

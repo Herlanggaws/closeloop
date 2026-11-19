@@ -12,6 +12,8 @@ type VoteVerifyMail struct {
 	IdeaTitle    string
 	ConfirmURL   string
 	GreetingName string
+	// BadgeURL shows "Powered by Saidloop" in the footer; empty on paid plans (D-20).
+	BadgeURL string
 }
 
 type VoteReleasedMail struct {
@@ -24,6 +26,8 @@ type VoteReleasedMail struct {
 	BoardHost    string
 	OpenURL      string
 	GreetingName string
+	// BadgeURL shows "Powered by Saidloop" in the footer; empty on paid plans (D-20).
+	BadgeURL string
 }
 
 func VoteVerifySubject(projectName string) string {
@@ -41,6 +45,10 @@ func VoteReleasedSubject() string {
 }
 
 func RenderVoteVerifyHTML(m VoteVerifyMail) string {
+	return applyBadge(renderVoteVerifyHTMLRaw(m), m.BadgeURL)
+}
+
+func renderVoteVerifyHTMLRaw(m VoteVerifyMail) string {
 	project := html.EscapeString(fallback(m.ProjectName, "the project"))
 	idea := html.EscapeString(fallback(m.IdeaTitle, "this idea"))
 	url := html.EscapeString(m.ConfirmURL)
@@ -102,6 +110,10 @@ func RenderVoteVerifyHTML(m VoteVerifyMail) string {
 }
 
 func RenderVoteReleasedHTML(m VoteReleasedMail) string {
+	return applyBadge(renderVoteReleasedHTMLRaw(m), m.BadgeURL)
+}
+
+func renderVoteReleasedHTMLRaw(m VoteReleasedMail) string {
 	project := html.EscapeString(fallback(m.ProjectName, "the project"))
 	idea := html.EscapeString(fallback(m.IdeaTitle, "Your idea"))
 	note := html.EscapeString(fallback(m.ReleaseNote, "It's live now."))

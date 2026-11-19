@@ -6,7 +6,7 @@ import { CONTACT_EMAIL } from "@/lib/marketing-links";
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Email Saidloop for sales, Indie early access, Business self-host, privacy questions, or product support.",
+    "Email Saidloop for sales, Indie early access, privacy questions, or product support.",
   alternates: { canonical: "/contact" },
 };
 
@@ -25,7 +25,7 @@ export default function ContactPage() {
         </p>
         <ul>
           <li>
-            <strong>Sales / plans</strong> — pricing, Indie early access, Business self-host
+            <strong>Sales / plans</strong> — pricing, Indie early access
           </li>
           <li>
             <strong>Privacy / DPA</strong> — data questions or a countersigned DPA

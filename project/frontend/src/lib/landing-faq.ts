@@ -19,9 +19,4 @@ export const LANDING_FAQ_ITEMS = [
     answer:
       "No. Agents can open a PR; Saidloop never merges for you. You review and ship.",
   },
-  {
-    question: "Can I self-host Saidloop?",
-    answer:
-      "Yes on Business — Docker or Helm with an annual license. Cloud plans remain the default for everyone else.",
-  },
 ] as const;

@@ -195,7 +195,7 @@ test.describe("Report UI smoke (R-UI)", () => {
   });
 
   test("R-UI-07 public board shows published idea", async ({ page, request }) => {
-    const session = await seedSession(request);
+    const session = await seedSession(request, { plan: "indie" });
     const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     });
@@ -219,11 +219,11 @@ test.describe("Report UI smoke (R-UI)", () => {
 
     await page.goto(`/board/${slug}`);
     await expect(page.getByRole("heading", { name: /Help shape/i })).toBeVisible();
-    await expect(page.getByText("public board smoke idea")).toBeVisible();
+    await expect(page.getByText("public board smoke idea").first()).toBeVisible();
   });
 
   test("R-UI-08 public idea detail from list", async ({ page, request }) => {
-    const session = await seedSession(request);
+    const session = await seedSession(request, { plan: "indie" });
     const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     });
@@ -255,7 +255,7 @@ test.describe("Report UI smoke (R-UI)", () => {
   });
 
   test("R-UI-11 public board vote confirm", async ({ page, request }) => {
-    const session = await seedSession(request);
+    const session = await seedSession(request, { plan: "indie" });
     const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     });
@@ -305,7 +305,7 @@ test.describe("Report UI smoke (R-UI)", () => {
   });
 
   test("R-UI-15 board ideas tab shows vote count", async ({ page, request }) => {
-    const session = await seedSession(request);
+    const session = await seedSession(request, { plan: "indie" });
     await applySession(page, session);
 
     const title = "ideas tab vote count";
@@ -353,7 +353,7 @@ test.describe("Report UI smoke (R-UI)", () => {
   });
 
   test("R-UI-13 board roadmap drag status", async ({ page, request }) => {
-    const session = await seedSession(request);
+    const session = await seedSession(request, { plan: "indie" });
     await applySession(page, session);
 
     const title = "roadmap dnd idea";
@@ -411,7 +411,7 @@ test.describe("Report UI smoke (R-UI)", () => {
   });
 
   test("R-UI-12 public board comment confirm", async ({ page, request }) => {
-    const session = await seedSession(request);
+    const session = await seedSession(request, { plan: "indie" });
     const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     });
@@ -514,7 +514,8 @@ test.describe("Report UI smoke (R-UI)", () => {
   });
 
   test("R-UI-10 Integrations S-13 Slack card + configure", async ({ page, request }) => {
-    const session = await seedSession(request);
+    // Slack needs Indie (pricing update P2, US-64).
+    const session = await seedSession(request, { plan: "indie" });
     await applySession(page, session);
     await page.goto("/app/settings/integrations");
     await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
@@ -528,12 +529,25 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(dialog.getByLabel("Incoming Webhook URL")).toBeVisible();
   });
 
+  test("R-UI-19 Integrations S-13 Free locks Slack, GitHub Issues, Linear, Jira", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await applySession(page, session);
+    await page.goto("/app/settings/integrations");
+    await expect(
+      page.getByRole("heading", { name: "Notify and track · Slack and GitHub Issues need Indie" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Upgrade to Indie" })).toHaveCount(2);
+    await expect(page.getByRole("button", { name: "Upgrade to Studio" })).toHaveCount(2);
+    await page.getByRole("button", { name: "Upgrade to Indie" }).first().click();
+    await expect(page).toHaveURL(/\/app\/settings\/billing/);
+  });
+
   test("R-UI-17 Inbox coach-mark tour first visit", async ({ page, request }) => {
     const session = await seedSession(request);
     const message = `Tour report ${Date.now()}`;
     await ingestReport(request, session.publicKey, message);
 
-    await applySession(page, session);
+    await applySession(page, session, { tours: true });
     await page.goto("/app/inbox");
     await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
     await expect(page.getByText(message)).toBeVisible();
@@ -556,7 +570,7 @@ test.describe("Report UI smoke (R-UI)", () => {
   test("R-UI-18 Inbox coach-mark Esc closes tour", async ({ page, request }) => {
     const session = await seedSession(request);
     await ingestReport(request, session.publicKey, `Esc tour ${Date.now()}`);
-    await applySession(page, session);
+    await applySession(page, session, { tours: true });
     await page.goto("/app/inbox");
     const tour = page.getByRole("dialog");
     await expect(tour.getByRole("heading", { name: "Every report lands here" })).toBeVisible({

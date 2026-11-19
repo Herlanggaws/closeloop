@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"strings"
 	"testing"
 )
 
@@ -168,30 +167,42 @@ func TestR_FIX_05_InAppUpdates(t *testing.T) {
 	}
 }
 
-func TestR_FIX_06_FreePlanMCPWriteGated(t *testing.T) {
+// Pricing update P1 (US-60, US-62): Free gets every MCP tool, mark_fixed included.
+func TestR_FIX_06_FreePlanMCPFullLoop(t *testing.T) {
 	h := newReportHarness(t)
 	seed := h.seedUserProject("free")
 	mcpToken, scopes := h.createMCPToken(seed.AccessToken, seed.ProjectID)
+	hasWrite := false
 	for _, s := range scopes {
 		if s == "write" {
-			t.Fatalf("free plan should not get write scope, got %v", scopes)
+			hasWrite = true
 		}
 	}
+	if !hasWrite {
+		t.Fatalf("free plan should get write scope, got %v", scopes)
+	}
 	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
-		"type": "bug", "message": "free gate", "platform": "web",
+		"type": "bug", "message": "free loop", "platform": "web",
 	})
-	code, body := h.mcpCall(mcpToken, "mark_fixed", map[string]any{
-		"ticket_id": ticketID, "note": "should fail",
-	})
-	if code != 200 {
-		t.Fatalf("mcp http: %d %v", code, body)
+	for _, call := range []struct {
+		tool string
+		args map[string]any
+	}{
+		{"update_status", map[string]any{"ticket_id": ticketID, "status": "in_progress"}},
+		{"add_note", map[string]any{"ticket_id": ticketID, "body": "found it"}},
+		{"mark_fixed", map[string]any{"ticket_id": ticketID, "note": "shipped"}},
+	} {
+		code, body := h.mcpCall(mcpToken, call.tool, call.args)
+		if code != 200 {
+			t.Fatalf("%s http: %d %v", call.tool, code, body)
+		}
+		if text, isErr := h.mcpResultText(body); isErr {
+			t.Fatalf("%s on free should work, got %s", call.tool, text)
+		}
 	}
-	text, isErr := h.mcpResultText(body)
-	if !isErr {
-		t.Fatalf("expected plan gate error, got %s", text)
-	}
-	if !strings.Contains(strings.ToLower(text), "plan") && !strings.Contains(text, "required") {
-		t.Fatalf("unexpected error text: %s", text)
+	code, detail := h.do(http.MethodGet, "/api/tickets/"+ticketID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 || detail["ticket"].(map[string]any)["status"] != "fixed" {
+		t.Fatalf("expected fixed, got %d %v", code, detail["ticket"])
 	}
 }
 

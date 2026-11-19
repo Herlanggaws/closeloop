@@ -63,6 +63,10 @@ func (s *Server) createTrackerIssue(c *gin.Context, provider string) {
 	if !s.requireTicketWrite(c, t.ProjectID) {
 		return
 	}
+	if err := s.Store.RequireIntegrationUse(c.Request.Context(), t.ProjectID, provider, provider); err != nil {
+		s.mapErr(c, err)
+		return
+	}
 
 	var result application.TrackerIssueResult
 	switch provider {

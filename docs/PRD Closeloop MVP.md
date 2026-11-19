@@ -245,3 +245,25 @@ Semua fitur masuk MVP, jadi pengerjaannya dipecah ke milestone internal dan beta
 - [ ] Boleh pakai backend Go Bear Budget sebagai basis repo baru, atau mulai repo bersih?
 - [ ] Siapa 5 sampai 10 builder yang bisa diinterview?
 - [ ] Berapa jam per minggu yang tersedia untuk proyek ini?
+
+## Referensi desain
+
+Desain ada di `closeloop.pen` (root repo), dibaca lewat Pencil MCP. Peta lengkap S-xx ke node ID, status audit, dan bagian yang tidak boleh diikuti ada di [Closeloop User Stories dan Screens](Closeloop%20User%20Stories%20dan%20Screens.md#referensi-desain-closelooppen). Frame utama per fitur:
+
+| Fitur | Frame (node ID) |
+| --- | --- |
+| F1 Akun dan project | S-02 `Z4o79`, S-03 `ta8n0`, S-12 `DZHRA`, S-14 `k4JbSl` |
+| F2 Widget web | S-04 `o1TJBV`, S-18 `p6yPO`, S-19 `Z0n10`, S-20 `skxsQ` |
+| F3 SDK mobile | S-22 `TmTzZ` |
+| F4 Inbox | S-06 `KTEN5`, S-06 empty `PN6mj`, S-07 `mxSU2`, S-08 `PGxbA` |
+| F5 MCP | S-05 `HcHA7` |
+| F6 Kabar ke pelapor | S-09 `fdt3t`, S-21 `QkmxJ`, S-23 `cXJSw` |
+| F8 Integrasi | S-13 `wAub0` |
+| F9 Board publik | S-11 `wzwAQ`, S-24 `McGCV`, S-25 `vI1RK`, S-26 `FgnMs`, S-27 `ztvpN` |
+| F10 AI auto PR | S-10 `aDGPC` |
+| F12 Business | S-16 `o2XU2F`, S-17 `dCW7L` |
+| Billing | S-15 `jRMCb`, S-14 v2 `APr9x` (batas seat), S-31 `s67yG` (badge Free) |
+| Landing dan waitlist | S-01 `p4Rhi`, S-28 `dBcSs` `owTA7` `mWTt7` `jEGiX` |
+| Komponen dan brand | Components `kKCiJ`, Brand Guidelines `r8tLc` |
+
+Catatan: desain (kartu pricing S-01 `BPPVw`, Change plan S-15 `jRMCb`, copy plan S-05 dan S-06 empty) sudah mengikuti [PRD Update Pricing dan Batas Fitur](PRD%20Update%20Pricing%20dan%20Batas%20Fitur.md), bukan tabel pricing di atas. Frame v2 untuk multi-repo dan pricing ada di [PRD Multi-repo per Project](PRD%20Multi-repo%20per%20Project.md#referensi-desain) dan PRD Update Pricing.

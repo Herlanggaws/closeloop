@@ -158,6 +158,7 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 		}
 		for _, m := range mails {
 			fixed := email.FixedMail{
+				BadgeURL:     store.BadgeURLForTicket(ctx, p.TicketID, deps.WebURL, "email"),
 				To:           m.Email,
 				ProjectName:  m.ProjectName,
 				TicketTitle:  m.TicketTitle,
@@ -215,6 +216,7 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 		}
 		confirmURL := strings.TrimRight(deps.WebURL, "/") + "/vote/confirm?t=" + p.RawToken
 		mail := email.VoteVerifyMail{
+			BadgeURL: store.BadgeURLForTicket(ctx, p.TicketID, deps.WebURL, "email"),
 			To:           p.Email,
 			ProjectName:  p.ProjectName,
 			IdeaTitle:    p.IdeaTitle,
@@ -257,6 +259,7 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 		subject := email.VoteReleasedSubject()
 		for _, to := range data.Emails {
 			mail := email.VoteReleasedMail{
+				BadgeURL: store.BadgeURLForTicket(ctx, data.TicketID, deps.WebURL, "email"),
 				To:           to,
 				ProjectName:  data.ProjectName,
 				IdeaTitle:    data.IdeaTitle,
@@ -290,6 +293,7 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 		}
 		confirmURL := strings.TrimRight(deps.WebURL, "/") + "/comment/confirm?t=" + p.RawToken
 		mail := email.CommentVerifyMail{
+			BadgeURL: store.BadgeURLForTicket(ctx, p.TicketID, deps.WebURL, "email"),
 			To:           p.Email,
 			ProjectName:  p.ProjectName,
 			IdeaTitle:    p.IdeaTitle,
@@ -318,6 +322,7 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 		}
 		confirmURL := strings.TrimRight(deps.WebURL, "/") + "/suggest/confirm?t=" + p.RawToken
 		mail := email.SuggestVerifyMail{
+			BadgeURL:     store.BadgeURLForBoard(ctx, p.BoardSlug, deps.WebURL, "email"),
 			To:           p.Email,
 			ProjectName:  p.ProjectName,
 			IdeaTitle:    p.IdeaTitle,
@@ -352,7 +357,7 @@ func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID, e
 	}
 	ticket, err := store.GetTicket(ctx, ticketID)
 	if err != nil {
-		if err == ErrNotFound || err == ErrPlanRequired {
+		if err == ErrNotFound || err == ErrPlanRequired || err == ErrQuotaLocked {
 			return nil
 		}
 		return err
@@ -393,7 +398,7 @@ func notifyOutboundWebhook(ctx context.Context, store *Store, deps WorkerDeps, t
 	}
 	ticket, err := store.GetTicket(ctx, ticketID)
 	if err != nil {
-		if err == ErrNotFound || err == ErrPlanRequired {
+		if err == ErrNotFound || err == ErrPlanRequired || err == ErrQuotaLocked {
 			return nil
 		}
 		return err

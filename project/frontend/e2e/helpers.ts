@@ -4,6 +4,7 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080
 
 export type SeededSession = {
   email: string;
+  userId: string;
   accessToken: string;
   projectId: string;
   publicKey: string;
@@ -14,7 +15,10 @@ function uniq(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export async function seedSession(request: APIRequestContext): Promise<SeededSession> {
+export async function seedSession(
+  request: APIRequestContext,
+  opts: { plan?: "free" | "indie" | "studio" } = {},
+): Promise<SeededSession> {
   const email = `${uniq("ui")}@test.closeloop`;
   const password = "test-test-test";
   const projectName = `UI Report ${uniq("p")}`;
@@ -25,7 +29,16 @@ export async function seedSession(request: APIRequestContext): Promise<SeededSes
   expect(register.ok(), await register.text()).toBeTruthy();
   const regBody = await register.json();
   const accessToken = regBody.access_token as string;
+  const userId = (regBody.user?.id as string) || "";
   expect(accessToken).toBeTruthy();
+
+  if (opts.plan && opts.plan !== "free") {
+    const plan = await request.patch(`${API_URL}/api/org/plan`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      data: { plan: opts.plan },
+    });
+    expect(plan.ok(), await plan.text()).toBeTruthy();
+  }
 
   const project = await request.post(`${API_URL}/api/projects`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -37,7 +50,7 @@ export async function seedSession(request: APIRequestContext): Promise<SeededSes
   const publicKey = projBody.public_key as string;
   expect(projectId && publicKey).toBeTruthy();
 
-  return { email, accessToken, projectId, publicKey, projectName };
+  return { email, userId, accessToken, projectId, publicKey, projectName };
 }
 
 export async function ingestReport(
@@ -65,17 +78,29 @@ export async function ingestReport(
   return res.json() as Promise<{ ticket_id: string; report_id: string }>;
 }
 
-export async function applySession(page: Page, session: SeededSession) {
+export async function applySession(
+  page: Page,
+  session: SeededSession,
+  opts: { tours?: boolean } = {},
+) {
   await page.addInitScript(
-    ({ accessToken, projectId, publicKey }) => {
+    ({ accessToken, projectId, publicKey, tourKeys }) => {
       localStorage.setItem("closeloop_access", accessToken);
       localStorage.setItem("closeloop_project", projectId);
       localStorage.setItem("closeloop_public_key", publicKey);
+      // Coach-mark tours cover the filters and buttons these tests click; keep them off.
+      for (const key of tourKeys) {
+        localStorage.setItem(key, JSON.stringify({ seen: [], disabled: true }));
+      }
     },
     {
       accessToken: session.accessToken,
       projectId: session.projectId,
       publicKey: session.publicKey,
+      // Tours stay off unless a test is about tours.
+      tourKeys: opts.tours ? [] : [session.userId, session.email]
+        .filter(Boolean)
+        .map((id) => `saidloop.tours.v1.${id}`),
     },
   );
 }

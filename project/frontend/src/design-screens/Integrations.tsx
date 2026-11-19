@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
 import { asConfig, parseIntegrationConfig } from "@/lib/integration-config";
+import { planAtLeast, planInfo, type PlanId } from "@/lib/plans";
 import type { MeResponse } from "@/lib/usage";
 
 type Integration = {
@@ -17,6 +18,8 @@ type Integration = {
 type IntegrationRow = {
   id: string;
   provider: string;
+  /** Connected before plan gating shipped; keeps working on any plan. */
+  grandfathered?: boolean;
   config: Record<string, unknown> | string;
 };
 
@@ -31,34 +34,39 @@ type CatalogItem = {
   action: "configure" | "coming_soon" | "upgrade";
   badge?: string;
   wired?: WiredProvider;
+  /** Lowest plan that may connect it (pricing update P2). Mirrors backend entitlements. */
+  minPlan?: PlanId;
 };
 
 const NOTIFY_CATALOG: CatalogItem[] = [
   {
     id: "slack",
     name: "Slack",
-    description: "New reports and status changes to your channel",
+    description: "Post new reports and status changes to a channel",
     icon: "Sl",
     iconBg: "#4A154B",
     action: "configure",
     wired: "slack",
+    minPlan: "indie",
   },
   {
     id: "github_issues",
     name: "GitHub Issues",
-    description: "Create issues from tickets via GitHub App",
+    description: "Create issues and close tickets when they close",
     icon: "GH",
     iconBg: "#171717",
     action: "configure",
+    minPlan: "indie",
   },
   {
     id: "linear",
     name: "Linear",
-    description: "Create issues + close sync via webhook",
+    description: "Create Linear issues with two-way status sync",
     icon: "Li",
     iconBg: "#5E6AD2",
     action: "configure",
     wired: "linear",
+    minPlan: "studio",
   },
   {
     id: "jira",
@@ -68,7 +76,7 @@ const NOTIFY_CATALOG: CatalogItem[] = [
     iconBg: "#2684FF",
     action: "configure",
     wired: "jira",
-    badge: "Studio",
+    minPlan: "studio",
   },
 ];
 
@@ -173,6 +181,7 @@ export function Integrations() {
   const [configureModal, setConfigureModal] = useState<WiredProvider | "github_issues" | null>(
     null,
   );
+  const [grandfathered, setGrandfathered] = useState<Set<string>>(new Set());
   const configureTitleId = useId();
 
   const [sentryOrg, setSentryOrg] = useState("");
@@ -225,6 +234,11 @@ export function Integrations() {
         if (cancelled) return;
         setMe(meRes);
         setProjectName(projectRes.project.name || "Project");
+        setGrandfathered(
+          new Set(
+            (integRes.integrations || []).filter((row) => row.grandfathered).map((row) => row.provider),
+          ),
+        );
         const list = (integRes.integrations || []).map((row) => ({
           id: row.id,
           provider: row.provider,
@@ -464,7 +478,23 @@ export function Integrations() {
     return () => window.removeEventListener("keydown", onKey);
   }, [configureModal]);
 
+  // A card is locked when the plan is below its minimum and the connection is not grandfathered.
+  function lockedPlan(item: CatalogItem): PlanId | null {
+    if (!item.minPlan || planAtLeast(plan, item.minPlan)) return null;
+    const connection = item.id === "github_issues" ? "github_app" : item.wired;
+    if (connection && grandfathered.has(connection)) return null;
+    return item.minPlan;
+  }
+
+  function badgeFor(item: CatalogItem): string | undefined {
+    return item.minPlan ? planInfo(item.minPlan)?.name : item.badge;
+  }
+
   function onCardAction(item: CatalogItem) {
+    if (lockedPlan(item)) {
+      router.push("/app/settings/billing");
+      return;
+    }
     if (item.id === "github_issues") {
       if (!githubConnected) {
         void connectGitHubApp();
@@ -488,7 +518,10 @@ export function Integrations() {
   }
 
   function actionLabel(item: CatalogItem): string {
+    const locked = lockedPlan(item);
+    if (locked) return `Upgrade to ${planInfo(locked)?.name}`;
     if (item.action === "upgrade") return "Upgrade";
+    if (item.wired === "webhooks") return webhooksConnected ? "Configure" : "Add endpoint";
     if (item.action === "coming_soon") return "Coming soon";
     if (item.id === "github_issues") return githubConnected ? "Configure" : "Connect";
     if (item.wired === "github_app") return githubConnected ? "Configure" : "Connect";
@@ -536,26 +569,24 @@ export function Integrations() {
             <>
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
 
-              <IntegrationGroup title="Notify and track" tourTarget="integrations-track">
+              <IntegrationGroup
+                title={
+                  planAtLeast(plan, "indie")
+                    ? "Notify and track"
+                    : "Notify and track · Slack and GitHub Issues need Indie"
+                }
+                tourTarget="integrations-track"
+              >
                 {NOTIFY_CATALOG.map((item) => {
-                  const cardItem =
-                    item.id === "github_issues" && githubRepo.trim()
-                      ? {
-                          ...item,
-                          description: `${githubRepo.trim()} · create issues from tickets`,
-                        }
-                      : item.id === "slack" && slackConnected
-                        ? {
-                            ...item,
-                            description: "New reports and status changes to your channel",
-                          }
-                        : item;
+                  // Issues are created in the ticket's repo, so the card never names one repo.
+                  const cardItem = { ...item, badge: badgeFor(item) };
                   return (
                     <IntegrationCard
                       key={item.id}
                       item={cardItem}
                       status={statusFor(item)}
                       actionLabel={actionLabel(item)}
+                      locked={Boolean(lockedPlan(item))}
                       onAction={() => onCardAction(item)}
                     />
                   );
@@ -1347,15 +1378,18 @@ function IntegrationCard({
   item,
   status,
   actionLabel,
+  locked = false,
   onAction,
 }: {
   item: CatalogItem;
   status: "connected" | "none";
   actionLabel: string;
+  locked?: boolean;
   onAction: () => void;
 }) {
   const disabled = item.action === "coming_soon";
-  const primary = item.action === "upgrade";
+  // Plan upgrades use the secondary (outline) style, per S-13.
+  const primary = item.action === "upgrade" && !locked;
 
   return (
     <div className="flex min-h-[156px] flex-col rounded-xl border border-[#17171714] bg-white p-4">

@@ -91,7 +91,7 @@ async function mcpRpc(
 }
 
 function scopesLabel(scopes: string[]) {
-  return scopes.includes("write") ? "Read + write" : "Read-only";
+  return scopes.includes("write") ? "Read + write" : "Read";
 }
 
 function lastUsedLabel(iso: string | null) {
@@ -339,7 +339,7 @@ export function McpServer() {
                     <p className="mt-1.5 font-ds-ui text-[13px] text-[#737373]">
                       {connected
                         ? `${tokens.length} active token${tokens.length === 1 ? "" : "s"} · ${
-                            anyWrite ? "Read + write" : "Read-only"
+                            anyWrite ? "Read + write" : "Read"
                           } · ${lastUsedLabel(latestUsed)}`
                         : "Generate a token and paste the config into Cursor or Claude Code so agents can read your inbox."}
                     </p>

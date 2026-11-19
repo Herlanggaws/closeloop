@@ -15,16 +15,20 @@ import {
   buildPosthogUrl,
   buildSentryUrl,
   contextEntries,
+  displayName,
   eventDescription,
+  platformLabel,
   primaryReport,
   relativeTime,
   replayUrl,
   reporterLine,
+  reportersSummary,
   screenshotUrl,
   shortId,
   type TicketDetailResponse,
   type TicketStatus,
 } from "@/lib/tickets";
+import { planAtLeast } from "@/lib/plans";
 import type { MeResponse } from "@/lib/usage";
 
 type DetailTab = "activity" | "replay" | "sentry" | "posthog";
@@ -302,12 +306,21 @@ export function ReportDetail() {
   const replay = data ? replayUrl(data.attachments || []) : "";
   const contextRows = contextEntries(report);
   const reporterTotal = data?.reporters?.total ?? ticket?.report_count ?? 0;
-  const events = [...(data?.events || [])].reverse();
+  const events = data?.events || [];
   const sentryUrl = data ? buildSentryUrl(report, data.integrations) : null;
   const posthogUrl = data ? buildPosthogUrl(report, data.integrations) : null;
   const hasSentryConfig = !!data?.integrations?.some((i) => i.provider === "sentry");
   const hasPosthogConfig = !!data?.integrations?.some((i) => i.provider === "posthog");
   const replayPlanOk = plan === "studio" || plan === "business";
+  const reporterItems = data?.reporters?.items || [];
+  // Issue buttons follow the plan: GitHub Issues on Indie+, Linear/Jira on Studio+ when connected.
+  const githubIssueGrandfathered = !!data?.integrations?.some(
+    (i) => i.provider === "github_app" && (i as { grandfathered?: boolean }).grandfathered,
+  );
+  const showGitHubIssue =
+    !!githubIssueUrl || (githubAppConnected && (planAtLeast(plan, "indie") || githubIssueGrandfathered));
+  const showLinearIssue = !!linearIssueUrl || (linearConnected && planAtLeast(plan, "studio"));
+  const showJiraIssue = !!jiraIssueUrl || (jiraConnected && planAtLeast(plan, "studio"));
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -338,6 +351,45 @@ export function ReportDetail() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {ticket && showGitHubIssue && (
+              <HeaderButton
+                label={githubIssueUrl ? "GitHub issue ↗" : githubIssueBusy ? "Creating…" : "Create GitHub issue"}
+                href={githubIssueUrl || undefined}
+                disabled={githubIssueBusy}
+                onClick={githubIssueUrl ? undefined : () => void createGitHubIssue()}
+              />
+            )}
+            {ticket && showLinearIssue && (
+              <HeaderButton
+                label={linearIssueUrl ? "Linear issue ↗" : linearIssueBusy ? "Creating…" : "Create Linear issue"}
+                href={linearIssueUrl || undefined}
+                disabled={linearIssueBusy}
+                onClick={
+                  linearIssueUrl
+                    ? undefined
+                    : () => void createTrackerIssue("linear-issue", setLinearIssueBusy, setLinearIssueUrl)
+                }
+              />
+            )}
+            {ticket && showJiraIssue && (
+              <HeaderButton
+                label={jiraIssueUrl ? "Jira issue ↗" : jiraIssueBusy ? "Creating…" : "Create Jira issue"}
+                href={jiraIssueUrl || undefined}
+                disabled={jiraIssueBusy}
+                onClick={
+                  jiraIssueUrl
+                    ? undefined
+                    : () => void createTrackerIssue("jira-issue", setJiraIssueBusy, setJiraIssueUrl)
+                }
+              />
+            )}
+            {ticket && (
+              <HeaderButton
+                label={autoprBusy ? "Starting…" : "Run auto PR"}
+                disabled={autoprBusy}
+                onClick={() => void runAutopr()}
+              />
+            )}
             {ticket && ticket.status !== "fixed" && (
               <Link
                 href={`/app/tickets/${ticket.id}/fixed`}
@@ -484,7 +536,7 @@ export function ReportDetail() {
                     </p>
                   ) : (
                     <p className="font-ds-ui text-[13px] text-[#A3A3A3]">
-                      Session replay is available on Studio and Business plans.
+                      Session replay is available on Studio.
                     </p>
                   ))}
 
@@ -534,6 +586,49 @@ export function ReportDetail() {
                   disabled={savingStatus}
                   onChange={changeStatus}
                 />
+              </div>
+
+              <div data-pencil-name="Reporters" className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Reporters</div>
+                  <div className="font-ds-ui text-[11px] text-[#737373]">
+                    {reportersSummary(reporterItems, data?.reporters?.by_platform)}
+                  </div>
+                </div>
+                {reporterItems.length === 0 ? (
+                  <p className="font-ds-ui text-xs text-[#A3A3A3]">No reporters yet.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {reporterItems.map((r, index) => {
+                      const name = r.email ? displayName(r.email) : "Anonymous";
+                      return (
+                        <div
+                          key={`${r.reporter_id || "anon"}-${r.platform}-${index}`}
+                          className="flex items-center gap-2.5"
+                        >
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#E5E5E5] font-ds-ui text-[10px] font-semibold text-[#525252]">
+                            {r.email ? name.charAt(0).toUpperCase() : "?"}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-ds-ui text-[12.5px] font-medium text-[#171717]">
+                              {name}
+                            </span>
+                            <span
+                              className={`block truncate font-ds-ui text-[11px] ${
+                                r.email ? "text-[#737373]" : "text-[#A3A3A3]"
+                              }`}
+                            >
+                              {r.email || "no email"}
+                            </span>
+                          </span>
+                          <span className="shrink-0 font-ds-ui text-[11px] text-[#737373]">
+                            {platformLabel(r.platform)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-2.5">
@@ -631,86 +726,6 @@ export function ReportDetail() {
                         View all runs
                       </Link>
                     </>
-                  }
-                />
-                <LinkedRow
-                  title={githubIssueUrl ? "GitHub Issue" : "No GitHub Issue yet"}
-                  subtitle="GitHub Issue · create from ticket"
-                  actionLabel={
-                    githubIssueBusy ? "…" : githubIssueUrl ? "View" : "Create"
-                  }
-                  href={githubIssueUrl || undefined}
-                  onAction={
-                    githubIssueUrl
-                      ? undefined
-                      : () => void createGitHubIssue()
-                  }
-                  actionDisabled={
-                    githubIssueBusy || (!githubAppConnected && !githubIssueUrl)
-                  }
-                  footer={
-                    !githubAppConnected && !githubIssueUrl ? (
-                      <Link
-                        href="/app/settings/integrations"
-                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
-                      >
-                        Connect GitHub App
-                      </Link>
-                    ) : null
-                  }
-                />
-                <LinkedRow
-                  title={linearIssueUrl ? "Linear issue" : "No Linear issue yet"}
-                  subtitle="Linear · create from ticket"
-                  actionLabel={linearIssueBusy ? "…" : linearIssueUrl ? "View" : "Create"}
-                  href={linearIssueUrl || undefined}
-                  onAction={
-                    linearIssueUrl
-                      ? undefined
-                      : () =>
-                          void createTrackerIssue(
-                            "linear-issue",
-                            setLinearIssueBusy,
-                            setLinearIssueUrl,
-                          )
-                  }
-                  actionDisabled={linearIssueBusy || (!linearConnected && !linearIssueUrl)}
-                  footer={
-                    !linearConnected && !linearIssueUrl ? (
-                      <Link
-                        href="/app/settings/integrations"
-                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
-                      >
-                        Connect Linear
-                      </Link>
-                    ) : null
-                  }
-                />
-                <LinkedRow
-                  title={jiraIssueUrl ? "Jira issue" : "No Jira issue yet"}
-                  subtitle="Jira · create from ticket"
-                  actionLabel={jiraIssueBusy ? "…" : jiraIssueUrl ? "View" : "Create"}
-                  href={jiraIssueUrl || undefined}
-                  onAction={
-                    jiraIssueUrl
-                      ? undefined
-                      : () =>
-                          void createTrackerIssue(
-                            "jira-issue",
-                            setJiraIssueBusy,
-                            setJiraIssueUrl,
-                          )
-                  }
-                  actionDisabled={jiraIssueBusy || (!jiraConnected && !jiraIssueUrl)}
-                  footer={
-                    !jiraConnected && !jiraIssueUrl ? (
-                      <Link
-                        href="/app/settings/integrations"
-                        className="mt-1 inline-block font-ds-ui text-[11px] text-[#737373] underline"
-                      >
-                        Connect Jira
-                      </Link>
-                    ) : null
                   }
                 />
               </div>
@@ -815,6 +830,33 @@ function StatusSelect({
         </ul>
       )}
     </div>
+  );
+}
+
+function HeaderButton({
+  label,
+  href,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  const className =
+    "flex h-8 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium tracking-[-0.2px] text-[#171717] no-underline shadow-[0_4px_4px_#1717170A] hover:bg-[#FAFAFA] disabled:cursor-default disabled:opacity-60";
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className={className}>
+        {label}
+      </a>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className={className}>
+      {label}
+    </button>
   );
 }
 
