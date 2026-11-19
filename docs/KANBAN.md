@@ -211,7 +211,7 @@ Fase B · pricing di backend
 - [x] D-09 `MaxReposPerProject` + `usage.repos`
 - [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
 
-Fase C · multi-repo
+Fase C · multi-repo — **semua D-11…D-19 udah dikerjain di branch `claude/project-thread-q7465g` (migrasi `023`), belum merge ke dev, nunggu review Herlangga.** Checkbox di bawah dicentang begitu branch itu masuk dev. Yang masih kurang di branch: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri), connect GitHub App masih pilih 1 repo di awal, langkah data SQL migrasi 023 belum dites sendiri.
 - [ ] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`
 - [ ] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`)
 - [ ] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`)
@@ -223,6 +223,7 @@ Fase C · multi-repo
 - [ ] D-19 Auto PR `needs_reroute` + refund (`aHJCX`)
 
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
+Status Nov 19: belum dikerjain, nunggu keputusan Herlangga. D-10 juga belum (nunggu Polar M5).
 - [ ] D-20 Badge "Powered by Saidloop" hanya di Free (`s67yG`) — tunggu keputusan badge
 - [ ] D-21 Seat Indie + S-14 v2 (`APr9x`) — tunggu keputusan 1 atau 2 seat
 
