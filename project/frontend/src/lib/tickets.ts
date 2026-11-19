@@ -133,8 +133,9 @@ export function reportersSummary(items: TicketReporterItem[], byPlatform?: Recor
     return acc;
   }, {});
   const order = ["web", "ios", "android"];
+  const rank = (p: string) => (order.indexOf(p) < 0 ? order.length : order.indexOf(p));
   const parts = Object.entries(counts)
-    .sort(([a], [b]) => (order.indexOf(a) + 99) % 100 - (order.indexOf(b) + 99) % 100)
+    .sort(([a], [b]) => rank(a) - rank(b))
     .map(([platform, n]) => `${platformLabel(platform)} ${n}`);
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   return parts.length ? `${total} · ${parts.join(", ")}` : `${total}`;

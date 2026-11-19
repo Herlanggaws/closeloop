@@ -60,3 +60,13 @@ describe("S-06 empty inbox checklist (D-02)", () => {
     assert.equal(repos.action?.href, "/app/settings/integrations");
   });
 });
+
+describe("reporters summary (D-03)", () => {
+  it("lists Web before iOS like the S-07 frame", async () => {
+    const { reportersSummary } = await import("./tickets.ts");
+    assert.equal(
+      reportersSummary([], { ios: 1, web: 2 }),
+      "3 · Web 2, iOS 1",
+    );
+  });
+});
