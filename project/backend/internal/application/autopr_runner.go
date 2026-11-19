@@ -27,6 +27,10 @@ type AutoprExecResult struct {
 	PRNumber  int
 	CostCents int
 	Log       string
+	// NeedsReroute stops the run without a PR: the fix belongs in SuggestedRepo (US-57).
+	NeedsReroute  bool
+	SuggestedRepo string
+	Reason        string
 }
 
 type GitHubAutoprExecutor struct {
@@ -148,6 +152,16 @@ func ProcessAutoprRun(ctx context.Context, store *Store, exec AutoprExecutor, we
 	if err != nil {
 		return failAutopr(ctx, store, run, err, true)
 	}
+	// Write access covers the run's repo only (US-56, US-58).
+	ghCfg.RepoFullName = run.Repo
+	if repo, err := store.ProjectRepoByFullName(ctx, run.ProjectID, run.Repo); err == nil {
+		if repo.InstallationID != 0 {
+			ghCfg.InstallationID = repo.InstallationID
+		}
+		if repo.DefaultBranch != "" {
+			ghCfg.DefaultBranch = repo.DefaultBranch
+		}
+	}
 
 	ticketURL := strings.TrimRight(webURL, "/") + "/app/tickets/" + ticket.ID
 	if exec == nil {
@@ -169,6 +183,9 @@ func ProcessAutoprRun(ctx context.Context, store *Store, exec AutoprExecutor, we
 	if err != nil {
 		return failAutopr(ctx, store, run, err, true)
 	}
+	if result.NeedsReroute {
+		return rerouteAutopr(ctx, store, run, result.SuggestedRepo, result.Reason)
+	}
 
 	finished := time.Now().UTC()
 	run.Status = "succeeded"
@@ -180,6 +197,22 @@ func ProcessAutoprRun(ctx context.Context, store *Store, exec AutoprExecutor, we
 	run.Error = ""
 	_ = now
 	return store.UpdateAutoprRun(ctx, run)
+}
+
+// rerouteAutopr ends a run as needs_reroute: no PR, one credit refunded (US-57).
+func rerouteAutopr(ctx context.Context, store *Store, run AutoprRun, suggested, reason string) error {
+	finished := time.Now().UTC()
+	run.Status = "needs_reroute"
+	run.SuggestedRepo = strings.TrimSpace(suggested)
+	run.RerouteReason = strings.TrimSpace(reason)
+	run.PRURL = ""
+	run.PRNumber = nil
+	run.FinishedAt = &finished
+	run.Error = ""
+	if err := store.UpdateAutoprRun(ctx, run); err != nil {
+		return err
+	}
+	return store.RefundAutoprCredit(ctx, run.OrgID, run.ID, "autopr_needs_reroute")
 }
 
 func failAutopr(ctx context.Context, store *Store, run AutoprRun, cause error, refund bool) error {

@@ -70,6 +70,10 @@ type Ticket struct {
 	FixedNote   sql.NullString `json:"-"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
+	// Multi-repo (D-15): the repo a ticket routes to; empty when it has none.
+	RepoID       sql.NullString `json:"-"`
+	RepoPath     string         `json:"-"`
+	RepoFullName string         `json:"-"`
 }
 
 func (t Ticket) MarshalJSON() ([]byte, error) {
@@ -94,7 +98,17 @@ func (t Ticket) MarshalJSON() ([]byte, error) {
 		"fixed_note":   fixedNote,
 		"created_at":   t.CreatedAt,
 		"updated_at":   t.UpdatedAt,
+		"repo_id":      nullableString(t.RepoID),
+		"repo":         t.RepoFullName,
+		"repo_path":    t.RepoPath,
 	})
+}
+
+func nullableString(v sql.NullString) any {
+	if v.Valid {
+		return v.String
+	}
+	return nil
 }
 
 type Report struct {
@@ -844,6 +858,29 @@ func (s *Store) CreateReport(ctx context.Context, project Project, in CreateRepo
 		VALUES ($1,'user','created',$2)`, ticketID, mustJSON(map[string]any{"report_id": reportID})); err != nil {
 		return "", "", "", "", "", err
 	}
+	repoID, repoPath, routeKind, err := RouteForPlatform(ctx, tx, project.ID, in.Platform)
+	if err != nil {
+		return "", "", "", "", "", err
+	}
+	routed := map[string]any{"kind": routeKind, "platform": in.Platform}
+	if repoID != "" {
+		if _, err := tx.ExecContext(ctx, `UPDATE tickets SET repo_id=$2, repo_path=$3 WHERE id=$1`, ticketID, repoID, repoPath); err != nil {
+			return "", "", "", "", "", err
+		}
+		var name string
+		_ = tx.QueryRowContext(ctx, `SELECT full_name FROM project_repos WHERE id=$1`, repoID).Scan(&name)
+		routed["repo"] = name
+	}
+	// Projects with no repos at all skip the event; routing only matters once a repo is connected.
+	var anyRepo bool
+	_ = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM project_repos WHERE project_id=$1)`, project.ID).Scan(&anyRepo)
+	if anyRepo {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO ticket_events(ticket_id, actor, kind, payload)
+			VALUES ($1,'system','ticket_routed',$2)`, ticketID, mustJSON(routed)); err != nil {
+			return "", "", "", "", "", err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return "", "", "", "", "", err
 	}
@@ -960,9 +997,23 @@ func (s *Store) DeleteAttachment(ctx context.Context, attachmentID string) error
 
 const ticketSelectCols = `id, project_id, type, status, title, report_count,
 		(SELECT COUNT(*) FROM idea_votes v WHERE v.ticket_id=tickets.id AND v.confirmed_at IS NOT NULL),
-		is_public, fixed_at, fixed_note, created_at, updated_at`
+		is_public, fixed_at, fixed_note, created_at, updated_at,
+		repo_id, repo_path, COALESCE((SELECT pr.full_name FROM project_repos pr WHERE pr.id=tickets.repo_id), '')`
 
 func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platform string) ([]Ticket, error) {
+	return s.ListTicketsFiltered(ctx, projectID, TicketFilter{Status: status, Type: typ, Platform: platform})
+}
+
+// TicketFilter narrows the ticket list. Repo is a repo id, "none" for tickets with no
+// repo, or empty for all. RepoOrNone also keeps tickets with no repo (MCP, US-52).
+type TicketFilter struct {
+	Status, Type, Platform string
+	Repo                   string
+	RepoOrNone             bool
+}
+
+func (s *Store) ListTicketsFiltered(ctx context.Context, projectID string, f TicketFilter) ([]Ticket, error) {
+	status, typ, platform := f.Status, f.Type, f.Platform
 	q := `SELECT ` + ticketSelectCols + `
 		FROM tickets WHERE project_id=$1
 		AND EXISTS (
@@ -989,6 +1040,18 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 		args = append(args, platform)
 		i++
 	}
+	switch {
+	case f.Repo == "none":
+		q += " AND repo_id IS NULL"
+	case f.Repo != "" && f.RepoOrNone:
+		q += fmt.Sprintf(" AND (repo_id=$%d OR repo_id IS NULL)", i)
+		args = append(args, f.Repo)
+		i++
+	case f.Repo != "":
+		q += fmt.Sprintf(" AND repo_id=$%d", i)
+		args = append(args, f.Repo)
+		i++
+	}
 	q += " ORDER BY created_at DESC LIMIT 100"
 	rows, err := s.DB.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -998,7 +1061,7 @@ func (s *Store) ListTickets(ctx context.Context, projectID, status, typ, platfor
 	var out []Ticket
 	for rows.Next() {
 		var t Ticket
-		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.VoteCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.VoteCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt, &t.RepoID, &t.RepoPath, &t.RepoFullName); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -1011,7 +1074,7 @@ func (s *Store) GetTicket(ctx context.Context, ticketID string) (Ticket, error) 
 	err := s.DB.QueryRowContext(ctx, `
 		SELECT `+ticketSelectCols+`
 		FROM tickets WHERE id=$1`, ticketID).
-		Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.VoteCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt)
+		Scan(&t.ID, &t.ProjectID, &t.Type, &t.Status, &t.Title, &t.ReportCount, &t.VoteCount, &t.IsPublic, &t.FixedAt, &t.FixedNote, &t.CreatedAt, &t.UpdatedAt, &t.RepoID, &t.RepoPath, &t.RepoFullName)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Ticket{}, ErrNotFound
 	}
@@ -1253,6 +1316,8 @@ func (s *Store) MergeTickets(ctx context.Context, parentID, actor string, childI
 type NotifyChannels struct {
 	Email bool
 	InApp bool
+	// Platforms limits who gets told; empty means every reporter (US-55).
+	Platforms []string
 }
 
 func DefaultNotifyChannels() NotifyChannels {
@@ -1268,6 +1333,7 @@ func (s *Store) EnqueueNotify(ctx context.Context, ticketID string, channels Not
 				"email":  channels.Email,
 				"in_app": channels.InApp,
 			},
+			"platforms": channels.Platforms,
 		}))
 	return err
 }
@@ -1556,7 +1622,7 @@ type ReporterNotifyMail struct {
 	AppVersion  string
 }
 
-func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string, wantEmail, wantInApp bool) (int, []ReporterNotifyMail, error) {
+func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string, wantEmail, wantInApp bool, platforms ...string) (int, []ReporterNotifyMail, error) {
 	t, err := s.GetTicket(ctx, ticketID)
 	if err != nil {
 		return 0, nil, err
@@ -1576,7 +1642,8 @@ func (s *Store) NotifyReporters(ctx context.Context, ticketID, note string, want
 		FROM reports rep
 		JOIN reporters r ON r.id=rep.reporter_id
 		WHERE rep.ticket_id=$1
-		ORDER BY r.id, rep.created_at ASC`, ticketID)
+		  AND (cardinality($2::text[]) = 0 OR COALESCE(NULLIF(rep.platform,''),'web') = ANY($2::text[]))
+		ORDER BY r.id, rep.created_at ASC`, ticketID, asArray(platforms))
 	if err != nil {
 		return 0, nil, err
 	}

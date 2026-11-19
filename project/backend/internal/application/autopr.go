@@ -30,6 +30,9 @@ type AutoprRun struct {
 	LogExcerpt string     `json:"log_excerpt"`
 	CreatedAt  time.Time  `json:"created_at"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
+	// needs_reroute (US-57): the runner thinks the fix belongs in another repo.
+	SuggestedRepo string `json:"suggested_repo"`
+	RerouteReason string `json:"reroute_reason"`
 }
 
 type CreditLedgerEntry struct {
@@ -196,8 +199,11 @@ func (s *Store) StartAutoprRun(ctx context.Context, projectID, ticketID, actorRo
 		return AutoprRun{}, fmt.Errorf("%w: insufficient auto PR credits", ErrForbidden)
 	}
 
-	var ticketProject string
-	err = tx.QueryRowContext(ctx, `SELECT project_id FROM tickets WHERE id=$1`, ticketID).Scan(&ticketProject)
+	var ticketProject, repoName string
+	err = tx.QueryRowContext(ctx, `
+		SELECT t.project_id, COALESCE(pr.full_name, '')
+		FROM tickets t LEFT JOIN project_repos pr ON pr.id = t.repo_id
+		WHERE t.id=$1`, ticketID).Scan(&ticketProject, &repoName)
 	if errors.Is(err, sql.ErrNoRows) {
 		return AutoprRun{}, ErrNotFound
 	}
@@ -207,20 +213,16 @@ func (s *Store) StartAutoprRun(ctx context.Context, projectID, ticketID, actorRo
 	if ticketProject != projectID {
 		return AutoprRun{}, ErrForbidden
 	}
-
-	var raw json.RawMessage
-	err = tx.QueryRowContext(ctx, `
-		SELECT config FROM integrations
-		WHERE project_id=$1 AND provider='github_app'`, projectID).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
-		return AutoprRun{}, fmt.Errorf("%w: connect GitHub App first", ErrInvalidInput)
+	if repoName == "" {
+		return AutoprRun{}, fmt.Errorf("%w: Pick a repo for this ticket first. Auto PR runs in the ticket's repo.", ErrInvalidInput)
 	}
-	if err != nil {
+	var ghConnected bool
+	if err := tx.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM integrations WHERE project_id=$1 AND provider='github_app')`, projectID).Scan(&ghConnected); err != nil {
 		return AutoprRun{}, err
 	}
-	ghCfg, err := ParseGitHubAppConfig(raw)
-	if err != nil || ghCfg.RepoFullName == "" {
-		return AutoprRun{}, fmt.Errorf("%w: select a repository for GitHub App", ErrInvalidInput)
+	if !ghConnected {
+		return AutoprRun{}, fmt.Errorf("%w: connect GitHub App first", ErrInvalidInput)
 	}
 
 	var runID string
@@ -228,7 +230,7 @@ func (s *Store) StartAutoprRun(ctx context.Context, projectID, ticketID, actorRo
 		INSERT INTO autopr_runs(org_id, project_id, ticket_id, status, repo)
 		VALUES ($1,$2,$3,'queued',$4)
 		RETURNING id`,
-		orgID, projectID, ticketID, ghCfg.RepoFullName).Scan(&runID)
+		orgID, projectID, ticketID, repoName).Scan(&runID)
 	if err != nil {
 		return AutoprRun{}, err
 	}
@@ -265,7 +267,7 @@ func (s *Store) ListAutoprRuns(ctx context.Context, projectID string, limit int)
 		limit = 50
 	}
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, org_id, project_id, ticket_id, status, repo, branch, pr_url, pr_number, cost_cents, error, log_excerpt, created_at, finished_at
+		SELECT id, org_id, project_id, ticket_id, status, repo, branch, pr_url, pr_number, cost_cents, error, log_excerpt, created_at, finished_at, suggested_repo, reroute_reason
 		FROM autopr_runs WHERE project_id=$1
 		ORDER BY created_at DESC LIMIT $2`, projectID, limit)
 	if err != nil {
@@ -280,7 +282,7 @@ func (s *Store) ListAutoprRunsForTicket(ctx context.Context, ticketID string, li
 		limit = 10
 	}
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, org_id, project_id, ticket_id, status, repo, branch, pr_url, pr_number, cost_cents, error, log_excerpt, created_at, finished_at
+		SELECT id, org_id, project_id, ticket_id, status, repo, branch, pr_url, pr_number, cost_cents, error, log_excerpt, created_at, finished_at, suggested_repo, reroute_reason
 		FROM autopr_runs WHERE ticket_id=$1
 		ORDER BY created_at DESC LIMIT $2`, ticketID, limit)
 	if err != nil {
@@ -292,7 +294,7 @@ func (s *Store) ListAutoprRunsForTicket(ctx context.Context, ticketID string, li
 
 func (s *Store) GetAutoprRun(ctx context.Context, runID string) (AutoprRun, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, org_id, project_id, ticket_id, status, repo, branch, pr_url, pr_number, cost_cents, error, log_excerpt, created_at, finished_at
+		SELECT id, org_id, project_id, ticket_id, status, repo, branch, pr_url, pr_number, cost_cents, error, log_excerpt, created_at, finished_at, suggested_repo, reroute_reason
 		FROM autopr_runs WHERE id=$1`, runID)
 	return scanAutoprRun(row)
 }
@@ -300,9 +302,11 @@ func (s *Store) GetAutoprRun(ctx context.Context, runID string) (AutoprRun, erro
 func (s *Store) UpdateAutoprRun(ctx context.Context, run AutoprRun) error {
 	_, err := s.DB.ExecContext(ctx, `
 		UPDATE autopr_runs SET
-			status=$2, branch=$3, pr_url=$4, pr_number=$5, cost_cents=$6, error=$7, log_excerpt=$8, finished_at=$9
+			status=$2, branch=$3, pr_url=$4, pr_number=$5, cost_cents=$6, error=$7, log_excerpt=$8, finished_at=$9,
+			suggested_repo=$10, reroute_reason=$11
 		WHERE id=$1`,
-		run.ID, run.Status, run.Branch, run.PRURL, run.PRNumber, run.CostCents, run.Error, run.LogExcerpt, run.FinishedAt)
+		run.ID, run.Status, run.Branch, run.PRURL, run.PRNumber, run.CostCents, run.Error, run.LogExcerpt, run.FinishedAt,
+		run.SuggestedRepo, run.RerouteReason)
 	return err
 }
 
@@ -326,7 +330,7 @@ func (s *Store) RefundAutoprCredit(ctx context.Context, orgID, runID, reason str
 
 func (s *Store) FindAutoprRunByPR(ctx context.Context, repo string, prNumber int) (AutoprRun, error) {
 	row := s.DB.QueryRowContext(ctx, `
-		SELECT id, org_id, project_id, ticket_id, status, repo, branch, pr_url, pr_number, cost_cents, error, log_excerpt, created_at, finished_at
+		SELECT id, org_id, project_id, ticket_id, status, repo, branch, pr_url, pr_number, cost_cents, error, log_excerpt, created_at, finished_at, suggested_repo, reroute_reason
 		FROM autopr_runs WHERE repo=$1 AND pr_number=$2
 		ORDER BY created_at DESC LIMIT 1`, repo, prNumber)
 	return scanAutoprRun(row)
@@ -366,7 +370,7 @@ func scanAutoprRun(row scannable) (AutoprRun, error) {
 	var prNum sql.NullInt64
 	var finished sql.NullTime
 	err := row.Scan(&run.ID, &run.OrgID, &run.ProjectID, &run.TicketID, &run.Status, &run.Repo, &run.Branch, &run.PRURL,
-		&prNum, &run.CostCents, &run.Error, &run.LogExcerpt, &run.CreatedAt, &finished)
+		&prNum, &run.CostCents, &run.Error, &run.LogExcerpt, &run.CreatedAt, &finished, &run.SuggestedRepo, &run.RerouteReason)
 	if errors.Is(err, sql.ErrNoRows) {
 		return AutoprRun{}, ErrNotFound
 	}

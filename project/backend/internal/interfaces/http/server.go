@@ -71,6 +71,12 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/projects/:id/mcp-tokens", s.authRequired(), s.createMCPToken)
 		api.DELETE("/projects/:id/mcp-tokens/:tokenId", s.authRequired(), s.deleteMCPToken)
 		api.GET("/projects/:id/tickets", s.authRequired(), s.listTickets)
+		api.GET("/projects/:id/repos", s.authRequired(), s.listProjectRepos)
+		api.POST("/projects/:id/repos", s.authRequired(), s.addProjectRepo)
+		api.POST("/projects/:id/repos/active", s.authRequired(), s.setActiveProjectRepos)
+		api.PATCH("/projects/:id/repos/settings", s.authRequired(), s.patchRepoSettings)
+		api.PATCH("/projects/:id/repos/:repoId", s.authRequired(), s.patchProjectRepo)
+		api.DELETE("/projects/:id/repos/:repoId", s.authRequired(), s.deleteProjectRepo)
 		api.GET("/projects/:id/integrations", s.authRequired(), s.listIntegrations)
 		api.PUT("/projects/:id/integrations/:provider", s.authRequired(), s.putIntegration)
 		api.DELETE("/projects/:id/integrations/:provider", s.authRequired(), s.deleteIntegration)
@@ -919,7 +925,12 @@ func (s *Server) listTickets(c *gin.Context) {
 	if !s.requireProjectAccess(c, id) {
 		return
 	}
-	list, err := s.Store.ListTickets(c.Request.Context(), id, c.Query("status"), c.Query("type"), c.Query("platform"))
+	list, err := s.Store.ListTicketsFiltered(c.Request.Context(), id, application.TicketFilter{
+		Status:   c.Query("status"),
+		Type:     c.Query("type"),
+		Platform: c.Query("platform"),
+		Repo:     c.Query("repo"),
+	})
 	if err != nil {
 		mapErr(c, err)
 		return
@@ -961,6 +972,9 @@ func (s *Server) putIntegration(c *gin.Context) {
 	if err != nil {
 		mapErr(c, err)
 		return
+	}
+	if provider == "github_app" {
+		_ = s.Store.SyncLegacyGitHubRepo(c.Request.Context(), id, item.Config)
 	}
 	if org, _, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID")); err == nil {
 		s.writeAudit(c, org.ID, "", "integration.upserted", id, map[string]any{"provider": c.Param("provider")})
@@ -1035,7 +1049,14 @@ func (s *Server) getTicket(c *gin.Context) {
 			"items":       reporterItems,
 			"by_platform": reporterByPlatform,
 		},
+		"repo_coverage": repoCoverage(s, c, t),
 	})
+}
+
+// repoCoverage tells S-09 which reporter platforms the ticket's repo serves (US-55).
+func repoCoverage(s *Server, c *gin.Context, t application.Ticket) gin.H {
+	covered, uncovered := s.uncoveredPlatforms(c, t)
+	return gin.H{"covered": covered, "uncovered": uncovered}
 }
 
 func (s *Server) patchTicket(c *gin.Context) {
@@ -1043,7 +1064,11 @@ func (s *Server) patchTicket(c *gin.Context) {
 		Status   *string `json:"status"`
 		Note     string  `json:"note"`
 		IsPublic *bool   `json:"is_public"`
-		Notify   *struct {
+		RepoID   *string `json:"repo_id"`
+		Reason   string  `json:"reason"`
+		// NotifyPlatforms limits fixed notifications to these platforms (US-55); empty = all.
+		NotifyPlatforms []string `json:"notify_platforms"`
+		Notify          *struct {
 			Email *bool `json:"email"`
 			InApp *bool `json:"in_app"`
 		} `json:"notify"`
@@ -1052,8 +1077,8 @@ func (s *Server) patchTicket(c *gin.Context) {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
 		return
 	}
-	if body.Status == nil && body.IsPublic == nil {
-		writeErr(c, 400, "INVALID_INPUT", "status or is_public required")
+	if body.Status == nil && body.IsPublic == nil && body.RepoID == nil {
+		writeErr(c, 400, "INVALID_INPUT", "status, is_public or repo_id required")
 		return
 	}
 	t, err := s.Store.GetTicket(c.Request.Context(), c.Param("id"))
@@ -1065,6 +1090,13 @@ func (s *Server) patchTicket(c *gin.Context) {
 		return
 	}
 	actor := "user:" + c.GetString("email")
+	if body.RepoID != nil {
+		// Builder reroute (US-51); logged as ticket_rerouted with source builder.
+		if _, err := s.Store.RerouteTicket(c.Request.Context(), t.ID, strings.TrimSpace(*body.RepoID), actor, body.Reason, "builder"); err != nil {
+			s.mapRepoErr(c, err)
+			return
+		}
+	}
 	if body.IsPublic != nil {
 		// Publishing to the public board needs Indie; unpublishing is always allowed.
 		if *body.IsPublic && !t.IsPublic {
@@ -1099,6 +1131,7 @@ func (s *Server) patchTicket(c *gin.Context) {
 					channels.InApp = *body.Notify.InApp
 				}
 			}
+			channels.Platforms = body.NotifyPlatforms
 			_ = s.Store.EnqueueNotify(c.Request.Context(), t.ID, channels)
 			_ = s.Store.EnqueueVoteReleased(c.Request.Context(), t.ID)
 		}
