@@ -50,8 +50,8 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. **No plan gating** on any of them (see Pricing update) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan (`SEAT_LIMIT`) |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage + credit balance. Plan change is manual (`PATCH /api/org/plan`); "Manual until Subscribed" pill hides once `usage.subscribed` is true. UI copy never names the payment provider. Buy credits is a stub. No Change plan cards with limit line yet |
-| S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only |
-| S-17 Self-host license | `/app/settings/self-host` | **UI only** route exists, nothing behind it; hidden from live nav |
+| S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only. **Hidden until M6** (D-22) |
+| S-17 Self-host license | `/app/settings/self-host` | **UI only** route redirects to inbox; stays hidden until M6 |
 | S-18…S-20 Widget UX | `/preview/widget/*` + widget package | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet |
 | S-21 Fixed banner | `/preview/widget/fixed` + widget package | **Wired** ingest updates → banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` | **UI only** needs F3 SDK |
@@ -109,21 +109,30 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [x] **F9** Public board: publish controls, ideas list, email-verified votes, comments + replies + moderation, roadmap DnD, live vote counts, voter release emails + kill switch, suggest an idea
 - [x] **F11** rrweb replay, attach to ticket, default masking; gated Studio 7d / Business 30d (`ReplayAllowed`)
 
-#### M4 · AI & Business (F10, F12)
+#### M4 · AI (F10)
 - [x] **F10** GitHub App connect (S-13)
 - [x] **F10** Stub runner + credits ledger + never-merge policy + flat cost (S-10, S-15). Starter credits: Free 0, paid 10
 - [ ] **F10** Real agent runner (Agent SDK / Fly sandbox)
-- [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
-- [x] **F12** Audit log + export (Business)
-- [ ] **F12** Docker / Helm self-host + license activation (S-17)
 
 #### M5 · Beta publik
-- [ ] Polar billing (Indie / Studio / Business) + set `usage.subscribed` from Polar
+- [ ] Polar billing (Indie / Studio) + set `usage.subscribed` from Polar
 - [ ] Polar credit packs (buy credits is a stub)
 - [ ] Annual pricing, early-access Indie 3 months
 - [x] Quota soft-block when over plan
 - [ ] Pricing update (see section below)
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
+
+#### M6 · Business (F12)
+
+> **Plan Business disembunyikan sampai M6.** Selama itu, user hanya melihat Free, Indie dan Studio. Kode Business yang sudah ada (audit log, gating `business`) tetap di repo, tapi tidak boleh terlihat atau bisa dipilih. Task penyembunyian: **D-22** di [brief](./Brief%20Penyesuaian%20Kode%20ke%20Desain.md).
+- [ ] **D-22** Sembunyikan plan Business dari semua UI (landing, Billing, sidebar, FAQ, JSON-LD, copy upsell)
+- [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
+- [x] **F12** Audit log + export — sudah dibangun, disembunyikan sampai M6 bersama S-16
+- [ ] **F12** Docker / Helm self-host + license activation (S-17)
+- [ ] Session replay 30 hari (retensi Business; Studio 7 hari tetap jalan)
+- [ ] Kuota laporan sesuai kontrak + harga mulai $149
+- [ ] Billing Business (kontrak / invoice tahunan, lisensi self-host)
+- [ ] Tampilkan lagi plan Business di landing, Billing, sidebar (balikkan D-22)
 
 ---
 
@@ -194,6 +203,7 @@ Fase A · samakan screen yang sudah ada (frontend saja)
 - [ ] D-04 S-13 Integrations: Linear dan Jira berlabel Studio (`wAub0`)
 - [ ] D-05 S-15 Billing: Change plan dengan baris limit, usage Seats + Repos (`jRMCb`)
 - [ ] D-06 S-01 Landing pricing: isi kartu baru (`BPPVw`)
+- [ ] D-22 Sembunyikan plan Business sampai M6 (landing, Billing, sidebar SSO, FAQ, JSON-LD, copy upsell)
 
 Fase B · pricing di backend
 - [ ] D-07 Free dapat semua tools MCP + migrasi token + `QUOTA_LOCKED` (US-60, US-61, US-63)
@@ -241,14 +251,15 @@ Fase D · menunggu keputusan (jangan dikerjakan dulu)
 | M1 | F1 F2 F4 F5 F6 | Complete and validated on Bear Budget Web. Free MCP gate to be reverted (Pricing P1) |
 | M2 | F3 F7 mobile + Multi-repo R1–R3 | Todo |
 | M3 | F8 F9 F11 | Done except Slack OAuth channel picker. Plan gating for integrations missing |
-| M4 | F10 F12 | GitHub App + stub runner + audit log done; real runner, SSO, self-host open |
-| M5 | Billing + public beta + Pricing update | Todo (manual plans only) |
+| M4 | F10 | GitHub App + stub runner done; real runner open |
+| M5 | Billing + public beta + Pricing update | Todo (manual plans only). Free, Indie, Studio only |
+| M6 | F12 Business: SSO, audit log, self-host, replay 30d, contract quota | Audit log built; rest todo. Business plan hidden until here |
 
 ---
 
 ## Suggested next sprint
 
-1. **Fase A brief (D-01 sampai D-06)**: copy dan layout di screen yang sudah ada. Frontend saja, cepat.
+1. **Fase A brief (D-01 sampai D-06, D-22)**: copy dan layout di screen yang sudah ada, plus sembunyikan Business. Frontend saja, cepat.
 2. **D-07 Pricing P1**: buang gate MCP Free, migrasi token, `QUOTA_LOCKED`. Kecil, membuka janji utama di Free.
 3. **D-08, D-09 Pricing P2**: gating integrasi dan board per plan + `MaxReposPerProject`, dengan tes per plan (US-69).
 4. Putuskan seat Indie dan badge, lalu D-20 dan D-21.
@@ -261,9 +272,10 @@ Fase D · menunggu keputusan (jangan dikerjakan dulu)
 
 | Status | Stories |
 | --- | --- |
-| Done (wired) | US-01…US-11, US-15…US-26, US-29…US-35, US-37, US-39, US-40, US-42 |
+| Done (wired) | US-01…US-11, US-15…US-26, US-29…US-35, US-37, US-39, US-40 |
 | Partial | US-36 (stub runner, no label rules), US-38 (credit balance only, no purchase), US-44 (manual plan change, no Polar) |
-| Not started | US-12…US-14, US-27, US-28 (mobile), US-41 (SSO), US-43 (self-host) |
+| Not started | US-12…US-14, US-27, US-28 (mobile) |
+| M6 · Business (hidden until then) | US-41 (SSO), US-43 (self-host) not started; US-42 (audit log) built but hidden |
 | Not started (Multi-repo) | US-45…US-59 |
 | Not started (Pricing update) | US-60, US-61, US-63, US-64, US-68, US-69. US-62 partial (dashboard path already notifies on Free) |
 | Waiting on decision | US-65, US-66 (badge), US-67 (seat Indie) |
