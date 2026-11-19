@@ -183,7 +183,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: project/frontend/playwright-report/
+          path: |
+            project/frontend/playwright-report/
+            project/frontend/test-results/
           if-no-files-found: ignore
 
       - name: Publish Playwright summary
