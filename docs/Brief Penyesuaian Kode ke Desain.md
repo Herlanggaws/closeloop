@@ -17,6 +17,7 @@ Konvensi umum:
 
 - Error API: `{ "error": { "code": "...", "message": "..." } }`. Kode baru di brief ini: `PREMIUM_REQUIRED` (fitur butuh plan lebih tinggi), `QUOTA_LOCKED`, `REPO_LIMIT`, `PLATFORM_CONFLICT`, `REPO_NOT_CONNECTED`.
 - Label plan di UI: badge kecil abu ("Indie", "Studio") di pojok kartu + tombol `Upgrade to Indie` / `Upgrade to Studio`. Pola visualnya ada di kartu Jira di S-13 `wAub0`.
+- **Plan Business disembunyikan sampai M6** (lihat D-22). Desain masih menampilkan kartu dan copy Business; selama sebelum M6, semua yang berbau Business di desain diabaikan. Tabel plan di D-05 dan D-06 tetap mencantumkan Business sebagai acuan untuk M6, tapi tidak dirender.
 - Domain belum final. Jangan hardcode `saidloop.com` atau `saidloop.dev` dari desain; pakai config yang sudah ada (`EMAIL_FROM`, host MCP di kode).
 - UI tidak menyebut nama penyedia pembayaran (Polar, Lemon Squeezy, dll). Bahasa yang dipakai: subscribed / subscription, misal "Plans are switched manually until you're subscribed." Nama penyedia hanya boleh di Privacy, Terms dan DPA.
 
@@ -24,7 +25,7 @@ Konvensi umum:
 
 | Fase | Task | Kenapa urutan ini |
 | --- | --- | --- |
-| A | D-01 sampai D-06 | Murni copy dan layout di screen yang sudah ada, tanpa backend. Cepat dan langsung menyamakan app dengan desain |
+| A | D-01 sampai D-06, D-22 | Murni copy dan layout di screen yang sudah ada, plus menyembunyikan plan Business sampai M6. Hampir tanpa backend. Cepat dan langsung menyamakan app dengan desain |
 | B | D-07 sampai D-10 | Pricing P1 dan P2: backend gating + UI. Butuh A selesai supaya copy-nya tidak bertabrakan |
 | C | D-11 sampai D-19 | Multi-repo: migrasi data, routing, MCP, UI. Paling besar |
 | D | D-20, D-21 | Menunggu keputusan badge dan seat Indie. Jangan dikerjakan sebelum diputuskan |
@@ -112,6 +113,24 @@ Konvensi umum:
   - **Business** · `$149 / month and up` · limit `Unlimited projects, repos and seats · custom report volume` · fitur: `Everything in Studio`, `SSO with SAML or OIDC`, `Audit log with export`, `Session replay, 30 days`, `Self-hosting, annual license`.
   - Baris limit tampil di bawah deskripsi plan, sebelum daftar fitur, gaya sekunder.
 - **Selesai bila:** string "MCP read-only tools" dan "All MCP tools, including mark_fixed" hilang; `data-pencil-name` ikut diganti.
+
+### D-22 · Sembunyikan plan Business sampai M6
+
+Keputusan 19 Nov: semua fitur Business (SSO, audit log, self-host, replay 30 hari, kuota kontrak) pindah ke M6. Sampai M6, user hanya melihat **Free, Indie, Studio**. Kode Business yang sudah ada **jangan dihapus**; cukup disembunyikan supaya gampang dibalikkan di M6.
+
+- **Satu sumber flag:** tambah `export const BUSINESS_PLAN_VISIBLE = false` di `frontend/src/lib/plans.ts` (file baru) dan pakai di semua tempat di bawah. Di M6 cukup ubah ke `true`.
+- **Landing `frontend/src/app/LandingPage.tsx`:** kartu Business (`data-pencil-name="Business"`, sekitar baris 3940–4120) tidak dirender; grid pricing jadi 3 kolom dengan lebar kartu sama, rata tengah. `PLAN_PRICES.business` boleh tetap ada. Blok add-on "AI auto PR credits" tetap tampil.
+- **FAQ `frontend/src/lib/landing-faq.ts`:** hapus atau sembunyikan item "Can I self-host Saidloop?" (jawabannya menyebut Business).
+- **JSON-LD `frontend/src/components/LandingJsonLd.tsx`:** deskripsi offer jadi `Free plan available; Indie and Studio paid tiers`.
+- **Billing `frontend/src/design-screens/Billing.tsx`:** filter `PLANS` tanpa `business` di Change plan; grid 3 kolom. Bila org yang sedang login memang `business` (data lama/internal), kartu Current plan tetap menampilkan Business apa adanya dan tidak error.
+- **Sidebar `frontend/src/components/AppSidebar.tsx`:** sembunyikan nav `SSO & audit` (`/app/settings/sso`), kecuali org saat ini `business`.
+- **Route `frontend/src/app/app/settings/sso/page.tsx`:** redirect ke `/app/inbox` untuk org non-Business, sama seperti `self-host/page.tsx` sekarang.
+- **Tour `frontend/src/lib/tours.ts`:** tour `sso` dan self-host tidak dijalankan sebelum M6.
+- **Copy upsell:** `ReportDetail.tsx` "Session replay is available on Studio and Business plans." → `Session replay is available on Studio.`; `SSOAudit.tsx` teks upgrade ke Business tidak tampil (halaman sudah tersembunyi). Kartu Studio di landing dan Billing tidak menyebut "Everything in Business" atau sejenisnya.
+- **Contact `frontend/src/app/contact/page.tsx`:** hapus "Business self-host" dari daftar topik sales.
+- **Backend `PATCH /api/org/plan`:** tolak `business` untuk perubahan plan self-serve dengan `PREMIUM_REQUIRED`/`INVALID_INPUT` dan pesan `Business is not available yet.` Org yang sudah `business` tetap jalan. `ValidPlan` tidak diubah (dipakai di tempat lain).
+- **Biarkan:** Privacy, Terms dan DPA (bahasa legal "if offered"), gating `business` di backend (`entitlements.go`, `audit.go`, `ReplayAllowed`).
+- **Selesai bila:** dengan akun Free/Indie/Studio, tidak ada kata "Business", "SSO", "self-host", "audit log" atau "30 days" yang terlihat di landing, FAQ, Billing, sidebar, ReportDetail, dan tour; `/app/settings/sso` redirect; `PATCH /api/org/plan {"plan":"business"}` ditolak. Tambah tes UI untuk landing (3 kartu) dan Go test untuk penolakan plan.
 
 ---
 

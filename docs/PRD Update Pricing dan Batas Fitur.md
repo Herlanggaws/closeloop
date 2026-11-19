@@ -31,6 +31,8 @@ Yang berubah ditandai **tebal**.
 | Business | Mulai $149 / bulan | Tanpa batas | **Tanpa batas** | Tanpa batas | Sesuai kontrak | SSO, audit log, session replay 30 hari, opsi self-hosting |
 | Add-on AI auto PR | Per kredit | Semua plan berbayar | | | Sesuai kredit | Tidak berubah |
 
+**Update 19 Nov: plan Business disembunyikan sampai M6.** Semua isi Business di tabel ini (SSO, audit log, replay 30 hari, self-host, kuota kontrak, repo tanpa batas) baru dirilis di M6. Sampai itu, kartu plan di landing dan Billing hanya Free, Indie, Studio. Detail kerja: D-22 di [Brief Penyesuaian Kode ke Desain](Brief%20Penyesuaian%20Kode%20ke%20Desain.md).
+
 Yang tidak berubah: harga, tahunan bayar 10 dapat 12, early access 50 builder pertama, perilaku lewat kuota (laporan tetap diterima, baru bisa dibaca setelah upgrade atau bulan berganti).
 
 ## Detail perubahan
