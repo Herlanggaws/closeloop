@@ -211,18 +211,19 @@ Fase B · pricing di backend
 - [x] D-09 `MaxReposPerProject` + `usage.repos`
 - [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
 
-Fase C · multi-repo
-- [x] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`. **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — `023_project_repos.sql` + migrasi repo lama jadi fallback
-- [x] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — S-13 Repositories section, counter, limit copy, read-access toggle
-- [x] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — modal Add repository + `PLATFORM_CONFLICT` / `REPO_LIMIT`
-- [x] D-14 Downgrade: pilih repo yang tetap routing (`vZyTd`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — modal pilih repo + `POST /repos/active`, repo lain `routing_paused`
-- [x] D-15 Routing tiket + filter/kolom Repo di inbox (`z9TjRd`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — routing saat ingest + `ticket_routed`, filter `?repo=` + kolom Repo di inbox
-- [x] D-16 S-07 repo, reroute, "No repo yet" (`HMFLR`, `ajZz9`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — properti Repo + picker reroute + "No repo yet" di S-07, issue di repo tiket
-- [x] D-17 MCP `repo` param + `reroute_feedback` + panduan S-05 v2 (`G05BeG`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — `list_open_feedback(repo)`, `reroute_feedback`, konteks repo/path/platform, panduan S-05
-- [x] D-18 Peringatan lintas platform di mark fixed (`Mixlu`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — peringatan lintas platform di S-09 + MCP `confirm: true`, `notify_platforms[]`
-- [x] D-19 Auto PR `needs_reroute` + refund (`aHJCX`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — auto PR pakai repo tiket, `needs_reroute` + refund, kartu Run in <repo> di S-10
+Fase C · multi-repo — dikerjain di branch `claude/project-thread-q7465g` (migrasi `023`), centang di sini berlaku setelah branch itu di-merge ke dev. Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri), connect GitHub App masih pilih 1 repo di awal, langkah data SQL migrasi 023 belum dites sendiri.
+- [x] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`. — `023_project_repos.sql` + migrasi repo lama jadi fallback
+- [x] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`). — S-13 Repositories section, counter, limit copy, read-access toggle
+- [x] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`). — modal Add repository + `PLATFORM_CONFLICT` / `REPO_LIMIT`
+- [x] D-14 Downgrade: pilih repo yang tetap routing (`vZyTd`). — modal pilih repo + `POST /repos/active`, repo lain `routing_paused`
+- [x] D-15 Routing tiket + filter/kolom Repo di inbox (`z9TjRd`). — routing saat ingest + `ticket_routed`, filter `?repo=` + kolom Repo di inbox
+- [x] D-16 S-07 repo, reroute, "No repo yet" (`HMFLR`, `ajZz9`). — properti Repo + picker reroute + "No repo yet" di S-07, issue di repo tiket
+- [x] D-17 MCP `repo` param + `reroute_feedback` + panduan S-05 v2 (`G05BeG`). — `list_open_feedback(repo)`, `reroute_feedback`, konteks repo/path/platform, panduan S-05
+- [x] D-18 Peringatan lintas platform di mark fixed (`Mixlu`). — peringatan lintas platform di S-09 + MCP `confirm: true`, `notify_platforms[]`
+- [x] D-19 Auto PR `needs_reroute` + refund (`aHJCX`). — auto PR pakai repo tiket, `needs_reroute` + refund, kartu Run in <repo> di S-10
 
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
+Status Nov 19: belum dikerjain, nunggu keputusan Herlangga. D-10 juga belum (nunggu Polar M5).
 - [ ] D-20 Badge "Powered by Saidloop" hanya di Free (`s67yG`) — tunggu keputusan badge
 - [ ] D-21 Seat Indie + S-14 v2 (`APr9x`) — tunggu keputusan 1 atau 2 seat
 
