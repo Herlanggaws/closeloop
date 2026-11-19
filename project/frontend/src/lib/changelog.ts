@@ -7,6 +7,11 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-19",
+    title: "Indie includes 1 seat",
+    body: "Indie is now a solo plan with 1 seat; team seats come with Studio (5 seats). Members who already joined an Indie workspace keep their access, and the Team page explains why a new invite was not sent.",
+  },
+  {
+    date: "2026-11-19",
     title: "Every plan gets the full MCP loop, plus clearer plan limits",
     body: "Free now includes every MCP tool, mark_fixed too; existing Free tokens were upgraded to read and write automatically. Slack and GitHub Issues come with Indie, Linear and Jira with Studio, and publishing ideas to the public board needs Indie. Connections you already had keep working. Pricing and Billing list each plan's limits, the report page shows every reporter with their platform, and quota-locked tickets now tell your agent when they unlock.",
   },

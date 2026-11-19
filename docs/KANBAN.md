@@ -151,7 +151,7 @@ Updated Nov 19 after D-01…D-09, D-22. Only the badge (D-20), Indie seats (D-21
 | P2 | Public board requires Indie | **Done** publishing an idea (`is_public: true`) needs Indie; unpublish always allowed; already-public ideas stay | US-69 |
 | P2 | Badge "Powered by Saidloop" only on Free | Todo. **Waiting on badge decision** (D-20) | US-65, US-66 |
 | P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts the single GitHub App repo until D-11) | US-68 |
-| P3 | Indie seats: `MaxSeats: 3` → 1 (or 2) | Todo. Still 3. **Waiting on decision** (D-21). Billing/landing copy already says "1 seat" per the brief, so copy and enforcement disagree until D-21 | US-67 |
+| P3 | Indie seats: `MaxSeats: 3` → 1 | **Done** Nov 19, Herlangga picked 1 seat (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
 | UI | Billing Change plan cards with limit line | **Done** (D-05) | US-68 |
 | UI | Landing pricing cards | **Done** (D-06), 3 cards until M6 | US-68 |
 | UI | Remove "read-only / mark_fixed needs Indie" copy | **Done** (D-01, D-02) | US-60 |
@@ -223,9 +223,9 @@ Fase C · multi-repo — **semua D-11…D-19 udah dikerjain di branch `claude/pr
 - [ ] D-19 Auto PR `needs_reroute` + refund (`aHJCX`)
 
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
-Status Nov 19: belum dikerjain, nunggu keputusan Herlangga. D-10 juga belum (nunggu Polar M5).
+Status Nov 19: D-21 done (1 seat). D-20 masih nunggu keputusan badge. D-10 belum (nunggu Polar M5).
 - [ ] D-20 Badge "Powered by Saidloop" hanya di Free (`s67yG`) — tunggu keputusan badge
-- [ ] D-21 Seat Indie + S-14 v2 (`APr9x`) — tunggu keputusan 1 atau 2 seat
+- [x] D-21 Seat Indie = 1 + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
 
 ---
 
@@ -234,7 +234,7 @@ Status Nov 19: belum dikerjain, nunggu keputusan Herlangga. D-10 juga belum (nun
 - [x] Nama final: Saidloop (domain TBD)
 - [x] MoR: Polar (https://polar.sh/) — bukan Lemon Squeezy / Paddle
 - [ ] Domain final (code and snippets still use `closeloop.dev`)
-- [ ] Seat Indie: 1 atau 2? (Pricing PRD recommends 1; code gives 3)
+- [x] Seat Indie: 1 (diputusin 19 Nov)
 - [ ] Badge "Powered by Saidloop" di Free disetujui?
 - [ ] Kuota Free tetap 50?
 - [ ] Angka repo per project (3 / 5 / 10) — validate in M0 interviews
