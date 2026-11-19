@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { subscribeWidgetSubmitted } from "@/lib/widget-events";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
 import { API_URL, api, clearProjectSelection } from "@/lib/api";
 import { onboardingChecklist } from "@/lib/onboarding-checklist";
+import { shortRepo, type ProjectRepo, type ReposResponse } from "@/lib/repos";
 import type { MeResponse, OrgUsage } from "@/lib/usage";
 
 type TicketType = "bug" | "idea" | "question" | "";
@@ -23,6 +24,8 @@ type Ticket = {
   report_count: number;
   created_at: string;
   updated_at: string;
+  repo_id?: string | null;
+  repo?: string;
 };
 
 type ProjectInfo = {
@@ -105,6 +108,9 @@ export function Inbox() {
   const [typeFilter, setTypeFilter] = useState<TicketType>("");
   const [statusFilter, setStatusFilter] = useState<TicketStatus>("");
   const [platformFilter, setPlatformFilter] = useState<TicketPlatform>("");
+  // "" = all repos, "none" = tickets with no repo, else a repo id (D-15, z9TjRd).
+  const [repoFilter, setRepoFilter] = useState("");
+  const [repos, setRepos] = useState<ProjectRepo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -169,6 +175,10 @@ export function Inbox() {
     if (platformFilter) params.set("platform", platformFilter);
     const qs = params.toString() ? `?${params.toString()}` : "";
 
+    api<ReposResponse>(`/api/projects/${projectId}/repos`)
+      .then((res) => !cancelled && setRepos(res.repos || []))
+      .catch(() => !cancelled && setRepos([]));
+
     api<{ tickets: Ticket[] }>(`/api/projects/${projectId}/tickets${qs}`)
       .then((res) => {
         if (cancelled) return;
@@ -196,8 +206,19 @@ export function Inbox() {
     };
   }, [statusFilter, platformFilter, refreshNonce, router]);
 
+  const repoCounts = useMemo(() => {
+    const counts: Record<string, number> = { "": tickets.length, none: 0 };
+    for (const t of tickets) {
+      const key = t.repo_id || "none";
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [tickets]);
+
   const filtered = useMemo(() => {
     let list = tickets;
+    if (repoFilter === "none") list = list.filter((t) => !t.repo_id);
+    else if (repoFilter) list = list.filter((t) => t.repo_id === repoFilter);
     if (typeFilter) list = list.filter((t) => t.type === typeFilter);
     const q = search.trim().toLowerCase();
     if (q) {
@@ -206,7 +227,7 @@ export function Inbox() {
       );
     }
     return list;
-  }, [tickets, search, typeFilter]);
+  }, [tickets, search, typeFilter, repoFilter]);
 
   const typeCounts = useMemo(() => {
     const counts = { all: tickets.length, bug: 0, idea: 0, question: 0 };
@@ -378,6 +399,9 @@ export function Inbox() {
 
           <StatusDropdown value={statusFilter} onChange={setStatusFilter} />
           <PlatformDropdown value={platformFilter} onChange={setPlatformFilter} />
+          {repos.length > 0 && (
+            <RepoDropdown repos={repos} value={repoFilter} counts={repoCounts} onChange={setRepoFilter} />
+          )}
         </div>
 
         {error && (
@@ -404,8 +428,9 @@ export function Inbox() {
               <span className="w-4 shrink-0" />
               <span className="flex-1">Report</span>
               <span className="w-20 shrink-0">Reporters</span>
+              {repos.length > 0 && <span className="w-[140px] shrink-0">Repo</span>}
               <span className="w-[110px] shrink-0">Status</span>
-              <span className="w-10 shrink-0" />
+              <span className="w-10 shrink-0 text-right">Age</span>
             </div>
 
             {filtered.map((ticket, rowIndex) => {
@@ -459,6 +484,18 @@ export function Inbox() {
                   <div className="w-20 shrink-0 font-ds-mono text-xs text-[#737373]">
                     {ticket.report_count || 1}
                   </div>
+
+                  {repos.length > 0 && (
+                    <div className="w-[140px] shrink-0 truncate font-ds-mono text-[11.5px]">
+                      {ticket.repo ? (
+                        <span className="text-[#171717]" title={ticket.repo}>
+                          {shortRepo(ticket.repo)}
+                        </span>
+                      ) : (
+                        <span className="text-[#EA6C0C]">No repo yet</span>
+                      )}
+                    </div>
+                  )}
 
                   <div className="w-[110px] shrink-0">
                     <span className="inline-flex h-[22px] items-center gap-1.5 rounded-full border border-[#1717171F] bg-white px-2">
@@ -566,6 +603,99 @@ function FilterDropdown<T extends string>({
               </li>
             );
           })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function RepoDropdown({
+  repos,
+  value,
+  counts,
+  onChange,
+}: {
+  repos: ProjectRepo[];
+  value: string;
+  counts: Record<string, number>;
+  onChange: (next: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const label =
+    value === "" ? "All" : value === "none" ? "No repo yet" : shortRepo(repos.find((r) => r.id === value)?.full_name || "");
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  function item(id: string, text: ReactNode, count: number, mono = false) {
+    const selected = id === value;
+    return (
+      <li key={id || "all"} role="option" aria-selected={selected}>
+        <button
+          type="button"
+          onClick={() => {
+            onChange(id);
+            setOpen(false);
+          }}
+          className={`flex w-full cursor-pointer items-center justify-between gap-4 px-3 py-1.5 text-left text-xs ${
+            mono ? "font-ds-mono" : "font-ds-ui"
+          } ${selected ? "bg-[#F5F5F5] font-medium text-[#171717]" : "text-[#737373] hover:bg-[#FAFAFA] hover:text-[#171717]"}`}
+        >
+          <span className="flex items-center gap-1.5">{text}</span>
+          <span className="font-ds-mono text-[11px] text-[#A3A3A3]">{count}</span>
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-[#1717171F] bg-white px-2 font-ds-ui text-xs font-medium text-[#171717]"
+      >
+        Repo: {label}
+        <svg viewBox="0 0 12 12" className="h-3 w-3 text-[#737373]" aria-hidden>
+          <path d="M3 4.5L6 7.5L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Repo"
+          className="absolute top-[calc(100%+4px)] left-0 z-20 w-[280px] overflow-hidden rounded-[10px] border border-[#17171714] bg-white py-1 shadow-[0_8px_24px_#17171714]"
+        >
+          {item("", "All repos", counts[""] || 0)}
+          {repos.map((r) => item(r.id, r.full_name, counts[r.id] || 0, true))}
+          <li className="my-1 border-t border-[#17171714]" aria-hidden />
+          {item(
+            "none",
+            <>
+              <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed border-[#EA6C0C]" />
+              No repo yet
+            </>,
+            counts.none || 0,
+          )}
+          <li className="px-3 pb-1.5 pt-1 font-ds-ui text-[11px] leading-[15px] text-[#A3A3A3]">
+            Tickets land here only when their platform has no repo and no fallback is set.
+          </li>
         </ul>
       )}
     </div>

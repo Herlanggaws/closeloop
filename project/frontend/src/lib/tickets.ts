@@ -16,6 +16,9 @@ export type TicketDetail = {
   fixed_note: string | null;
   created_at: string;
   updated_at: string;
+  repo_id?: string | null;
+  repo?: string;
+  repo_path?: string;
 };
 
 export type TicketReport = {
@@ -66,6 +69,8 @@ export type TicketDetailResponse = {
     items?: TicketReporterItem[];
     by_platform?: Record<string, number>;
   };
+  /** Reporter counts on platforms the ticket's repo serves / does not serve (US-55). */
+  repo_coverage?: { covered: Record<string, number>; uncovered: Record<string, number> };
 };
 
 export const TYPE_STYLE: Record<string, { bg: string; text: string; label: string }> = {
@@ -133,8 +138,9 @@ export function reportersSummary(items: TicketReporterItem[], byPlatform?: Recor
     return acc;
   }, {});
   const order = ["web", "ios", "android"];
+  const rank = (p: string) => (order.indexOf(p) < 0 ? order.length : order.indexOf(p));
   const parts = Object.entries(counts)
-    .sort(([a], [b]) => (order.indexOf(a) + 99) % 100 - (order.indexOf(b) + 99) % 100)
+    .sort(([a], [b]) => rank(a) - rank(b))
     .map(([platform, n]) => `${platformLabel(platform)} ${n}`);
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   return parts.length ? `${total} · ${parts.join(", ")}` : `${total}`;
@@ -159,6 +165,7 @@ export function initials(email: string) {
 export function actorLabel(actor: string) {
   if (actor.startsWith("user:")) return displayName(actor.slice(5));
   if (actor === "agent") return "Agent";
+  if (actor === "system") return "Saidloop";
   if (actor === "user") return "Reporter";
   return actor;
 }
@@ -197,6 +204,19 @@ export function eventDescription(event: TicketEvent) {
       : "merged duplicates into this ticket";
   }
   if (event.kind === "created") return "reported this";
+  if (event.kind === "ticket_routed") {
+    const platform = platformLabel(typeof payload.platform === "string" ? payload.platform : "web");
+    const repo = typeof payload.repo === "string" ? payload.repo : "";
+    if (payload.kind === "none" || !repo) {
+      return `couldn't route this ${platform} report: no repo for ${platform}, no fallback`;
+    }
+    return `routed this ${platform} report to ${repo}`;
+  }
+  if (event.kind === "ticket_rerouted") {
+    const to = typeof payload.to === "string" ? payload.to : "another repo";
+    const reason = typeof payload.reason === "string" ? payload.reason : "";
+    return reason ? `rerouted to ${to}: “${reason}”` : `rerouted to ${to}`;
+  }
   if (event.kind === "github_issue_created") {
     const number = typeof payload.number === "number" ? payload.number : null;
     const url = typeof payload.html_url === "string" ? payload.html_url : "";

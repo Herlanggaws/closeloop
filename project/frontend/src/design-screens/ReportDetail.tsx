@@ -29,6 +29,7 @@ import {
   type TicketStatus,
 } from "@/lib/tickets";
 import { planAtLeast } from "@/lib/plans";
+import { repoPlatformLabel, shortRepo, type ProjectRepo, type ReposResponse } from "@/lib/repos";
 import type { MeResponse } from "@/lib/usage";
 
 type DetailTab = "activity" | "replay" | "sentry" | "posthog";
@@ -65,6 +66,9 @@ export function ReportDetail() {
   const [jiraIssueBusy, setJiraIssueBusy] = useState(false);
   const [jiraIssueUrl, setJiraIssueUrl] = useState("");
   const [detailTab, setDetailTab] = useState<DetailTab>("activity");
+  const [projectRepos, setProjectRepos] = useState<ProjectRepo[]>([]);
+  const [repoPickerOpen, setRepoPickerOpen] = useState(false);
+  const [rerouting, setRerouting] = useState(false);
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -79,6 +83,10 @@ export function ReportDetail() {
     }
 
     let cancelled = false;
+
+    api<ReposResponse>(`/api/projects/${projectId}/repos`)
+      .then((res) => !cancelled && setProjectRepos(res.repos || []))
+      .catch(() => !cancelled && setProjectRepos([]));
 
     async function load() {
       setLoading(true);
@@ -250,6 +258,24 @@ export function ReportDetail() {
     }
   }
 
+  async function rerouteTo(repoId: string) {
+    if (!ticketId) return;
+    setRerouting(true);
+    setError("");
+    try {
+      await api(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ repo_id: repoId }),
+      });
+      setRepoPickerOpen(false);
+      await reloadDetail();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change repo");
+    } finally {
+      setRerouting(false);
+    }
+  }
+
   async function changeStatus(status: TicketStatus) {
     if (!ticketId || !data || data.ticket.status === status) return;
     if (status === "fixed") {
@@ -313,6 +339,18 @@ export function ReportDetail() {
   const hasPosthogConfig = !!data?.integrations?.some((i) => i.provider === "posthog");
   const replayPlanOk = plan === "studio" || plan === "business";
   const reporterItems = data?.reporters?.items || [];
+  const hasRepos = projectRepos.length > 0;
+  const ticketRepo = ticket?.repo || "";
+  const primaryPlatform = data?.reports?.[0]?.platform || "web";
+  const lastReroute = [...(data?.events || [])].reverse().find((e) => e.kind === "ticket_rerouted");
+  const rerouteNote = (() => {
+    if (!lastReroute) return "";
+    const p = (typeof lastReroute.payload === "object" && lastReroute.payload) as Record<string, unknown> | null;
+    const from = p && typeof p.from === "string" && p.from ? p.from : "";
+    const platform = p && typeof p.platform === "string" ? repoPlatformLabel(p.platform) : "";
+    return from ? `Rerouted from ${shortRepo(from)} by ${actorLabel(lastReroute.actor)}${platform ? ` · ${platform}` : ""}` : "";
+  })();
+  const autoprBlocked = hasRepos && !ticketRepo;
   // Issue buttons follow the plan: GitHub Issues on Indie+, Linear/Jira on Studio+ when connected.
   const githubIssueGrandfathered = !!data?.integrations?.some(
     (i) => i.provider === "github_app" && (i as { grandfathered?: boolean }).grandfathered,
@@ -353,10 +391,24 @@ export function ReportDetail() {
           <div className="flex items-center gap-2">
             {ticket && showGitHubIssue && (
               <HeaderButton
-                label={githubIssueUrl ? "GitHub issue ↗" : githubIssueBusy ? "Creating…" : "Create GitHub issue"}
+                label={
+                  githubIssueUrl
+                    ? "GitHub issue ↗"
+                    : githubIssueBusy
+                      ? "Creating…"
+                      : ticketRepo
+                        ? `Create issue in ${shortRepo(ticketRepo)}`
+                        : "Create GitHub issue"
+                }
                 href={githubIssueUrl || undefined}
                 disabled={githubIssueBusy}
-                onClick={githubIssueUrl ? undefined : () => void createGitHubIssue()}
+                onClick={
+                  githubIssueUrl
+                    ? undefined
+                    : autoprBlocked
+                      ? () => setRepoPickerOpen(true)
+                      : () => void createGitHubIssue()
+                }
               />
             )}
             {ticket && showLinearIssue && (
@@ -386,7 +438,8 @@ export function ReportDetail() {
             {ticket && (
               <HeaderButton
                 label={autoprBusy ? "Starting…" : "Run auto PR"}
-                disabled={autoprBusy}
+                disabled={autoprBusy || autoprBlocked}
+                title={autoprBlocked ? "Pick a repo for this ticket first. Auto PR runs in the ticket's repo." : undefined}
                 onClick={() => void runAutopr()}
               />
             )}
@@ -587,6 +640,65 @@ export function ReportDetail() {
                   onChange={changeStatus}
                 />
               </div>
+
+              {hasRepos && (
+                <div data-pencil-name="Repo" className="relative flex flex-col gap-2.5">
+                  <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Repo</div>
+                  <button
+                    type="button"
+                    onClick={() => setRepoPickerOpen((v) => !v)}
+                    className="flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg border border-[#1717171F] bg-white px-3 py-2 text-left hover:bg-[#FAFAFA]"
+                  >
+                    {ticketRepo ? (
+                      <>
+                        <span className="font-ds-mono text-[12.5px] text-[#171717]">{ticketRepo}</span>
+                        {rerouteNote && (
+                          <span className="font-ds-ui text-[11px] text-[#737373]">{rerouteNote}</span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="flex items-center gap-1.5 font-ds-ui text-[12.5px] font-medium text-[#EA6C0C]">
+                        <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed border-[#EA6C0C]" />
+                        No repo yet
+                      </span>
+                    )}
+                  </button>
+                  {!ticketRepo && (
+                    <p className="font-ds-ui text-[11.5px] leading-[16px] text-[#737373]">
+                      {repoPlatformLabel(primaryPlatform)} has no repo, and this project has no fallback. Pick one
+                      to run auto PR or create an issue.
+                    </p>
+                  )}
+                  {repoPickerOpen && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 overflow-hidden rounded-[10px] border border-[#17171714] bg-white py-1 shadow-[0_8px_24px_#17171714]">
+                      {projectRepos.map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          disabled={rerouting || r.id === ticket?.repo_id}
+                          onClick={() => void rerouteTo(r.id)}
+                          className="flex w-full cursor-pointer flex-col items-start px-3 py-1.5 text-left hover:bg-[#FAFAFA] disabled:cursor-default"
+                        >
+                          <span className="font-ds-mono text-[12px] text-[#171717]">
+                            {r.full_name}
+                            {r.id === ticket?.repo_id ? " ✓" : ""}
+                          </span>
+                          <span className="font-ds-ui text-[11px] text-[#A3A3A3]">
+                            {r.routes.length
+                              ? r.routes.map((rt) => repoPlatformLabel(rt.platform)).join(", ")
+                              : r.is_fallback
+                                ? "Fallback"
+                                : "No platforms"}
+                          </span>
+                        </button>
+                      ))}
+                      <p className="border-t border-[#17171714] px-3 pb-1 pt-2 font-ds-ui text-[11px] text-[#A3A3A3]">
+                        The change is saved to this ticket&apos;s history.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div data-pencil-name="Reporters" className="flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
@@ -838,11 +950,13 @@ function HeaderButton({
   href,
   onClick,
   disabled,
+  title,
 }: {
   label: string;
   href?: string;
   onClick?: () => void;
   disabled?: boolean;
+  title?: string;
 }) {
   const className =
     "flex h-8 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium tracking-[-0.2px] text-[#171717] no-underline shadow-[0_4px_4px_#1717170A] hover:bg-[#FAFAFA] disabled:cursor-default disabled:opacity-60";
@@ -854,7 +968,7 @@ function HeaderButton({
     );
   }
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={className}>
+    <button type="button" onClick={onClick} disabled={disabled} title={title} className={className}>
       {label}
     </button>
   );

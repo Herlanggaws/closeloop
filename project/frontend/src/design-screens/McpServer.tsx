@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
+import { RepoAgentHint } from "@/components/repos/RepoAgentHint";
 import { API_URL, api, clearProjectSelection } from "@/lib/api";
 import { relativeTime } from "@/lib/tickets";
 import type { MeResponse } from "@/lib/usage";
@@ -417,6 +418,8 @@ export function McpServer() {
                       </pre>
                     </div>
                   </div>
+
+                  <RepoAgentHint />
 
                   <div
                     data-tour="mcp-test"

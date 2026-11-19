@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
+import { fixedNotifyPlan, repoPlatformLabel } from "@/lib/repos";
 import {
   shortId,
   type TicketDetailResponse,
@@ -26,6 +27,8 @@ export function MarkFixed() {
   const [bannerOn, setBannerOn] = useState(true);
   const [emailAllowed, setEmailAllowed] = useState(true);
   const [bannerAllowed, setBannerAllowed] = useState(true);
+  // S-09 v2 (Mixlu): off by default, so only reporters on platforms the repo serves are told.
+  const [notifyAll, setNotifyAll] = useState(false);
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -91,6 +94,7 @@ export function MarkFixed() {
           status: "fixed",
           note: body,
           notify: { email: emailOn, in_app: bannerOn },
+          notify_platforms: notifyPlan.platforms,
         }),
       });
       router.push("/app/inbox");
@@ -100,7 +104,21 @@ export function MarkFixed() {
     }
   }
 
-  const reporters = data?.reporters || { total: 0, with_email: 0 };
+  const notifyPlan = fixedNotifyPlan(data?.repo_coverage, notifyAll);
+  const reporterItems = data?.reporters?.items || [];
+  const notifiedItems = notifyPlan.platforms.length
+    ? reporterItems.filter((r) => notifyPlan.platforms.includes(r.platform))
+    : reporterItems;
+  const uncoveredPlatforms = Object.keys(data?.repo_coverage?.uncovered || {});
+  const coveredPlatforms = Object.keys(data?.repo_coverage?.covered || {});
+  const uncoveredLabel = uncoveredPlatforms.map(repoPlatformLabel).join(" and ");
+  const uncoveredCount = Object.values(data?.repo_coverage?.uncovered || {}).reduce((a, b) => a + b, 0);
+  const reporters = reporterItems.length
+    ? {
+        total: notifiedItems.length,
+        with_email: notifiedItems.filter((r) => r.email).length,
+      }
+    : data?.reporters || { total: 0, with_email: 0 };
   const previewNote = note.trim() || "Your report was fixed.";
   const canSubmit = Boolean(note.trim()) && !saving && Boolean(data?.ticket);
 
@@ -184,6 +202,35 @@ export function MarkFixed() {
               </p>
             </div>
 
+            {notifyPlan.hasGap && (
+              <div
+                data-pencil-name="Cross-platform warning"
+                className="flex flex-col gap-2.5 rounded-[10px] border border-[#F59E0B4D] bg-[#FFFBEB] p-4"
+              >
+                <div className="font-ds-ui text-[13px] font-semibold text-[#92400E]">
+                  {uncoveredLabel} reporters may not have the fix yet
+                </div>
+                <p className="font-ds-ui text-[12.5px] leading-[18px] text-[#92400E]">
+                  This ticket is routed to {data?.ticket.repo}, but{" "}
+                  {uncoveredCount === 1 ? "one report" : `${uncoveredCount} reports`}{" "}
+                  came from {uncoveredLabel}. Marking it fixed tells every reporter, including on{" "}
+                  {uncoveredLabel}.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {coveredPlatforms.map((p) => (
+                    <PlatformChip key={p} ok label={repoPlatformLabel(p)} n={data?.repo_coverage?.covered[p] || 0} />
+                  ))}
+                  {uncoveredPlatforms.map((p) => (
+                    <PlatformChip key={p} ok={false} label={repoPlatformLabel(p)} n={data?.repo_coverage?.uncovered[p] || 0} />
+                  ))}
+                </div>
+                <label className="flex cursor-pointer items-center gap-2 font-ds-ui text-[12.5px] text-[#171717]">
+                  <input type="checkbox" checked={notifyAll} onChange={(e) => setNotifyAll(e.target.checked)} />
+                  {uncoveredLabel} is fixed too, notify all {notifyPlan.total}
+                </label>
+              </div>
+            )}
+
             <div data-tour="notify-channels" className="flex gap-2">
               <ChannelToggle
                 title="Email"
@@ -258,11 +305,24 @@ export function MarkFixed() {
             disabled={!canSubmit}
             className="flex h-[34px] cursor-pointer items-center gap-2 rounded-md bg-[#171717] px-4 font-ds-sans text-[13px] font-medium tracking-[-0.2px] text-white shadow-[0_4px_4px_#1717170A] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Mark fixed and notify"}
+            {saving
+              ? "Saving…"
+              : notifyPlan.hasGap && !notifyAll
+                ? `Mark fixed, notify ${notifyPlan.notified} on ${coveredPlatforms.map(repoPlatformLabel).join(" and ")}`
+                : "Mark fixed and notify"}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function PlatformChip({ ok, label, n }: { ok: boolean; label: string; n: number }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-[#1717171F] bg-white px-2 py-0.5 font-ds-ui text-[11.5px] text-[#171717]">
+      <span className={ok ? "text-[#16A34A]" : "text-[#EA6C0C]"}>{ok ? "✓" : "!"}</span>
+      {label} · {n} reporter{n === 1 ? "" : "s"}
+    </span>
   );
 }
 

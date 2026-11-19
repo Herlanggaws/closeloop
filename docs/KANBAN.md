@@ -47,7 +47,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-10 Auto PR runs | `/app/auto-pr` | **Wired** runs list + credits + single GitHub repo panel. Runner is a stub (opens a context PR) |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + vote counts + comment moderation + roadmap DnD |
 | S-12 Project settings | `/app/settings` | **Partial** name, platforms, notify kill switches, public key, mask text inputs, soft-delete live. Custom branding and board domain are "Coming soon" |
-| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section still todo (D-12) |
+| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section (D-12) on branch `claude/project-thread-q7465g` |
 | S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan (`SEAT_LIMIT`) |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage (Reports, Projects, Auto PR credits, Seats, Repos) + credit balance. Change plan: Free/Indie/Studio cards with limit line from `lib/plans.ts` (D-05). Plan change is manual (`PATCH /api/org/plan`, Business rejected until M6); "Manual until Subscribed" pill hides once `usage.subscribed` is true. Buy credits is a stub. No invoices list yet |
 | S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only. **Hidden until M6** (D-22) |
@@ -157,9 +157,9 @@ Updated Nov 19 after D-01…D-09, D-22. Only the badge (D-20), Indie seats (D-21
 | UI | Remove "read-only / mark_fixed needs Indie" copy | **Done** (D-01, D-02) | US-60 |
 | TEST | Entitlement test per plan for every feature on a plan card | **Done** `TestIntegrationAndBoardGatingPerPlan` + `TestPlan_*` HTTP tests | US-69 |
 
-## PRD Multi-repo per Project (Nov 19) — all Todo
+## PRD Multi-repo per Project (Nov 19) — built on branch, waiting for review
 
-Today one project stores one repo: `repo_full_name` in the `github_app` integration config (`store.go:2141`, `autopr.go:74`).
+R1–R5 are built on branch `claude/project-thread-q7465g` (PR to dev, needs Herlangga's review before merge: it adds migration `023_project_repos.sql`). Until it merges, dev still stores one repo per project (`repo_full_name` in the `github_app` config). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR), and the GitHub App install flow still picks one repo first; extra repos are added from the Repositories section.
 
 | ID | Item | Milestone | Story |
 | --- | --- | --- | --- |
@@ -212,15 +212,15 @@ Fase B · pricing di backend
 - [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
 
 Fase C · multi-repo
-- [ ] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`
-- [ ] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`)
-- [ ] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`)
-- [ ] D-14 Downgrade: pilih repo yang tetap routing (`vZyTd`)
-- [ ] D-15 Routing tiket + filter/kolom Repo di inbox (`z9TjRd`)
-- [ ] D-16 S-07 repo, reroute, "No repo yet" (`HMFLR`, `ajZz9`)
-- [ ] D-17 MCP `repo` param + `reroute_feedback` + panduan S-05 v2 (`G05BeG`)
-- [ ] D-18 Peringatan lintas platform di mark fixed (`Mixlu`)
-- [ ] D-19 Auto PR `needs_reroute` + refund (`aHJCX`)
+- [x] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`. **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — `023_project_repos.sql` + migrasi repo lama jadi fallback
+- [x] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — S-13 Repositories section, counter, limit copy, read-access toggle
+- [x] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — modal Add repository + `PLATFORM_CONFLICT` / `REPO_LIMIT`
+- [x] D-14 Downgrade: pilih repo yang tetap routing (`vZyTd`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — modal pilih repo + `POST /repos/active`, repo lain `routing_paused`
+- [x] D-15 Routing tiket + filter/kolom Repo di inbox (`z9TjRd`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — routing saat ingest + `ticket_routed`, filter `?repo=` + kolom Repo di inbox
+- [x] D-16 S-07 repo, reroute, "No repo yet" (`HMFLR`, `ajZz9`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — properti Repo + picker reroute + "No repo yet" di S-07, issue di repo tiket
+- [x] D-17 MCP `repo` param + `reroute_feedback` + panduan S-05 v2 (`G05BeG`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — `list_open_feedback(repo)`, `reroute_feedback`, konteks repo/path/platform, panduan S-05
+- [x] D-18 Peringatan lintas platform di mark fixed (`Mixlu`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — peringatan lintas platform di S-09 + MCP `confirm: true`, `notify_platforms[]`
+- [x] D-19 Auto PR `needs_reroute` + refund (`aHJCX`). **Di branch `claude/project-thread-q7465g`, belum merge ke dev** — auto PR pakai repo tiket, `needs_reroute` + refund, kartu Run in <repo> di S-10
 
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
 - [ ] D-20 Badge "Powered by Saidloop" hanya di Free (`s67yG`) — tunggu keputusan badge

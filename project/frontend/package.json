@@ -9,7 +9,7 @@
     "build:widget": "pnpm --filter @closeloop/widget build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "tsx --test src/lib/inviteEmails.test.ts src/lib/site.test.ts src/lib/dogfood-widget.test.ts src/lib/auth-redirect.test.ts src/lib/widget-events.test.ts src/lib/tours.test.ts src/lib/widget-install.test.ts src/components/SaidloopLogo.test.ts src/lib/plans.test.ts src/lib/onboarding-checklist.test.ts",
+    "test:unit": "tsx --test src/lib/inviteEmails.test.ts src/lib/site.test.ts src/lib/dogfood-widget.test.ts src/lib/auth-redirect.test.ts src/lib/widget-events.test.ts src/lib/tours.test.ts src/lib/widget-install.test.ts src/components/SaidloopLogo.test.ts src/lib/plans.test.ts src/lib/onboarding-checklist.test.ts src/lib/repos.test.ts",
     "test:e2e": "playwright test e2e/reports.spec.ts",
     "test:e2e:marketing": "playwright test e2e/marketing.spec.ts",
     "test:e2e:ui": "playwright test e2e/reports.spec.ts --ui"

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
 import { Tour } from "@/components/coach/Tour";
+import { RepoAgentHint } from "@/components/repos/RepoAgentHint";
 import { API_URL, api, logout } from "@/lib/api";
 
 type ClientTab = "cursor" | "claude";
@@ -291,6 +292,8 @@ export function ConnectMCP() {
                     {config}
                   </pre>
                 </div>
+
+                <RepoAgentHint />
 
                 <div
                   data-tour="mcp-test"

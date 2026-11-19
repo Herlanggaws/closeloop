@@ -7,6 +7,11 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-19",
+    title: "Several repos per project, routed by platform",
+    body: "Connect your web, Android, iOS and backend repos to one project and reports go to the right one automatically, with a fallback for the rest. Filter the inbox by repo, move a ticket to another repo, and tell your agent which repo it is in so it only sees its own reports. Marking a ticket fixed now warns you when some reporters are on a platform that repo does not cover, and auto PR runs in the ticket's repo, with a refund when the fix belongs elsewhere.",
+  },
+  {
+    date: "2026-11-19",
     title: "Every plan gets the full MCP loop, plus clearer plan limits",
     body: "Free now includes every MCP tool, mark_fixed too; existing Free tokens were upgraded to read and write automatically. Slack and GitHub Issues come with Indie, Linear and Jira with Studio, and publishing ideas to the public board needs Indie. Connections you already had keep working. Pricing and Billing list each plan's limits, the report page shows every reporter with their platform, and quota-locked tickets now tell your agent when they unlock.",
   },
