@@ -149,6 +149,41 @@ func writeErr(c *gin.Context, status int, code, message string) {
 	c.JSON(status, gin.H{"error": gin.H{"code": code, "message": message}})
 }
 
+func (s *Server) upgradeURL() string {
+	return strings.TrimRight(s.Cfg.WebURL, "/") + "/app/settings/billing"
+}
+
+// quotaLockedPayload is the QUOTA_LOCKED error body (US-63): reset date + upgrade link.
+func quotaLockedPayload(upgradeURL string) gin.H {
+	return gin.H{
+		"code":        "QUOTA_LOCKED",
+		"message":     "This ticket's reports are over this month's report quota. Upgrade or wait for the reset to read them.",
+		"reset_at":    application.QuotaResetAt(time.Now()).Format(time.RFC3339),
+		"upgrade_url": upgradeURL,
+	}
+}
+
+func (s *Server) mapErr(c *gin.Context, err error) {
+	var premium *application.PremiumRequiredError
+	switch {
+	case errors.As(err, &premium):
+		c.JSON(402, gin.H{"error": gin.H{
+			"code":          "PREMIUM_REQUIRED",
+			"message":       premium.Error(),
+			"required_plan": premium.RequiredPlan,
+			"upgrade_url":   s.upgradeURL(),
+		}})
+		return
+	case errors.Is(err, application.ErrQuotaLocked):
+		c.JSON(402, gin.H{"error": quotaLockedPayload(s.upgradeURL())})
+		return
+	case errors.Is(err, application.ErrBusinessNotAvailable):
+		writeErr(c, 400, "INVALID_INPUT", err.Error())
+		return
+	}
+	mapErr(c, err)
+}
+
 func mapErr(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, application.ErrNotFound):
@@ -159,6 +194,10 @@ func mapErr(c *gin.Context, err error) {
 		writeErr(c, 403, "FORBIDDEN", err.Error())
 	case errors.Is(err, application.ErrConflict):
 		writeErr(c, 409, "CONFLICT", err.Error())
+	case errors.Is(err, application.ErrQuotaLocked):
+		writeErr(c, 402, "QUOTA_LOCKED", "This ticket's reports are over this month's report quota.")
+	case errors.Is(err, application.ErrBusinessNotAvailable):
+		writeErr(c, 400, "INVALID_INPUT", err.Error())
 	case errors.Is(err, application.ErrPlanRequired):
 		writeErr(c, 402, "PLAN_REQUIRED", "Upgrade required for this action")
 	case errors.Is(err, application.ErrSeatLimit):
@@ -635,7 +674,7 @@ func (s *Server) me(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	usage, err := s.Store.OrgUsage(c.Request.Context(), org.ID)
+	usage, err := s.Store.OrgUsageForProject(c.Request.Context(), org.ID, c.Query("project_id"))
 	if err != nil {
 		mapErr(c, err)
 		return
@@ -672,10 +711,10 @@ func (s *Server) patchOrgPlan(c *gin.Context) {
 	}
 	updated, err := s.Store.UpdateOrgPlan(c.Request.Context(), org.ID, body.Plan, role)
 	if err != nil {
-		mapErr(c, err)
+		s.mapErr(c, err)
 		return
 	}
-	usage, err := s.Store.OrgUsage(c.Request.Context(), updated.ID)
+	usage, err := s.Store.OrgUsageForProject(c.Request.Context(), updated.ID, c.Query("project_id"))
 	if err != nil {
 		mapErr(c, err)
 		return
@@ -849,14 +888,14 @@ func (s *Server) createMCPToken(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
-	write := org.Plan != "free"
-	raw, prefix, err := s.Store.CreateMCPToken(c.Request.Context(), id, write)
+	// Every plan gets all MCP tools (pricing update P1, US-60).
+	raw, prefix, err := s.Store.CreateMCPToken(c.Request.Context(), id, true)
 	if err != nil {
 		mapErr(c, err)
 		return
 	}
 	s.writeAudit(c, org.ID, "", "mcp.token_created", id, map[string]any{"prefix": prefix})
-	c.JSON(201, gin.H{"token": raw, "prefix": prefix, "scopes": ternary(write, []string{"read", "write"}, []string{"read"})})
+	c.JSON(201, gin.H{"token": raw, "prefix": prefix, "scopes": []string{"read", "write"}})
 }
 
 func (s *Server) deleteMCPToken(c *gin.Context) {
@@ -913,6 +952,11 @@ func (s *Server) putIntegration(c *gin.Context) {
 		writeErr(c, 400, "INVALID_INPUT", "bad json")
 		return
 	}
+	provider := strings.ToLower(strings.TrimSpace(c.Param("provider")))
+	if err := s.Store.RequireIntegrationConnect(c.Request.Context(), id, provider); err != nil {
+		s.mapErr(c, err)
+		return
+	}
 	item, err := s.Store.UpsertIntegration(c.Request.Context(), id, c.Param("provider"), body.Config)
 	if err != nil {
 		mapErr(c, err)
@@ -942,7 +986,7 @@ func (s *Server) deleteIntegration(c *gin.Context) {
 func (s *Server) getTicket(c *gin.Context) {
 	t, err := s.Store.GetTicket(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		mapErr(c, err)
+		s.mapErr(c, err)
 		return
 	}
 	if !s.requireProjectAccess(c, t.ProjectID) {
@@ -952,6 +996,13 @@ func (s *Server) getTicket(c *gin.Context) {
 	events, _ := s.Store.ListTicketEvents(c.Request.Context(), t.ID)
 	atts, _ := s.Store.TicketAttachments(c.Request.Context(), t.ID)
 	reporterTotal, reporterEmail, _ := s.Store.TicketReporterStats(c.Request.Context(), t.ID)
+	reporterItems, reporterByPlatform, _ := s.Store.TicketReporterList(c.Request.Context(), t.ID)
+	if reporterItems == nil {
+		reporterItems = []application.TicketReporter{}
+	}
+	if reporterByPlatform == nil {
+		reporterByPlatform = map[string]int{}
+	}
 	integrations, _ := s.Store.ListIntegrations(c.Request.Context(), t.ProjectID)
 	attOut := make([]gin.H, 0, len(atts))
 	for _, a := range atts {
@@ -979,8 +1030,10 @@ func (s *Server) getTicket(c *gin.Context) {
 		"events":        events,
 		"integrations":  integrations,
 		"reporters": gin.H{
-			"total":      reporterTotal,
-			"with_email": reporterEmail,
+			"total":       reporterTotal,
+			"with_email":  reporterEmail,
+			"items":       reporterItems,
+			"by_platform": reporterByPlatform,
 		},
 	})
 }
@@ -1013,6 +1066,13 @@ func (s *Server) patchTicket(c *gin.Context) {
 	}
 	actor := "user:" + c.GetString("email")
 	if body.IsPublic != nil {
+		// Publishing to the public board needs Indie; unpublishing is always allowed.
+		if *body.IsPublic && !t.IsPublic {
+			if err := s.Store.RequireBoardPublish(c.Request.Context(), t.ProjectID); err != nil {
+				s.mapErr(c, err)
+				return
+			}
+		}
 		if err := s.Store.SetTicketPublic(c.Request.Context(), t.ID, *body.IsPublic, actor); err != nil {
 			mapErr(c, err)
 			return

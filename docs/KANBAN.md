@@ -38,18 +38,18 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-03 Create project | `/app/onboarding` | **Wired** name + platforms → POST /api/projects → install |
 | S-04 Install widget | `/app/onboarding/install` | **Wired** public key + snippet + demo + first-report poll. npm tab hidden until the package is publishable |
 | S-04b Install status | `/app/install` | **Wired** two-column guide, snippet, first-report, demo link |
-| S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** token + scopes + Cursor/Claude copy + test connection. Copy still says Free is read-only (see Pricing update) |
+| S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** token + scopes + Cursor/Claude copy + test connection. Footer "Every plan includes all MCP tools, mark_fixed too." (D-01) |
 | S-05b MCP status | `/app/mcp` | **Wired** status, multi-client install, token list, revoke, generate |
-| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status/platform filters + empty + test report; multi-select → S-08. No repo filter yet (Multi-repo) |
-| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, notes, activity, Sentry/PostHog links, Run Auto PR, GitHub/Linear/Jira issue. No repo field yet (Multi-repo) |
+| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status/platform filters + empty + test report; multi-select → S-08. Empty checklist 5 steps by plan (D-02). No repo filter yet (Multi-repo) |
+| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, Reporters panel (name/email/platform), notes, activity oldest → newest, Sentry/PostHog links, header: issue button by plan + Run auto PR + Mark fixed (D-03). No repo field yet (Multi-repo) |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** pick parent + merge API |
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + Email/In-app toggles. No cross-platform warning yet (US-55) |
 | S-10 Auto PR runs | `/app/auto-pr` | **Wired** runs list + credits + single GitHub repo panel. Runner is a stub (opens a context PR) |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + vote counts + comment moderation + roadmap DnD |
 | S-12 Project settings | `/app/settings` | **Partial** name, platforms, notify kill switches, public key, mask text inputs, soft-delete live. Custom branding and board domain are "Coming soon" |
-| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. **No plan gating** on any of them (see Pricing update) |
+| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section still todo (D-12) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan (`SEAT_LIMIT`) |
-| S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage + credit balance. Plan change is manual (`PATCH /api/org/plan`); "Manual until Subscribed" pill hides once `usage.subscribed` is true. UI copy never names the payment provider. Buy credits is a stub. No Change plan cards with limit line yet |
+| S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage (Reports, Projects, Auto PR credits, Seats, Repos) + credit balance. Change plan: Free/Indie/Studio cards with limit line from `lib/plans.ts` (D-05). Plan change is manual (`PATCH /api/org/plan`, Business rejected until M6); "Manual until Subscribed" pill hides once `usage.subscribed` is true. Buy credits is a stub. No invoices list yet |
 | S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only. **Hidden until M6** (D-22) |
 | S-17 Self-host license | `/app/settings/self-host` | **UI only** route redirects to inbox; stays hidden until M6 |
 | S-18…S-20 Widget UX | `/preview/widget/*` + widget package | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet |
@@ -85,7 +85,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [x] **F4** Merge duplicates (S-08)
 - [x] **F4** Sentry / PostHog deep links
 - [x] **F5** Connect MCP (S-05) wired
-- [x] **F5** ~~Free-plan read-only MCP~~ shipped, but **superseded** by Pricing update P1 (Free gets all tools). Gate still in code: `server.go:852`, `mcp.go:47`
+- [x] **F5** ~~Free-plan read-only MCP~~ superseded by Pricing update P1: Free gets all tools (D-07, migration `021_free_mcp_write.sql`)
 - [x] **F6** Resend email on fixed (S-23)
 - [x] **F6** In-app fixed banner (S-21)
 - [x] **F6** Per-project notify kill switches (S-12)
@@ -119,13 +119,13 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] Polar credit packs (buy credits is a stub)
 - [ ] Annual pricing, early-access Indie 3 months
 - [x] Quota soft-block when over plan
-- [ ] Pricing update (see section below)
+- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Badge (D-20) dan seat Indie (D-21) masih nunggu keputusan
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
 
 #### M6 · Business (F12)
 
 > **Plan Business disembunyikan sampai M6.** Selama itu, user hanya melihat Free, Indie dan Studio. Kode Business yang sudah ada (audit log, gating `business`) tetap di repo, tapi tidak boleh terlihat atau bisa dipilih. Task penyembunyian: **D-22** di [brief](./Brief%20Penyesuaian%20Kode%20ke%20Desain.md).
-- [ ] **D-22** Sembunyikan plan Business dari semua UI (landing, Billing, sidebar, FAQ, JSON-LD, copy upsell)
+- [x] **D-22** Sembunyikan plan Business dari semua UI (landing, Billing, sidebar, FAQ, JSON-LD, copy upsell). Flag `BUSINESS_PLAN_VISIBLE` di `frontend/src/lib/plans.ts`
 - [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
 - [x] **F12** Audit log + export — sudah dibangun, disembunyikan sampai M6 bersama S-16
 - [ ] **F12** Docker / Helm self-host + license activation (S-17)
@@ -136,26 +136,26 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 
 ---
 
-## PRD Update Pricing dan Batas Fitur (Nov 19) — all Todo
+## PRD Update Pricing dan Batas Fitur (Nov 19)
 
-Current code state checked Nov 19. Nothing from this PRD is in code yet.
+Updated Nov 19 after D-01…D-09, D-22. Only the badge (D-20), Indie seats (D-21) and Polar (`usage.subscribed`, D-10) are left.
 
-| ID | Item | Current code | Story |
+| ID | Item | Status | Story |
 | --- | --- | --- | --- |
-| P1 | Free gets all MCP tools (drop `plan != "free"` gate) | Gate at `server.go:852` (token scopes) and `mcp.go:47` (write tools) | US-60 |
-| P1 | Migrate active Free tokens to `read`+`write`, log in audit + changelog | Not started | US-61 |
-| P1 | Notify reporters on Free | Dashboard "fixed" already notifies without a plan check; MCP `mark_fixed` blocked on Free by the gate above | US-62 |
-| P1 | `QUOTA_LOCKED` error with reset date + upgrade link on MCP | Quota-locked tickets return `ErrPlanRequired` → `PLAN_REQUIRED` | US-63 |
-| P2 | Slack + GitHub Issues require Indie (`PREMIUM_REQUIRED`), S-13 shows Indie label + Upgrade | No plan check on either | US-64 |
-| P2 | Linear + Jira require Studio | No plan check (pricing says Studio) | US-69 |
-| P2 | Public board requires Indie | No plan check | US-69 |
-| P2 | Badge "Powered by Saidloop" only on Free (widget, SDK, email, banner) | Widget footer always shown on every plan. **Waiting on badge decision** | US-65, US-66 |
-| P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) in `PlanLimits` | Not in `entitlements.go` | US-68 |
-| P3 | Indie seats: `MaxSeats: 3` → 1 (or 2) | Still 3. **Waiting on decision 1 vs 2** | US-67 |
-| UI | Billing Change plan cards with secondary line "1 project · 50 reports / mo · 3 repos / project" | S-15 has no plan cards | US-68 |
-| UI | Landing pricing cards: replace "MCP read-only tools", resell Indie | Still old copy | US-68 |
-| UI | Remove "read-only / mark_fixed needs Indie" copy (S-05 footer, S-06 empty checklist) | Still old copy | US-60 |
-| TEST | Entitlement test per plan for every feature on a plan card | Not started | US-69 |
+| P1 | Free gets all MCP tools | **Done** token always `read`+`write`, `mcp.go` checks scope only | US-60 |
+| P1 | Migrate active Free tokens to `read`+`write`, log in audit + changelog | **Done** `021_free_mcp_write.sql`, one `mcp.token.scope_upgraded` audit row per org | US-61 |
+| P1 | Notify reporters on Free | **Done** MCP `mark_fixed` works on Free | US-62 |
+| P1 | `QUOTA_LOCKED` error with reset date + upgrade link on MCP | **Done** MCP + `GET /api/tickets/:id` return `QUOTA_LOCKED` with `reset_at`, `upgrade_url` | US-63 |
+| P2 | Slack + GitHub Issues require Indie (`PREMIUM_REQUIRED`), S-13 Indie label + Upgrade | **Done** connect + create-issue gated; connections that existed before the gate are grandfathered (`022_integration_grandfathered.sql`) | US-64 |
+| P2 | Linear + Jira require Studio | **Done** same mechanism | US-69 |
+| P2 | Public board requires Indie | **Done** publishing an idea (`is_public: true`) needs Indie; unpublish always allowed; already-public ideas stay | US-69 |
+| P2 | Badge "Powered by Saidloop" only on Free | Todo. **Waiting on badge decision** (D-20) | US-65, US-66 |
+| P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts the single GitHub App repo until D-11) | US-68 |
+| P3 | Indie seats: `MaxSeats: 3` → 1 (or 2) | Todo. Still 3. **Waiting on decision** (D-21). Billing/landing copy already says "1 seat" per the brief, so copy and enforcement disagree until D-21 | US-67 |
+| UI | Billing Change plan cards with limit line | **Done** (D-05) | US-68 |
+| UI | Landing pricing cards | **Done** (D-06), 3 cards until M6 | US-68 |
+| UI | Remove "read-only / mark_fixed needs Indie" copy | **Done** (D-01, D-02) | US-60 |
+| TEST | Entitlement test per plan for every feature on a plan card | **Done** `TestIntegrationAndBoardGatingPerPlan` + `TestPlan_*` HTTP tests | US-69 |
 
 ## PRD Multi-repo per Project (Nov 19) — all Todo
 
@@ -197,19 +197,19 @@ Still open:
 **Agent: baca [Brief Penyesuaian Kode ke Desain](./Brief%20Penyesuaian%20Kode%20ke%20Desain.md) sebelum mengerjakan item di bawah.** Tiap ID (D-xx) punya frame + node ID, file yang diubah, copy persis, perubahan backend, kriteria selesai, dan bagian desain yang harus diabaikan. Centang di sini setelah selesai.
 
 Fase A · samakan screen yang sudah ada (frontend saja)
-- [ ] D-01 S-05 Connect MCP: hapus copy read-only, footer "Every plan includes all MCP tools" (`HcHA7`)
-- [ ] D-02 S-06 Inbox empty: checklist sesuai plan (`PN6mj`)
-- [ ] D-03 S-07 Report detail: panel Reporters, tombol issue per plan, timeline lama → baru (`mxSU2`)
-- [ ] D-04 S-13 Integrations: Linear dan Jira berlabel Studio (`wAub0`)
-- [ ] D-05 S-15 Billing: Change plan dengan baris limit, usage Seats + Repos (`jRMCb`)
-- [ ] D-06 S-01 Landing pricing: isi kartu baru (`BPPVw`)
-- [ ] D-22 Sembunyikan plan Business sampai M6 (landing, Billing, sidebar SSO, FAQ, JSON-LD, copy upsell)
+- [x] D-01 S-05 Connect MCP: hapus copy read-only, footer "Every plan includes all MCP tools" (`HcHA7`)
+- [x] D-02 S-06 Inbox empty: checklist sesuai plan (`PN6mj`)
+- [x] D-03 S-07 Report detail: panel Reporters, tombol issue per plan, timeline lama → baru (`mxSU2`)
+- [x] D-04 S-13 Integrations: Linear dan Jira berlabel Studio (`wAub0`)
+- [x] D-05 S-15 Billing: Change plan dengan baris limit, usage Seats + Repos (`jRMCb`)
+- [x] D-06 S-01 Landing pricing: isi kartu baru (`BPPVw`)
+- [x] D-22 Sembunyikan plan Business sampai M6 (landing, Billing, sidebar SSO, FAQ, JSON-LD, copy upsell)
 
 Fase B · pricing di backend
-- [ ] D-07 Free dapat semua tools MCP + migrasi token + `QUOTA_LOCKED` (US-60, US-61, US-63)
-- [ ] D-08 Gating Slack / GitHub Issues → Indie, Linear / Jira → Studio, board → Indie + UI `dmcSk` (US-64, US-69)
-- [ ] D-09 `MaxReposPerProject` + `usage.repos`
-- [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5)
+- [x] D-07 Free dapat semua tools MCP + migrasi token + `QUOTA_LOCKED` (US-60, US-61, US-63)
+- [x] D-08 Gating Slack / GitHub Issues → Indie, Linear / Jira → Studio, board → Indie + UI `dmcSk` (US-64, US-69)
+- [x] D-09 `MaxReposPerProject` + `usage.repos`
+- [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
 
 Fase C · multi-repo
 - [ ] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`
@@ -248,9 +248,9 @@ Fase D · menunggu keputusan (jangan dikerjakan dulu)
 | Milestone | Focus | Status |
 | --- | --- | --- |
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation shipped; interviews todo |
-| M1 | F1 F2 F4 F5 F6 | Complete and validated on Bear Budget Web. Free MCP gate to be reverted (Pricing P1) |
+| M1 | F1 F2 F4 F5 F6 | Complete and validated on Bear Budget Web. Free MCP gate reverted (Pricing P1, D-07) |
 | M2 | F3 F7 mobile + Multi-repo R1–R3 | Todo |
-| M3 | F8 F9 F11 | Done except Slack OAuth channel picker. Plan gating for integrations missing |
+| M3 | F8 F9 F11 | Done except Slack OAuth channel picker. Plan gating for integrations and board shipped (D-08) |
 | M4 | F10 | GitHub App + stub runner done; real runner open |
 | M5 | Billing + public beta + Pricing update | Todo (manual plans only). Free, Indie, Studio only |
 | M6 | F12 Business: SSO, audit log, self-host, replay 30d, contract quota | Audit log built; rest todo. Business plan hidden until here |
@@ -259,9 +259,9 @@ Fase D · menunggu keputusan (jangan dikerjakan dulu)
 
 ## Suggested next sprint
 
-1. **Fase A brief (D-01 sampai D-06, D-22)**: copy dan layout di screen yang sudah ada, plus sembunyikan Business. Frontend saja, cepat.
-2. **D-07 Pricing P1**: buang gate MCP Free, migrasi token, `QUOTA_LOCKED`. Kecil, membuka janji utama di Free.
-3. **D-08, D-09 Pricing P2**: gating integrasi dan board per plan + `MaxReposPerProject`, dengan tes per plan (US-69).
+1. ~~Fase A brief (D-01 sampai D-06, D-22)~~ done Nov 19.
+2. ~~D-07 Pricing P1~~ done Nov 19.
+3. ~~D-08, D-09 Pricing P2~~ done Nov 19.
 4. Putuskan seat Indie dan badge, lalu D-20 dan D-21.
 5. Mulai **M0** interview builder (sekalian validasi batas repo).
 6. **M2**: Fase C multi-repo (D-11 sampai D-19) bareng SDK mobile pertama.

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -39,12 +40,13 @@ func (s *Server) mcpHandler(c *gin.Context) {
 		return
 	}
 	token := strings.TrimPrefix(authz, "Bearer ")
-	projectID, scopes, plan, err := s.Store.MCPByToken(c.Request.Context(), token)
+	projectID, scopes, _, err := s.Store.MCPByToken(c.Request.Context(), token)
 	if err != nil {
 		c.JSON(401, mcpError(req.ID, -32001, "unauthorized"))
 		return
 	}
-	canWrite := contains(scopes, "write") && plan != "free"
+	// Every plan gets all MCP tools (US-60); only the token scope decides write access.
+	canWrite := contains(scopes, "write")
 
 	switch req.Method {
 	case "initialize":
@@ -74,6 +76,14 @@ func (s *Server) mcpHandler(c *gin.Context) {
 		}
 		_ = json.Unmarshal(req.Params, &params)
 		result, callErr := s.callMCPTool(c, projectID, canWrite, params.Name, params.Arguments)
+		if errors.Is(callErr, application.ErrQuotaLocked) {
+			b, _ := json.MarshalIndent(map[string]any{"error": quotaLockedPayload(s.upgradeURL())}, "", "  ")
+			c.JSON(200, mcpResult(req.ID, map[string]any{
+				"content": []map[string]any{{"type": "text", "text": string(b)}},
+				"isError": true,
+			}))
+			return
+		}
 		if callErr != nil {
 			c.JSON(200, mcpResult(req.ID, map[string]any{
 				"content": []map[string]any{{"type": "text", "text": callErr.Error()}},

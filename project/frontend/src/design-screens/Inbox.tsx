@@ -7,7 +7,8 @@ import { subscribeWidgetSubmitted } from "@/lib/widget-events";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
 import { API_URL, api, clearProjectSelection } from "@/lib/api";
-import type { MeResponse } from "@/lib/usage";
+import { onboardingChecklist } from "@/lib/onboarding-checklist";
+import type { MeResponse, OrgUsage } from "@/lib/usage";
 
 type TicketType = "bug" | "idea" | "question" | "";
 type TicketStatus = "open" | "in_progress" | "fixed" | "wont_fix" | "duplicate" | "";
@@ -124,7 +125,7 @@ export function Inbox() {
       try {
         const [projectRes, meRes] = await Promise.all([
           api<{ project: ProjectInfo; public_key: string }>(`/api/projects/${projectId}`),
-          api<MeResponse>("/api/me"),
+          api<MeResponse>(`/api/me?project_id=${encodeURIComponent(projectId || "")}`),
         ]);
         if (cancelled) return;
         setProject(projectRes.project);
@@ -392,6 +393,8 @@ export function Inbox() {
         ) : filtered.length === 0 ? (
           <EmptyState
             projectName={projectName}
+            plan={me?.org.plan || "free"}
+            usage={me?.usage}
             onSendTest={sendTestReport}
             sending={sendingTest}
           />
@@ -607,13 +610,57 @@ function PlatformDropdown({
 
 function EmptyState({
   projectName,
+  plan,
+  usage,
   onSendTest,
   sending,
 }: {
   projectName: string;
+  plan: string;
+  usage?: OrgUsage;
   onSendTest: () => void;
   sending: boolean;
 }) {
+  const [agentClient, setAgentClient] = useState("");
+  const [agentConnected, setAgentConnected] = useState(false);
+  const [slackConnected, setSlackConnected] = useState(false);
+
+  useEffect(() => {
+    const projectId = localStorage.getItem("closeloop_project");
+    if (!projectId) return;
+    let cancelled = false;
+    Promise.all([
+      api<{ tokens: { last_used_at: string | null; clients?: { name?: string }[] }[] }>(
+        `/api/projects/${projectId}/mcp-tokens`,
+      ).catch(() => ({ tokens: [] })),
+      api<{ integrations: { provider: string }[] }>(
+        `/api/projects/${projectId}/integrations`,
+      ).catch(() => ({ integrations: [] })),
+    ]).then(([tokenRes, integRes]) => {
+      if (cancelled) return;
+      const used = (tokenRes.tokens || []).filter((t) => t.last_used_at);
+      setAgentConnected(used.length > 0);
+      const client = used.flatMap((t) => t.clients || []).find((c) => c?.name)?.name || "";
+      setAgentClient(client);
+      setSlackConnected((integRes.integrations || []).some((i) => i.provider === "slack"));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const items = onboardingChecklist({
+    plan,
+    projectName,
+    widgetReporting: (usage?.reports.used ?? 0) > 0,
+    agentClient,
+    agentConnected,
+    teammates: usage?.seats?.used ?? 1,
+    slackConnected,
+    reposConnected: usage?.repos?.used ?? 0,
+  });
+  const doneCount = items.filter((i) => i.done).length;
+
   return (
     <div className="flex flex-1 flex-col items-center gap-10 px-4 py-20">
       <div className="flex w-full max-w-[460px] flex-col items-center gap-4 text-center">
@@ -644,44 +691,54 @@ function EmptyState({
         </button>
       </div>
 
-      <div className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-[#17171714] bg-white shadow-[0_4px_4px_#1717170A]">
+      <div
+        data-pencil-name="Next Steps"
+        data-testid="onboarding-checklist"
+        className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-[#17171714] bg-white shadow-[0_4px_4px_#1717170A]"
+      >
         <div className="flex items-center justify-between border-b border-[#17171714] bg-[#FAFAFA] px-5 py-3.5">
           <span className="font-ds-ui text-[13px] font-semibold text-[#171717]">
             Get the most out of Saidloop
           </span>
+          <span className="font-ds-mono text-[12px] text-[#737373]">
+            {doneCount} / {items.length}
+          </span>
         </div>
-        <Link
-          href="/app/install"
-          className="flex items-center gap-3 border-b border-[#17171714] px-5 py-3.5 no-underline hover:bg-[#FAFAFA]"
-        >
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#F5F5F5] font-ds-mono text-[10px] text-[#737373]">
-            1
-          </span>
-          <span>
-            <span className="block font-ds-ui text-[13.5px] font-medium text-[#171717]">
-              Install the widget
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            data-pencil-name={item.title}
+            className={`flex items-center gap-3 px-5 py-3.5 ${
+              index > 0 ? "border-t border-[#17171714]" : ""
+            }`}
+          >
+            {item.done ? (
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#16A34A] text-[11px] text-white">
+                ✓
+              </span>
+            ) : (
+              <span className="h-5 w-5 shrink-0 rounded-full border-[1.5px] border-[#D4D4D4] bg-white" />
+            )}
+            <span className="min-w-0 flex-1">
+              <span
+                className={`block font-ds-ui text-[13.5px] font-medium ${
+                  item.done ? "text-[#737373]" : "text-[#171717]"
+                }`}
+              >
+                {item.title}
+              </span>
+              <span className="block font-ds-ui text-xs text-[#A3A3A3]">{item.subtitle}</span>
             </span>
-            <span className="block font-ds-ui text-xs text-[#A3A3A3]">
-              Drop the snippet so users can report
-            </span>
-          </span>
-        </Link>
-        <Link
-          href="/app/mcp"
-          className="flex items-center gap-3 px-5 py-3.5 no-underline hover:bg-[#FAFAFA]"
-        >
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#F5F5F5] font-ds-mono text-[10px] text-[#737373]">
-            2
-          </span>
-          <span>
-            <span className="block font-ds-ui text-[13.5px] font-medium text-[#171717]">
-              Connect your coding agent
-            </span>
-            <span className="block font-ds-ui text-xs text-[#A3A3A3]">
-              MCP token for Cursor or Claude Code
-            </span>
-          </span>
-        </Link>
+            {!item.done && item.action && (
+              <Link
+                href={item.action.href}
+                className="inline-flex h-7 shrink-0 items-center rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-sans text-[12px] font-medium tracking-[-0.2px] text-[#171717] no-underline shadow-[0_4px_4px_#1717170A] hover:bg-[#FAFAFA]"
+              >
+                {item.action.label}
+              </Link>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

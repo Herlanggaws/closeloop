@@ -4,55 +4,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { api } from "@/lib/api";
+import { planInfo, visiblePlans } from "@/lib/plans";
 import {
+  formatOf,
   formatUsage,
   planLabel,
+  usagePct,
   usagePeriodResetLabel,
   type MeResponse,
   type OrgUsage,
 } from "@/lib/usage";
-
-const PLANS: {
-  id: "free" | "indie" | "studio" | "business";
-  name: string;
-  price: string;
-  blurb: string;
-  projects: string;
-  reports: string;
-}[] = [
-  {
-    id: "free",
-    name: "Free",
-    price: "$0",
-    blurb: "Widget, inbox, MCP read-only",
-    projects: "1 project",
-    reports: "50 reports / mo",
-  },
-  {
-    id: "indie",
-    name: "Indie",
-    price: "$12",
-    blurb: "All MCP tools, notify, Slack & GitHub Issues",
-    projects: "3 projects",
-    reports: "1,000 reports / mo",
-  },
-  {
-    id: "studio",
-    name: "Studio",
-    price: "$39",
-    blurb: "5 seats, branding, Linear & Jira, replay 7d",
-    projects: "Unlimited projects",
-    reports: "10,000 reports / mo",
-  },
-  {
-    id: "business",
-    name: "Business",
-    price: "From $149",
-    blurb: "SSO, audit, replay 30d, self-host option",
-    projects: "Unlimited projects",
-    reports: "Contract quota",
-  },
-];
 
 export function Billing() {
   const router = useRouter();
@@ -72,7 +33,7 @@ export function Billing() {
 
     let cancelled = false;
     Promise.all([
-      api<MeResponse>("/api/me"),
+      api<MeResponse>(`/api/me?project_id=${encodeURIComponent(projectId)}`),
       api<{ project: { name: string } }>(`/api/projects/${projectId}`),
     ])
       .then(([meRes, projectRes]) => {
@@ -99,10 +60,14 @@ export function Billing() {
     setSaving(true);
     setError("");
     try {
-      const res = await api<{ usage: OrgUsage }>("/api/org/plan", {
-        method: "PATCH",
-        body: JSON.stringify({ plan }),
-      });
+      const projectId = localStorage.getItem("closeloop_project") || "";
+      const res = await api<{ usage: OrgUsage }>(
+        `/api/org/plan?project_id=${encodeURIComponent(projectId)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ plan }),
+        },
+      );
       setUsage(res.usage);
       setMe((prev) =>
         prev
@@ -124,11 +89,17 @@ export function Billing() {
   const email = me?.user.email || "";
   const reports = usage?.reports || { used: 0, limit: 50 };
   const projects = usage?.projects || { used: 0, limit: 1 };
-  const reportPct =
-    reports.limit === 0 ? 0 : Math.min(100, Math.round((reports.used / reports.limit) * 100));
-  const projectPct =
-    projects.limit === 0 ? 0 : Math.min(100, Math.round((projects.used / projects.limit) * 100));
+  const reportPct = usagePct(reports);
+  const projectPct = usagePct(projects);
   const overQuota = reports.limit > 0 && reports.used >= reports.limit;
+  const credits = usage?.auto_pr_credits ?? 0;
+  const creditsGranted = Math.max(usage?.auto_pr_credits_granted ?? 0, credits);
+  const creditsUsed = creditsGranted - credits;
+  const current = planInfo(plan);
+  // Business stays hidden until M6, but an org already on it still sees its own card.
+  const changePlans = visiblePlans().concat(
+    current && !visiblePlans().some((p) => p.id === current.id) ? [current] : [],
+  );
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -171,12 +142,10 @@ export function Billing() {
                       {planLabel(plan)}
                     </span>
                     <span className="pb-1 font-ds-ui text-[13px] text-white/70">
-                      {PLANS.find((p) => p.id === plan)?.price || "$0"} / month
+                      {current?.price || "$0"} / month
                     </span>
                   </div>
-                  <p className="font-ds-ui text-[13px] text-white/70">
-                    {PLANS.find((p) => p.id === plan)?.blurb}
-                  </p>
+                  <p className="font-ds-ui text-[13px] text-white/70">{current?.blurb}</p>
                 </div>
 
                 <div className="flex flex-col gap-[18px] rounded-2xl border border-[#17171714] bg-white p-6">
@@ -195,6 +164,28 @@ export function Billing() {
                     pct={projectPct}
                     warn={projects.limit > 0 && projects.used >= projects.limit}
                   />
+                  {creditsGranted > 0 && (
+                    <UsageBar
+                      label="Auto PR credits"
+                      value={`${formatOf(creditsUsed, creditsGranted)} used`}
+                      pct={Math.min(100, Math.round((creditsUsed / creditsGranted) * 100))}
+                    />
+                  )}
+                  {usage?.seats && (
+                    <UsageBar
+                      label="Seats"
+                      value={formatOf(usage.seats.used, usage.seats.limit)}
+                      pct={usagePct(usage.seats)}
+                      warn={usage.seats.limit > 0 && usage.seats.used > usage.seats.limit}
+                    />
+                  )}
+                  {usage?.repos && (
+                    <UsageBar
+                      label={`Repos in ${projectName}`}
+                      value={formatOf(usage.repos.used, usage.repos.limit)}
+                      pct={usagePct(usage.repos)}
+                    />
+                  )}
                   {overQuota && (
                     <p className="font-ds-ui text-[12px] text-[#B45309]">
                       Over quota: new reports are still accepted but stay locked until you upgrade
@@ -216,7 +207,7 @@ export function Billing() {
                   <div>
                     <div className="font-ds-ui text-[11px] text-[#A3A3A3]">Balance</div>
                     <div className="font-ds-sans text-[28px] font-medium tracking-[-0.6px] text-[#171717]">
-                      {usage?.auto_pr_credits ?? 0}
+                      {credits}
                     </div>
                   </div>
                   <button
@@ -231,23 +222,36 @@ export function Billing() {
               </section>
 
               <section className="rounded-2xl border border-[#17171714] bg-white p-6">
-                <h2 className="font-ds-sans text-[16px] font-medium tracking-[-0.3px] text-[#171717]">
-                  Change plan
-                </h2>
-                <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                  Plans are switched manually until you're subscribed.
-                </p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {PLANS.map((p) => {
-                    const current = p.id === plan;
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="font-ds-sans text-[16px] font-medium tracking-[-0.3px] text-[#171717]">
+                    Change plan
+                  </h2>
+                  <span className="font-ds-ui text-[12px] text-[#737373]">
+                    Every limit below is enforced in the product, not just listed.
+                  </span>
+                </div>
+                {!usage?.subscribed && (
+                  <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
+                    Plans are switched manually until you&apos;re subscribed.
+                  </p>
+                )}
+                <div
+                  data-testid="change-plan-grid"
+                  className={`mt-5 grid gap-3 sm:grid-cols-2 ${
+                    changePlans.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"
+                  }`}
+                >
+                  {changePlans.map((p) => {
+                    const isCurrent = p.id === plan;
                     return (
                       <button
                         key={p.id}
                         type="button"
-                        disabled={saving || current}
+                        data-plan={p.id}
+                        disabled={saving || isCurrent}
                         onClick={() => changePlan(p.id)}
                         className={`flex cursor-pointer flex-col gap-1 rounded-[12px] border p-4 text-left transition disabled:cursor-default ${
-                          current
+                          isCurrent
                             ? "border-[#171717] bg-[#FAFAFA]"
                             : "border-[#1717171F] bg-white hover:bg-[#FAFAFA]"
                         }`}
@@ -260,11 +264,11 @@ export function Billing() {
                         </div>
                         <span className="font-ds-ui text-[12px] text-[#737373]">{p.blurb}</span>
                         <span className="mt-2 font-ds-ui text-[11px] text-[#A3A3A3]">
-                          {p.projects} · {p.reports}
+                          {p.billingLimits}
                         </span>
-                        {current && (
+                        {isCurrent && (
                           <span className="mt-2 font-ds-ui text-[11px] font-medium text-[#171717]">
-                            Current
+                            Current plan
                           </span>
                         )}
                       </button>

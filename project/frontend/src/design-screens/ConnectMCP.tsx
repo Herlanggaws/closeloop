@@ -71,7 +71,6 @@ export function ConnectMCP() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [token, setToken] = useState("");
-  const [scopes, setScopes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [copied, setCopied] = useState<"token" | "config" | "">("");
@@ -89,8 +88,8 @@ export function ConnectMCP() {
   }, [router]);
 
   const config = useMemo(() => buildConfig(token), [token]);
-  const canWrite = scopes.includes("write");
-  const scopeLabel = canWrite ? "Read + write" : "Read-only · Free plan";
+  // Every plan gets read + write (D-07), so the scope label no longer depends on the plan.
+  const scopeLabel = "Read + write";
 
   async function createToken() {
     const projectId = localStorage.getItem("closeloop_project");
@@ -107,7 +106,6 @@ export function ConnectMCP() {
         method: "POST",
       });
       setToken(res.token);
-      setScopes(res.scopes || ["read"]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create token");
     } finally {
@@ -231,11 +229,6 @@ export function ConnectMCP() {
                   <span className="rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2 py-1 font-ds-ui text-[12px] font-medium text-[#171717]">
                     {scopeLabel}
                   </span>
-                  {!canWrite && (
-                    <span className="font-ds-ui text-[12px] text-[#A3A3A3]">
-                      Upgrade later to let agents change status and mark fixed.
-                    </span>
-                  )}
                 </div>
 
                 <div data-tour="mcp-token">
@@ -339,7 +332,10 @@ export function ConnectMCP() {
             {error && <p className="text-sm text-[#DA314A]">{error}</p>}
           </div>
 
-          <div className="flex items-center justify-end border-t border-[#17171714] bg-[#FAFAFA] px-8 py-4">
+          <div className="flex items-center justify-between gap-4 border-t border-[#17171714] bg-[#FAFAFA] px-8 py-4">
+            <span className="font-ds-ui text-[12px] text-[#A3A3A3]">
+              Every plan includes all MCP tools, mark_fixed too.
+            </span>
             <button
               type="button"
               onClick={() => router.push("/app/mcp")}

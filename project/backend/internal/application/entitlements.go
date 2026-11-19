@@ -5,21 +5,22 @@ import "strings"
 // PlanLimits mirrors PRD pricing plus seat defaults for M1 team invites.
 // Zero means unlimited.
 type PlanLimits struct {
-	MaxProjects     int
-	ReportsPerMonth int
-	MaxSeats        int
+	MaxProjects        int
+	ReportsPerMonth    int
+	MaxSeats           int
+	MaxReposPerProject int
 }
 
 func LimitsForPlan(plan string) PlanLimits {
 	switch strings.ToLower(strings.TrimSpace(plan)) {
 	case "indie":
-		return PlanLimits{MaxProjects: 3, ReportsPerMonth: 1000, MaxSeats: 3}
+		return PlanLimits{MaxProjects: 3, ReportsPerMonth: 1000, MaxSeats: 3, MaxReposPerProject: 5}
 	case "studio":
-		return PlanLimits{MaxProjects: 0, ReportsPerMonth: 10000, MaxSeats: 5}
+		return PlanLimits{MaxProjects: 0, ReportsPerMonth: 10000, MaxSeats: 5, MaxReposPerProject: 10}
 	case "business":
-		return PlanLimits{MaxProjects: 0, ReportsPerMonth: 0, MaxSeats: 0}
+		return PlanLimits{MaxProjects: 0, ReportsPerMonth: 0, MaxSeats: 0, MaxReposPerProject: 0}
 	default:
-		return PlanLimits{MaxProjects: 1, ReportsPerMonth: 50, MaxSeats: 1}
+		return PlanLimits{MaxProjects: 1, ReportsPerMonth: 50, MaxSeats: 1, MaxReposPerProject: 3}
 	}
 }
 
@@ -90,4 +91,65 @@ func (l PlanLimits) SeatLimitReached(used int) bool {
 		return false
 	}
 	return used >= l.MaxSeats
+}
+
+func (l PlanLimits) RepoLimitReached(used int) bool {
+	if l.MaxReposPerProject == 0 {
+		return false
+	}
+	return used >= l.MaxReposPerProject
+}
+
+// planRank orders plans so "needs at least X" checks stay in one place.
+func planRank(plan string) int {
+	switch NormalizePlan(plan) {
+	case "indie":
+		return 1
+	case "studio":
+		return 2
+	case "business":
+		return 3
+	default:
+		return 0
+	}
+}
+
+// PlanAtLeast reports whether plan is min or higher.
+func PlanAtLeast(plan, min string) bool {
+	return planRank(plan) >= planRank(min)
+}
+
+// RequiredPlanForIntegration is the lowest plan that may connect or use a provider
+// (pricing update P2, US-64, US-69). Sentry, PostHog, Webhooks and the GitHub App
+// stay on every plan.
+func RequiredPlanForIntegration(provider string) string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "slack", "github_issues":
+		return "indie"
+	case "linear", "jira":
+		return "studio"
+	default:
+		return "free"
+	}
+}
+
+// IntegrationAllowed reports whether plan may connect or use provider.
+func IntegrationAllowed(plan, provider string) bool {
+	return PlanAtLeast(plan, RequiredPlanForIntegration(provider))
+}
+
+// BoardAllowed reports whether plan may publish ideas to the public board (Indie and up).
+func BoardAllowed(plan string) bool {
+	return PlanAtLeast(plan, "indie")
+}
+
+// SelfServePlanAllowed reports whether a plan can be picked from Billing.
+// Business is hidden until M6 (D-22); orgs already on Business keep it.
+func SelfServePlanAllowed(plan string) bool {
+	switch strings.ToLower(strings.TrimSpace(plan)) {
+	case "free", "indie", "studio":
+		return true
+	default:
+		return false
+	}
 }

@@ -60,7 +60,12 @@ export type TicketDetailResponse = {
   attachments: TicketAttachment[];
   events: TicketEvent[];
   integrations?: IntegrationConfig[];
-  reporters: { total: number; with_email: number };
+  reporters: {
+    total: number;
+    with_email: number;
+    items?: TicketReporterItem[];
+    by_platform?: Record<string, number>;
+  };
 };
 
 export const TYPE_STYLE: Record<string, { bg: string; text: string; label: string }> = {
@@ -106,6 +111,33 @@ export function relativeTime(iso: string) {
 
 export function projectInitial(name: string) {
   return (name.trim()[0] || "P").toUpperCase();
+}
+
+export type TicketReporterItem = {
+  reporter_id?: string;
+  email?: string;
+  external_user_id?: string;
+  platform: string;
+};
+
+const PLATFORM_LABEL: Record<string, string> = { web: "Web", ios: "iOS", android: "Android" };
+
+export function platformLabel(platform: string) {
+  return PLATFORM_LABEL[platform] || platform.charAt(0).toUpperCase() + platform.slice(1);
+}
+
+/** "3 · Web 2, iOS 1" summary for the S-07 Reporters header. */
+export function reportersSummary(items: TicketReporterItem[], byPlatform?: Record<string, number>) {
+  const counts = byPlatform && Object.keys(byPlatform).length ? byPlatform : items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.platform] = (acc[item.platform] || 0) + 1;
+    return acc;
+  }, {});
+  const order = ["web", "ios", "android"];
+  const parts = Object.entries(counts)
+    .sort(([a], [b]) => (order.indexOf(a) + 99) % 100 - (order.indexOf(b) + 99) % 100)
+    .map(([platform, n]) => `${platformLabel(platform)} ${n}`);
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  return parts.length ? `${total} · ${parts.join(", ")}` : `${total}`;
 }
 
 export function displayName(email: string) {

@@ -6,6 +6,7 @@ import { LandingNav } from "@/components/LandingNav";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { LANDING_FAQ_ITEMS } from "@/lib/landing-faq";
+import { visiblePlans, type PlanInfo } from "@/lib/plans";
 
 type Props = {
   onJoinWaitlist?: () => void;
@@ -115,6 +116,163 @@ const PLAN_PRICES = {
   studio: { monthly: 39, yearly: 33 },
   business: { monthly: 149, yearly: 124 },
 } as const;
+
+const PRICING_CHECK_PATH =
+  "M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z";
+
+const PRICING_CARD_COPY: Record<
+  PlanInfo["id"],
+  { period: string; cta: string; badge?: string; dark?: boolean }
+> = {
+  free: { period: "forever", cta: "Start free" },
+  indie: {
+    period: "/ month",
+    cta: "Join the waitlist",
+    badge: "3 months free for early access",
+    dark: true,
+  },
+  studio: { period: "/ month", cta: "Join the waitlist" },
+  business: { period: "/ month and up", cta: "Talk to us" },
+};
+
+function PricingCard({
+  plan,
+  billingPeriod,
+  onCta,
+}: {
+  plan: PlanInfo;
+  billingPeriod: BillingPeriod;
+  onCta: () => void;
+}) {
+  const copy = PRICING_CARD_COPY[plan.id];
+  const dark = Boolean(copy.dark);
+  const amount = plan.id === "free" ? "$0" : `$${PLAN_PRICES[plan.id][billingPeriod]}`;
+  return (
+    <div
+      data-pencil-name={plan.name}
+      className={`box-border [flex:1_1_0] h-auto flex flex-col gap-[24px] p-6 sm:p-[28px] justify-start items-start rounded-[16px] ${
+        dark
+          ? "[box-shadow:0px_16px_40px_#1717172E] bg-[#0A0A0A]"
+          : "[box-shadow:0px_4px_4px_#1717170A] bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px]"
+      }`}
+    >
+      <div
+        data-pencil-name="Head"
+        className="box-border w-full h-fit shrink-0 flex flex-row gap-2 justify-between items-center"
+      >
+        <div
+          data-pencil-name="Name"
+          className={`text-[18px]/[normal] box-border font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap] ${
+            dark ? "text-[#FFFFFF]" : "text-[#171717]"
+          }`}
+        >
+          {plan.name}
+        </div>
+        {copy.badge && (
+          <div
+            data-pencil-name="Badge"
+            className="box-border w-fit shrink-0 h-fit flex flex-row gap-0 p-[3px_8px] justify-start items-start bg-[#22C55E26] rounded-[999px]"
+          >
+            <span
+              data-pencil-name="L"
+              className="text-[11px]/[normal] box-border text-[#22C55E] font-ds-ui font-medium text-left [white-space:nowrap]"
+            >
+              {copy.badge}
+            </span>
+          </div>
+        )}
+      </div>
+      <div
+        data-pencil-name="Price"
+        className="box-border w-fit h-fit shrink-0 flex flex-row gap-[6px] justify-start items-end"
+      >
+        <div
+          data-pencil-name="Amount"
+          className={`text-[44px]/[44px] box-border font-ds-sans font-medium tracking-[-1.4px] text-left [white-space:nowrap] ${
+            dark ? "text-[#FFFFFF]" : "text-[#171717]"
+          }`}
+        >
+          {amount}
+        </div>
+        <div
+          data-pencil-name="Period"
+          className={`text-[13px]/[normal] box-border font-ds-ui font-normal text-left [white-space:nowrap] ${
+            dark ? "text-[#FFFFFFB3]" : "text-[#737373]"
+          }`}
+        >
+          {copy.period}
+        </div>
+      </div>
+      <div className="box-border w-full flex flex-col gap-[8px]">
+        <div
+          data-pencil-name="Desc"
+          className={`text-[14px]/[normal] box-border font-ds-ui font-normal text-left [white-space:normal] ${
+            dark ? "text-[#FFFFFFB3]" : "text-[#737373]"
+          }`}
+        >
+          {plan.landing.desc}
+        </div>
+        <div
+          data-pencil-name="Limits"
+          className={`text-[11.5px]/[16px] box-border font-ds-ui font-normal text-left [white-space:normal] ${
+            dark ? "text-[#FFFFFF80]" : "text-[#A3A3A3]"
+          }`}
+        >
+          {plan.landing.limits}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onCta}
+        data-pencil-name="CTA"
+        className={`cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] rounded-[6px] ${
+          dark ? "" : "[outline:1px_solid_#1717171F] [outline-offset:-0.5px]"
+        }`}
+      >
+        <div
+          data-pencil-name="Label"
+          className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
+        >
+          {copy.cta}
+        </div>
+      </button>
+      <div
+        data-pencil-name="Features"
+        className={`box-border w-full h-fit shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [margin:-0.5px_0px_0px_0px] ${
+          dark ? "[border-color:#FFFFFF1A]" : "[border-color:#17171714]"
+        }`}
+      >
+        {plan.landing.features.map((feature) => (
+          <div
+            key={feature}
+            data-pencil-name={feature}
+            className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
+          >
+            <svg
+              data-pencil-name="Check"
+              data-icon-name="check"
+              data-icon-set="lucide"
+              viewBox="0 0 13.99993896484375 14"
+              preserveAspectRatio="xMidYMid meet"
+              xmlns="http://www.w3.org/2000/svg"
+              className="box-border w-[16px] shrink-0 h-[16px]"
+            >
+              <path d={PRICING_CHECK_PATH} fill={dark ? "#FFFFFF" : "#171717"} />
+            </svg>
+            <div
+              data-pencil-name="T"
+              className={`text-[13.5px]/[18px] box-border [flex:1_1_0] font-ds-ui font-normal text-left ${
+                dark ? "text-[#FFFFFF]" : "text-[#171717]"
+              }`}
+            >
+              {feature}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function LandingPageDesign({ onJoinWaitlist }: Props) {
   const openWaitlist = onJoinWaitlist ?? (() => {});
@@ -3346,777 +3504,18 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
         </div>
         <div
           data-pencil-name="Plans"
-          className="box-border w-full h-fit shrink-0 flex flex-col gap-4 justify-start items-stretch lg:h-[468px] lg:flex-row lg:gap-[16px]"
+          className={`box-border w-full h-fit shrink-0 flex flex-col gap-4 justify-center items-stretch lg:flex-row lg:gap-[16px] ${
+            visiblePlans().length === 3 ? "lg:mx-auto lg:max-w-[1040px]" : ""
+          }`}
         >
-          <div
-            data-pencil-name="Free"
-            className="box-border [flex:1_1_0] h-auto lg:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-[24px] p-6 sm:p-[28px] justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-0 justify-between items-center"
-            >
-              <div
-                data-pencil-name="Name"
-                className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
-              >
-                Free
-              </div>
-            </div>
-            <div
-              data-pencil-name="Price"
-              className="box-border w-fit h-fit shrink-0 flex flex-row gap-[6px] justify-start items-end"
-            >
-              <div
-                data-pencil-name="Amount"
-                className="text-[44px]/[44px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.4px] text-left [white-space:nowrap]"
-              >
-                $0
-              </div>
-              <div
-                data-pencil-name="Period"
-                className="text-[13px]/[normal] box-border text-[#737373] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                forever
-              </div>
-            </div>
-            <div
-              data-pencil-name="Desc"
-              className="text-[14px]/[normal] box-border text-[#737373] font-ds-ui font-normal text-left [white-space:normal]"
-            >
-              Try the loop on one app.
-            </div>
-            <button type="button" onClick={openWaitlist} data-pencil-name="CTA" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
-              <div
-                data-pencil-name="Label"
-                className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
-              >
-                Start free
-              </div>
-            </button>
-            <div
-              data-pencil-name="Features"
-              className="box-border w-full h-[161.5px] shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
-            >
-              <div
-                data-pencil-name="1 project"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  1 project
-                </div>
-              </div>
-              <div
-                data-pencil-name="50 reports / month"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  50 reports / month
-                </div>
-              </div>
-              <div
-                data-pencil-name="Web widget and mobile SDKs"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Web widget and mobile SDKs
-                </div>
-              </div>
-              <div
-                data-pencil-name="Inbox and tickets"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Inbox and tickets
-                </div>
-              </div>
-              <div
-                data-pencil-name="MCP read-only tools"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  MCP read-only tools
-                </div>
-              </div>
-            </div>
-          </div>
-          <div
-            data-pencil-name="Indie"
-            className="box-border [flex:1_1_0] h-auto lg:h-full [box-shadow:0px_16px_40px_#1717172E] flex flex-col gap-[24px] p-6 sm:p-[28px] justify-start items-start bg-[#0A0A0A] rounded-[16px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-0 justify-between items-center"
-            >
-              <div
-                data-pencil-name="Name"
-                className="text-[18px]/[normal] box-border text-[#FFFFFF] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
-              >
-                Indie
-              </div>
-              <div
-                data-pencil-name="Badge"
-                className="box-border w-fit shrink-0 h-fit flex flex-row gap-0 p-[3px_8px] justify-start items-start bg-[#22C55E26] rounded-[999px]"
-              >
-                <div
-                  data-pencil-name="L"
-                  className="text-[11px]/[normal] box-border text-[#22C55E] font-ds-ui font-medium text-left [white-space:nowrap]"
-                >
-                  3 months free for early access
-                </div>
-              </div>
-            </div>
-            <div
-              data-pencil-name="Price"
-              className="box-border w-fit h-fit shrink-0 flex flex-row gap-[6px] justify-start items-end"
-            >
-              <div
-                data-pencil-name="Amount"
-                className="text-[44px]/[44px] box-border text-[#FFFFFF] font-ds-sans font-medium tracking-[-1.4px] text-left [white-space:nowrap]"
-              >
-                ${PLAN_PRICES.indie[billingPeriod]}
-              </div>
-              <div
-                data-pencil-name="Period"
-                className="text-[13px]/[normal] box-border text-[#FFFFFFB3] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                / month
-              </div>
-            </div>
-            <div
-              data-pencil-name="Desc"
-              className="text-[14px]/[normal] box-border text-[#FFFFFFB3] font-ds-ui font-normal text-left [white-space:normal]"
-            >
-              For solo builders shipping with AI.
-            </div>
-            <button type="button" onClick={openWaitlist} data-pencil-name="CTA" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] rounded-[6px]">
-              <div
-                data-pencil-name="Label"
-                className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
-              >
-                Join the waitlist
-              </div>
-            </button>
-            <div
-              data-pencil-name="Features"
-              className="box-border w-full h-[191.5px] shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#FFFFFF1A] [margin:-0.5px_0px_0px_0px]"
-            >
-              <div
-                data-pencil-name="3 projects"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#22C55E"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#FFFFFF] font-ds-ui font-normal text-left"
-                >
-                  3 projects
-                </div>
-              </div>
-              <div
-                data-pencil-name="1,000 reports / month"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#22C55E"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#FFFFFF] font-ds-ui font-normal text-left"
-                >
-                  1,000 reports / month
-                </div>
-              </div>
-              <div
-                data-pencil-name="All MCP tools, including mark_fixed"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#22C55E"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#FFFFFF] font-ds-ui font-normal text-left"
-                >
-                  All MCP tools, including mark_fixed
-                </div>
-              </div>
-              <div
-                data-pencil-name="Reporter notifications"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#22C55E"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#FFFFFF] font-ds-ui font-normal text-left"
-                >
-                  Reporter notifications
-                </div>
-              </div>
-              <div
-                data-pencil-name="Public board and voting"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#22C55E"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#FFFFFF] font-ds-ui font-normal text-left"
-                >
-                  Public board and voting
-                </div>
-              </div>
-              <div
-                data-pencil-name="Slack and GitHub Issues"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#22C55E"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#FFFFFF] font-ds-ui font-normal text-left"
-                >
-                  Slack and GitHub Issues
-                </div>
-              </div>
-            </div>
-          </div>
-          <div
-            data-pencil-name="Studio"
-            className="box-border [flex:1_1_0] h-auto lg:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-[24px] p-6 sm:p-[28px] justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-0 justify-between items-center"
-            >
-              <div
-                data-pencil-name="Name"
-                className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
-              >
-                Studio
-              </div>
-            </div>
-            <div
-              data-pencil-name="Price"
-              className="box-border w-fit h-fit shrink-0 flex flex-row gap-[6px] justify-start items-end"
-            >
-              <div
-                data-pencil-name="Amount"
-                className="text-[44px]/[44px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.4px] text-left [white-space:nowrap]"
-              >
-                ${PLAN_PRICES.studio[billingPeriod]}
-              </div>
-              <div
-                data-pencil-name="Period"
-                className="text-[13px]/[normal] box-border text-[#737373] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                / month
-              </div>
-            </div>
-            <div
-              data-pencil-name="Desc"
-              className="text-[14px]/[normal] box-border text-[#737373] font-ds-ui font-normal text-left [white-space:normal]"
-            >
-              For small teams running client apps.
-            </div>
-            <button type="button" onClick={openWaitlist} data-pencil-name="CTA" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
-              <div
-                data-pencil-name="Label"
-                className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
-              >
-                Join the waitlist
-              </div>
-            </button>
-            <div
-              data-pencil-name="Features"
-              className="box-border w-full h-[191.5px] shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
-            >
-              <div
-                data-pencil-name="Unlimited projects"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Unlimited projects
-                </div>
-              </div>
-              <div
-                data-pencil-name="10,000 reports / month"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  10,000 reports / month
-                </div>
-              </div>
-              <div
-                data-pencil-name="Up to 5 seats"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Up to 5 seats
-                </div>
-              </div>
-              <div
-                data-pencil-name="Your own widget branding"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Your own widget branding
-                </div>
-              </div>
-              <div
-                data-pencil-name="Linear and Jira"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Linear and Jira
-                </div>
-              </div>
-              <div
-                data-pencil-name="Session replay, 7 days"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Session replay, 7 days
-                </div>
-              </div>
-            </div>
-          </div>
-          <div
-            data-pencil-name="Business"
-            className="box-border [flex:1_1_0] h-auto lg:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-[24px] p-6 sm:p-[28px] justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px]"
-          >
-            <div
-              data-pencil-name="Head"
-              className="box-border w-full h-fit shrink-0 flex flex-row gap-0 justify-between items-center"
-            >
-              <div
-                data-pencil-name="Name"
-                className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
-              >
-                Business
-              </div>
-            </div>
-            <div
-              data-pencil-name="Price"
-              className="box-border w-fit h-fit shrink-0 flex flex-row gap-[6px] justify-start items-end"
-            >
-              <div
-                data-pencil-name="Amount"
-                className="text-[44px]/[44px] box-border text-[#171717] font-ds-sans font-medium tracking-[-1.4px] text-left [white-space:nowrap]"
-              >
-                ${PLAN_PRICES.business[billingPeriod]}
-              </div>
-              <div
-                data-pencil-name="Period"
-                className="text-[13px]/[normal] box-border text-[#737373] font-ds-ui font-normal text-left [white-space:nowrap]"
-              >
-                / month and up
-              </div>
-            </div>
-            <div
-              data-pencil-name="Desc"
-              className="text-[14px]/[normal] box-border text-[#737373] font-ds-ui font-normal text-left [white-space:normal]"
-            >
-              Security and control for companies.
-            </div>
-            <button type="button" onClick={openWaitlist} data-pencil-name="CTA" className="cursor-pointer border-0 no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-full h-[40px] shrink-0 [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
-              <div
-                data-pencil-name="Label"
-                className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
-              >
-                Talk to us
-              </div>
-            </button>
-            <div
-              data-pencil-name="Features"
-              className="box-border w-full h-[161.5px] shrink-0 flex flex-col gap-[12px] p-[24px_0px_0px_0px] justify-start items-start [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
-            >
-              <div
-                data-pencil-name="Custom report volume"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Custom report volume
-                </div>
-              </div>
-              <div
-                data-pencil-name="SSO with SAML or OIDC"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  SSO with SAML or OIDC
-                </div>
-              </div>
-              <div
-                data-pencil-name="Audit log with export"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Audit log with export
-                </div>
-              </div>
-              <div
-                data-pencil-name="Session replay, 30 days"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Session replay, 30 days
-                </div>
-              </div>
-              <div
-                data-pencil-name="Self-hosting, annual license"
-                className="box-border w-full h-fit shrink-0 flex flex-row gap-[10px] justify-start items-start"
-              >
-                <svg
-                  data-pencil-name="Check"
-                  data-icon-name="check"
-                  data-icon-set="lucide"
-                  viewBox="0 0 13.99993896484375 14"
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="box-border w-[16px] shrink-0 h-[16px]"
-                >
-                  <path
-                    d="M11.48096 2.95313q-0.07178 0.01367-0.12989 0.0581-0.05469 0.04102-3.07617 3.06592l-3.0249 3.00781-1.28857-1.28857q-1.28857-1.28516-1.38086-1.32618-0.08887-0.04443-0.22217-0.04443-0.1333 0-0.23242 0.0376-0.0957 0.03418-0.18799 0.11279-0.08887 0.0752-0.1333 0.1709-0.02734 0.07178-0.03418 0.11279-0.00684 0.04102-0.00684 0.14014l0 0.04102q-0.01367 0.11279 0.04102 0.19824 0.07178 0.10938 0.36572 0.40332 0.19482 0.21191 0.96729 0.98096l1.49707 1.48339q0.28027 0.2666 0.38964 0.33838 0.07178 0.05469 0.18457 0.04102l0.09571 0.01367q0.07178 0 0.14013-0.02734 0.08545-0.07178 0.32129-0.28711 0.23926-0.21875 0.79981-0.76221l2.2832-2.2832q2.08496-2.09863 2.7002-2.71387 0.61524-0.61865 0.64599-0.68701 0.04102-0.08545 0.04102-0.23926 0-0.09912-0.00684-0.14014-0.00684-0.04102-0.03418-0.11279-0.04443-0.08203-0.13672-0.16406-0.08887-0.08545-0.18115-0.11963-0.08887-0.0376-0.20849-0.0376-0.11963 0-0.18799 0.02734z"
-                    fill="#171717"
-                   />
-                </svg>
-                <div
-                  data-pencil-name="T"
-                  className="text-[13.5px]/[18px] box-border [flex:1_1_0] text-[#171717] font-ds-ui font-normal text-left"
-                >
-                  Self-hosting, annual license
-                </div>
-              </div>
-            </div>
-          </div>
+          {visiblePlans().map((plan) => (
+            <PricingCard
+              key={plan.id}
+              plan={plan}
+              billingPeriod={billingPeriod}
+              onCta={openWaitlist}
+            />
+          ))}
         </div>
         <div
           data-pencil-name="Add-on"

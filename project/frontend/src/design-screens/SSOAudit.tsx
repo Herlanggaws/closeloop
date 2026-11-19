@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
+import { businessSurfacesVisible } from "@/lib/plans";
 import type { MeResponse } from "@/lib/usage";
 
 type AuditEntry = {
@@ -52,6 +53,10 @@ export function SSOAudit() {
           api<{ project: ProjectInfo }>(`/api/projects/${projectId}`),
         ]);
         if (cancelled) return;
+        if (!businessSurfacesVisible(meRes.org.plan)) {
+          router.replace("/app/inbox");
+          return;
+        }
         setMe(meRes);
         setProject(projectRes.project);
         if ((meRes.org.plan || "").toLowerCase() === "business") {

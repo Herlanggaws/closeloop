@@ -6,6 +6,11 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-11-19",
+    title: "Every plan gets the full MCP loop, plus clearer plan limits",
+    body: "Free now includes every MCP tool, mark_fixed too; existing Free tokens were upgraded to read and write automatically. Slack and GitHub Issues come with Indie, Linear and Jira with Studio, and publishing ideas to the public board needs Indie. Connections you already had keep working. Pricing and Billing list each plan's limits, the report page shows every reporter with their platform, and quota-locked tickets now tell your agent when they unlock.",
+  },
+  {
     date: "2026-11-18",
     title: "Install page matches the three-step widget guide",
     body: "The app Install widget screen now follows the S-04 layout: numbered Add / Identify / Mask steps with copyable snippets on the left, and first-report status plus public key on the right—still inside the app sidebar.",

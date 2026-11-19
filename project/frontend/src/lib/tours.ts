@@ -1,3 +1,5 @@
+import { BUSINESS_PLAN_VISIBLE } from "@/lib/plans";
+
 export type TourSide = "above" | "below" | "left" | "right";
 
 export type TourStep = {
@@ -339,7 +341,11 @@ export const TOURS: Record<string, TourDefinition> = {
   },
 };
 
+// SSO & audit and self-host are Business surfaces, hidden until M6 (D-22).
+const BUSINESS_TOURS = new Set(["sso", "self-host"]);
+
 export function getTour(tourId: string): TourDefinition | undefined {
+  if (!BUSINESS_PLAN_VISIBLE && BUSINESS_TOURS.has(tourId)) return undefined;
   return TOURS[tourId];
 }
 

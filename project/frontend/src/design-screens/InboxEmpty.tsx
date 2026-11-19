@@ -352,12 +352,6 @@ export function InboxEmpty() {
               className="box-border w-[62px] h-[4px] absolute left-0 top-0 bg-[#171717] [z-index:0]"
             ></div>
           </div>
-          <div
-            data-pencil-name="Credits"
-            className="text-[11px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
-          >
-            8 auto PR credits left
-          </div>
         </div>
         <div
           data-pencil-name="User"
@@ -588,18 +582,18 @@ export function InboxEmpty() {
                   data-pencil-name="S"
                   className="text-[12px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
                 >
-                  Triage reports together
+                  Team seats come with Studio (5 seats)
                 </div>
               </div>
               <div
-                data-pencil-name="Invite"
+                data-pencil-name="Upgrade to Studio"
                 className="box-border w-fit shrink-0 h-[28px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_10px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]"
               >
                 <div
                   data-pencil-name="Label"
                   className="text-[12px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
                 >
-                  Invite
+                  Upgrade to Studio
                 </div>
               </div>
             </div>
@@ -625,23 +619,23 @@ export function InboxEmpty() {
                   data-pencil-name="S"
                   className="text-[12px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
                 >
-                  Get pinged in #feedback
+                  Slack comes with Indie
                 </div>
               </div>
               <div
-                data-pencil-name="Connect"
+                data-pencil-name="Upgrade to Indie"
                 className="box-border w-fit shrink-0 h-[28px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_10px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]"
               >
                 <div
                   data-pencil-name="Label"
                   className="text-[12px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
                 >
-                  Connect
+                  Upgrade to Indie
                 </div>
               </div>
             </div>
             <div
-              data-pencil-name="Turn on reporter notifications"
+              data-pencil-name="Connect your repos"
               className="box-border w-[560px] h-[60.5px] shrink-0 flex flex-row gap-[12px] p-[14px_20px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
             >
               <div
@@ -656,24 +650,24 @@ export function InboxEmpty() {
                   data-pencil-name="T"
                   className="text-[13.5px]/[normal] box-border text-[#171717] font-ds-ui font-medium text-left [white-space:nowrap]"
                 >
-                  Turn on reporter notifications
+                  Connect your repos
                 </div>
                 <div
                   data-pencil-name="S"
                   className="text-[12px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
                 >
-                  Upgrade to Indie for mark_fixed
+                  Route iOS, Android and web reports to the right repo
                 </div>
               </div>
               <div
-                data-pencil-name="Upgrade"
+                data-pencil-name="Set up"
                 className="box-border w-fit shrink-0 h-[28px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_10px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]"
               >
                 <div
                   data-pencil-name="Label"
                   className="text-[12px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
                 >
-                  Upgrade
+                  Set up
                 </div>
               </div>
             </div>

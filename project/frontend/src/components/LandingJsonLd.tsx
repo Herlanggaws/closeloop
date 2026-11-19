@@ -29,7 +29,7 @@ export function LandingJsonLd() {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",
-      description: "Free plan available; Indie and Business paid tiers",
+      description: "Free plan available; Indie and Studio paid tiers",
     },
   };
 

@@ -1034,7 +1034,7 @@ func (s *Store) GetTicket(ctx context.Context, ticketID string) (Ticket, error) 
 	}
 	// Soft-block only when the ticket still has reports and all are quota-locked.
 	if total > 0 && readable == 0 {
-		return Ticket{}, ErrPlanRequired
+		return Ticket{}, ErrQuotaLocked
 	}
 	return t, nil
 }
@@ -1696,6 +1696,8 @@ type Integration struct {
 	Provider  string          `json:"provider"`
 	Config    json.RawMessage `json:"config"`
 	UpdatedAt time.Time       `json:"updated_at"`
+	// Connected before plan gating shipped; keeps working on any plan.
+	Grandfathered bool `json:"grandfathered"`
 }
 
 func (s *Store) GetIntegrationConfig(ctx context.Context, projectID, provider string) (json.RawMessage, error) {
@@ -1716,7 +1718,7 @@ func (s *Store) GetIntegrationConfig(ctx context.Context, projectID, provider st
 
 func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integration, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, project_id, provider, config, updated_at
+		SELECT id, project_id, provider, config, updated_at, grandfathered
 		FROM integrations WHERE project_id=$1 ORDER BY provider`, projectID)
 	if err != nil {
 		return nil, err
@@ -1725,7 +1727,7 @@ func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integ
 	var out []Integration
 	for rows.Next() {
 		var item Integration
-		if err := rows.Scan(&item.ID, &item.ProjectID, &item.Provider, &item.Config, &item.UpdatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.ProjectID, &item.Provider, &item.Config, &item.UpdatedAt, &item.Grandfathered); err != nil {
 			return nil, err
 		}
 		if len(item.Config) == 0 {
@@ -1947,9 +1949,9 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		VALUES ($1,$2,$3::jsonb, now())
 		ON CONFLICT (project_id, provider) DO UPDATE
 		SET config = EXCLUDED.config, updated_at = now()
-		RETURNING id, project_id, provider, config, updated_at`,
+		RETURNING id, project_id, provider, config, updated_at, grandfathered`,
 		projectID, provider, body).
-		Scan(&item.ID, &item.ProjectID, &item.Provider, &item.Config, &item.UpdatedAt)
+		Scan(&item.ID, &item.ProjectID, &item.Provider, &item.Config, &item.UpdatedAt, &item.Grandfathered)
 	if err != nil {
 		return Integration{}, err
 	}
@@ -1998,12 +2000,14 @@ type UsageCounter struct {
 }
 
 type OrgUsage struct {
-	Plan           string       `json:"plan"`
-	Projects       UsageCounter `json:"projects"`
-	Reports        UsageCounter `json:"reports"`
-	Seats          UsageCounter `json:"seats"`
-	AutoPRCredits  int          `json:"auto_pr_credits"`
-	PeriodStart    time.Time    `json:"period_start"`
+	Plan                 string        `json:"plan"`
+	Projects             UsageCounter  `json:"projects"`
+	Reports              UsageCounter  `json:"reports"`
+	Seats                UsageCounter  `json:"seats"`
+	Repos                *UsageCounter `json:"repos,omitempty"` // repos in the active project (D-09)
+	AutoPRCredits        int           `json:"auto_pr_credits"`
+	AutoPRCreditsGranted int           `json:"auto_pr_credits_granted"`
+	PeriodStart          time.Time     `json:"period_start"`
 }
 
 func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
@@ -2043,24 +2047,51 @@ func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
 		return OrgUsage{}, err
 	}
 
+	granted, err := s.AutoPRCreditsGranted(ctx, orgID)
+	if err != nil {
+		return OrgUsage{}, err
+	}
+
 	return OrgUsage{
 		Plan:          plan,
 		Projects:      UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
 		Reports:       UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
 		Seats:         UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},
-		AutoPRCredits: credits,
-		PeriodStart:   periodStart,
+		AutoPRCredits:        credits,
+		AutoPRCreditsGranted: granted,
+		PeriodStart:          periodStart,
 	}, nil
+}
+
+// OrgUsageForProject is OrgUsage plus the repo counter for one project in the org.
+func (s *Store) OrgUsageForProject(ctx context.Context, orgID, projectID string) (OrgUsage, error) {
+	usage, err := s.OrgUsage(ctx, orgID)
+	if err != nil || projectID == "" {
+		return usage, err
+	}
+	var owner string
+	if err := s.DB.QueryRowContext(ctx, `
+		SELECT org_id FROM projects WHERE id=$1 AND deleted_at IS NULL`, projectID).Scan(&owner); err != nil || owner != orgID {
+		// Unknown or foreign project: leave repos out rather than fail the whole usage call.
+		return usage, nil
+	}
+	used, err := s.ProjectRepoCount(ctx, projectID)
+	if err != nil {
+		return usage, err
+	}
+	usage.Repos = &UsageCounter{Used: used, Limit: LimitsForPlan(usage.Plan).MaxReposPerProject}
+	return usage, nil
 }
 
 func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Org, error) {
 	if role != "owner" {
 		return Org{}, ErrForbidden
 	}
-	plan = NormalizePlan(plan)
-	if !ValidPlan(plan) {
+	requested := strings.ToLower(strings.TrimSpace(plan))
+	if !ValidPlan(requested) {
 		return Org{}, ErrInvalidInput
 	}
+	plan = requested
 
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -2076,6 +2107,9 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 			return Org{}, ErrNotFound
 		}
 		return Org{}, err
+	}
+	if !SelfServePlanAllowed(plan) && NormalizePlan(prevPlan) != plan {
+		return Org{}, ErrBusinessNotAvailable
 	}
 
 	var org Org

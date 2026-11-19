@@ -352,7 +352,7 @@ func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID, e
 	}
 	ticket, err := store.GetTicket(ctx, ticketID)
 	if err != nil {
-		if err == ErrNotFound || err == ErrPlanRequired {
+		if err == ErrNotFound || err == ErrPlanRequired || err == ErrQuotaLocked {
 			return nil
 		}
 		return err
@@ -393,7 +393,7 @@ func notifyOutboundWebhook(ctx context.Context, store *Store, deps WorkerDeps, t
 	}
 	ticket, err := store.GetTicket(ctx, ticketID)
 	if err != nil {
-		if err == ErrNotFound || err == ErrPlanRequired {
+		if err == ErrNotFound || err == ErrPlanRequired || err == ErrQuotaLocked {
 			return nil
 		}
 		return err
