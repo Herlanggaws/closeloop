@@ -242,7 +242,7 @@ Desain lengkap ada di frame v2 dan peta story di `SimGS`. Spesifikasi perilaku d
 
 - **Status:** tunggu keputusan badge. Jangan dikerjakan sebelum disetujui.
 - **Frame:** S-31 `s67yG`.
-- **Sekarang:** widget selalu menampilkan `Powered by Saidloop` (`packages/widget/src/index.tsx:642`, `:660`); email selalu `Sent with Saidloop`.
+- **Sekarang:** widget selalu menampilkan `Powered by Saidloop` dengan tautan ke saidloop.com di semua plan (cari `class="powered"` di `packages/widget/src/index.tsx`); email selalu `Sent with Saidloop`. Tautan belum membawa parameter UTM.
 - **Target bila disetujui:** project Free saja. Launcher: tooltip hover `Feedback by Saidloop ↗`. Form dan sent: footer `Powered by Saidloop`. Banner: baris terakhir `Powered by Saidloop`. Email: baris terakhir footer dengan logo mark + `Powered by Saidloop`. Tautan `<landing>/?utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`. Indie ke atas: tidak ada badge sama sekali. Widget membaca flag `badge` dari config project (`/v1/ingest/...` config), hilang dalam satu menit setelah upgrade.
 
 ### D-21 · Seat Indie (US-67)
