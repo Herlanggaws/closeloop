@@ -9,7 +9,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-closeloop} -d ${POSTGRES_DB:-closeloop}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-closeloop} -d ${POSTGRES_DB:-closeloop}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,6 +39,7 @@ services:
       API_ADDR: :8080
     volumes:
       - uploads_data:/data/uploads
+      - ./project/backend/saidloop-auto-pr.2026-11-18.private-key.pem:/app/saidloop.pem
 
   frontend:
     image: ghcr.io/xervproject-cloud/closeloop-frontend:latest
