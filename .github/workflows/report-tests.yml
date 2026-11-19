@@ -156,7 +156,7 @@ jobs:
       - name: Start Next.js
         working-directory: project/frontend
         run: |
-          pnpm start -- -p 3000 &
+          PORT=3000 pnpm start &
           for i in $(seq 1 90); do
             if curl -sf --max-time 2 "$PLAYWRIGHT_BASE_URL/" >/dev/null; then
               echo "Web ready"
