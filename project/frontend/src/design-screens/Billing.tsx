@@ -160,9 +160,11 @@ export function Billing() {
                 <div className="flex flex-col gap-4 rounded-2xl bg-[#0A0A0A] p-6 text-white">
                   <div className="flex items-center justify-between">
                     <span className="font-ds-ui text-xs text-white/70">Current plan</span>
-                    <span className="rounded-full bg-[#22C55E26] px-2 py-0.5 font-ds-ui text-[11px] font-medium text-[#22C55E]">
-                      Manual until Polar
-                    </span>
+                    {!usage?.subscribed && (
+                      <span className="rounded-full bg-[#22C55E26] px-2 py-0.5 font-ds-ui text-[11px] font-medium text-[#22C55E]">
+                        Manual until Subscribed
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-end gap-2">
                     <span className="font-ds-sans text-[32px] font-medium tracking-[-0.8px]">
@@ -207,8 +209,8 @@ export function Billing() {
                   Auto PR credits
                 </h2>
                 <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                  1 credit = 1 Auto PR run. Paid plans get a starter pack; Polar purchase packs ship
-                  in M5.
+                  1 credit = 1 Auto PR run. Paid plans get a starter pack. Credit packs are coming
+                  soon.
                 </p>
                 <div className="mt-4 flex items-end justify-between gap-4">
                   <div>
@@ -220,7 +222,7 @@ export function Billing() {
                   <button
                     type="button"
                     disabled
-                    title="Polar packs in M5"
+                    title="Credit packs are coming soon"
                     className="inline-flex h-9 cursor-not-allowed items-center rounded-md border border-[#1717171F] bg-[#FAFAFA] px-3 font-ds-sans text-[13px] font-medium text-[#A3A3A3]"
                   >
                     Buy credits · soon
@@ -233,7 +235,7 @@ export function Billing() {
                   Change plan
                 </h2>
                 <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                  Polar checkout ships in M5. Until then, owners can switch entitlements here.
+                  Plans are switched manually until you're subscribed.
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {PLANS.map((p) => {

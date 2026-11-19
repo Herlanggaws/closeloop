@@ -7,6 +7,8 @@ export type OrgUsage = {
   seats?: UsageCounter;
   auto_pr_credits?: number;
   period_start: string;
+  // Set by the backend once the org has a paid subscription with the billing provider.
+  subscribed?: boolean;
 };
 
 export type MeResponse = {
