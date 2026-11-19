@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -218,4 +219,42 @@ func (s *Store) TicketReporterList(ctx context.Context, ticketID string) ([]Tick
 		byPlatform[item.Platform]++
 	}
 	return out, byPlatform, rows.Err()
+}
+
+// BadgeShown is true when "Powered by Saidloop" appears on a plan's widget and
+// reporter emails (D-20, US-65/US-66): Free only.
+func BadgeShown(plan string) bool {
+	return NormalizePlan(plan) == "free"
+}
+
+// BadgeLink is the badge target with UTM tags; utm_medium is added per surface.
+func BadgeLink(webURL, projectID string) string {
+	return strings.TrimRight(webURL, "/") + "/?utm_source=badge&utm_campaign=" + projectID
+}
+
+// BadgeURLForProject returns the badge link for a Free project, or "" on paid plans.
+func (s *Store) BadgeURLForProject(ctx context.Context, projectID, webURL, surface string) string {
+	plan, err := s.OrgPlanForProject(ctx, projectID)
+	if err != nil || !BadgeShown(plan) {
+		return ""
+	}
+	return BadgeLink(webURL, projectID) + "&utm_medium=" + surface
+}
+
+// BadgeURLForTicket is BadgeURLForProject keyed by ticket.
+func (s *Store) BadgeURLForTicket(ctx context.Context, ticketID, webURL, surface string) string {
+	var projectID string
+	if err := s.DB.QueryRowContext(ctx, `SELECT project_id FROM tickets WHERE id=$1`, ticketID).Scan(&projectID); err != nil {
+		return ""
+	}
+	return s.BadgeURLForProject(ctx, projectID, webURL, surface)
+}
+
+// BadgeURLForBoard is BadgeURLForProject keyed by public board slug.
+func (s *Store) BadgeURLForBoard(ctx context.Context, slug, webURL, surface string) string {
+	var projectID string
+	if err := s.DB.QueryRowContext(ctx, `SELECT id FROM projects WHERE board_slug=$1 AND deleted_at IS NULL`, slug).Scan(&projectID); err != nil {
+		return ""
+	}
+	return s.BadgeURLForProject(ctx, projectID, webURL, surface)
 }

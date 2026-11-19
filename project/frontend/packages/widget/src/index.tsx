@@ -71,7 +71,25 @@ type IngestMaskConfig = {
   selectors: string[];
   maskTextInputs: boolean;
   replayEnabled: boolean;
+  /** "Powered by Saidloop" shows on Free only (D-20). */
+  badge: boolean;
+  badgeUrl: string;
 };
+
+const NO_CONFIG: IngestMaskConfig = {
+  selectors: [],
+  maskTextInputs: true,
+  replayEnabled: false,
+  badge: false,
+  badgeUrl: "",
+};
+
+/** Badge link per surface: launcher, form, sent, banner. */
+export function badgeHref(base: string, surface: string) {
+  if (!base) return "";
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}utm_medium=${encodeURIComponent(surface)}`;
+}
 
 const ALWAYS_MASK_SELECTORS = [
   ".closeloop-mask",
@@ -92,12 +110,12 @@ const TEXT_INPUT_MASK_SELECTORS = [
 ];
 
 async function fetchProjectMaskConfig(cfg: Config): Promise<IngestMaskConfig> {
-  if (!cfg.key) return { selectors: [], maskTextInputs: true, replayEnabled: false };
+  if (!cfg.key) return NO_CONFIG;
   try {
     const res = await fetch(`${cfg.api}/v1/ingest/config`, {
       headers: { "X-Closeloop-Key": cfg.key },
     });
-    if (!res.ok) return { selectors: [], maskTextInputs: true, replayEnabled: false };
+    if (!res.ok) return NO_CONFIG;
     const data = await res.json();
     const list = data?.sensitive_selectors;
     const selectors = Array.isArray(list)
@@ -107,9 +125,11 @@ async function fetchProjectMaskConfig(cfg: Config): Promise<IngestMaskConfig> {
       selectors,
       maskTextInputs: data?.mask_text_inputs !== false,
       replayEnabled: data?.replay_enabled === true,
+      badge: data?.badge === true,
+      badgeUrl: typeof data?.badge_url === "string" ? data.badge_url : "",
     };
   } catch {
-    return { selectors: [], maskTextInputs: true, replayEnabled: false };
+    return NO_CONFIG;
   }
 }
 
@@ -331,6 +351,7 @@ function Widget({ cfg }: { cfg: Config }) {
   const [busy, setBusy] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [banner, setBanner] = useState<BannerUpdate | null>(null);
+  const [badge, setBadge] = useState<{ on: boolean; url: string }>({ on: false, url: "" });
   const [error, setError] = useState("");
   const [shot, setShot] = useState<string>("");
   const [tool, setTool] = useState<AnnotateTool>("pen");
@@ -346,6 +367,16 @@ function Widget({ cfg }: { cfg: Config }) {
   const snipStart = useRef<{ x: number; y: number } | null>(null);
   const snipping = useRef(false);
 
+  // Badge follows the plan; re-check every minute so it disappears soon after an upgrade.
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const next = await fetchProjectMaskConfig(cfg);
+      setBadge({ on: next.badge, url: next.badgeUrl });
+    }, 60_000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -353,6 +384,7 @@ function Widget({ cfg }: { cfg: Config }) {
       const maskCfg = await fetchProjectMaskConfig(cfg);
       maskConfigRef.current = maskCfg;
       if (cancelled) return;
+      setBadge({ on: maskCfg.badge, url: maskCfg.badgeUrl });
       if (maskCfg.selectors.length) {
         cfg.selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
       }
@@ -747,6 +779,13 @@ function Widget({ cfg }: { cfg: Config }) {
       background:#f5f5f5; border:1px solid #17171714;
       font-size:12px; font-weight:500; color:#171717;
     }
+    .fab-badge {
+      position:fixed; right:20px; bottom:64px; z-index:2147483646; padding:4px 8px; border-radius:6px;
+      background:#171717; color:#fff; font-size:11px; text-decoration:none; opacity:0; pointer-events:none;
+      transition:opacity .15s ease;
+    }
+    .fab:hover ~ .fab-badge, .fab-badge:hover { opacity:1; pointer-events:auto; }
+    .badge-link { color:#737373; text-decoration:none; font-weight:500; }
     .powered { margin-top:12px; text-align:center; color:#a3a3a3; font-size:11px; }
     .powered a { color:#737373; text-decoration:none; font-weight:500; }
     .powered a:hover { color:#171717; text-decoration:underline; }
@@ -788,6 +827,11 @@ function Widget({ cfg }: { cfg: Config }) {
           </svg>
           Report a problem
         </button>
+      )}
+      {state === "launcher" && badge.on && (
+        <a class="fab-badge" href={badgeHref(badge.url, "launcher")} target="_blank" rel="noopener noreferrer">
+          Feedback by Saidloop ↗
+        </a>
       )}
       {state === "form" && (
         <>
@@ -877,12 +921,14 @@ function Widget({ cfg }: { cfg: Config }) {
                 Cancel
               </button>
             </div>
-            <div class="powered">
-              Powered by{" "}
-              <a href="https://saidloop.com" target="_blank" rel="noopener noreferrer">
-                Saidloop
-              </a>
-            </div>
+            {badge.on && (
+              <div class="powered">
+                Powered by{" "}
+                <a href={badgeHref(badge.url, "form")} target="_blank" rel="noopener noreferrer">
+                  Saidloop
+                </a>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -900,12 +946,14 @@ function Widget({ cfg }: { cfg: Config }) {
           >
             Done
           </button>
-          <div class="powered">
-            Powered by{" "}
-            <a href="https://saidloop.com" target="_blank" rel="noopener noreferrer">
-              Saidloop
-            </a>
-          </div>
+          {badge.on && (
+            <div class="powered">
+              Powered by{" "}
+              <a href={badgeHref(badge.url, "sent")} target="_blank" rel="noopener noreferrer">
+                Saidloop
+              </a>
+            </div>
+          )}
         </div>
       )}
       {state === "banner" && banner && (
@@ -919,6 +967,14 @@ function Widget({ cfg }: { cfg: Config }) {
             <div class="banner-title">Your report was fixed</div>
             <div class="banner-body">{banner.body}</div>
             <div class="banner-meta">{reportMeta}</div>
+            {badge.on && (
+              <div class="banner-meta">
+                Powered by{" "}
+                <a class="badge-link" href={badgeHref(badge.url, "banner")} target="_blank" rel="noopener noreferrer">
+                  Saidloop
+                </a>
+              </div>
+            )}
           </div>
           <button
             type="button"

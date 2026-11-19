@@ -17,6 +17,8 @@ type FixedMail struct {
 	AppVersion   string
 	GreetingName string
 	OpenURL      string
+	// BadgeURL shows "Powered by Saidloop" in the footer; empty on paid plans (D-20).
+	BadgeURL string
 }
 
 func FixedSubject(ticketTitle string) string {
@@ -51,6 +53,10 @@ func GreetingFromEmail(emailAddr string) string {
 }
 
 func RenderFixedHTML(m FixedMail) string {
+	return applyBadge(renderFixedHTMLRaw(m), m.BadgeURL)
+}
+
+func renderFixedHTMLRaw(m FixedMail) string {
 	project := html.EscapeString(fallback(m.ProjectName, "your app"))
 	note := html.EscapeString(fallback(m.Note, "Your report was fixed."))
 	quote := html.EscapeString(m.ReportQuote)

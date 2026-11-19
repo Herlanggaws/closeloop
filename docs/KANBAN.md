@@ -119,7 +119,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] Polar credit packs (buy credits is a stub)
 - [ ] Annual pricing, early-access Indie 3 months
 - [x] Quota soft-block when over plan
-- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 1 (D-21) done. Badge (D-20) masih nunggu keputusan
+- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 1 (D-21) dan badge cuma di Free (D-20) done
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
 
 #### M6 · Business (F12)
@@ -138,7 +138,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 
 ## PRD Update Pricing dan Batas Fitur (Nov 19)
 
-Updated Nov 19 after D-01…D-09, D-22. Indie seats done (D-21, 1 seat). Only the badge (D-20) and Polar (`usage.subscribed`, D-10) are left.
+Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) are done. Only Polar (`usage.subscribed`, D-10) are left.
 
 | ID | Item | Status | Story |
 | --- | --- | --- | --- |
@@ -149,7 +149,7 @@ Updated Nov 19 after D-01…D-09, D-22. Indie seats done (D-21, 1 seat). Only th
 | P2 | Slack + GitHub Issues require Indie (`PREMIUM_REQUIRED`), S-13 Indie label + Upgrade | **Done** connect + create-issue gated; connections that existed before the gate are grandfathered (`022_integration_grandfathered.sql`) | US-64 |
 | P2 | Linear + Jira require Studio | **Done** same mechanism | US-69 |
 | P2 | Public board requires Indie | **Done** publishing an idea (`is_public: true`) needs Indie; unpublish always allowed; already-public ideas stay | US-69 |
-| P2 | Badge "Powered by Saidloop" only on Free | Todo. **Waiting on badge decision** (D-20) | US-65, US-66 |
+| P2 | Badge "Powered by Saidloop" only on Free | **Done** Nov 19 (D-20), Herlangga approved | US-65, US-66 |
 | P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts the single GitHub App repo until D-11) | US-68 |
 | P3 | Indie seats: `MaxSeats: 3` → 1 | **Done** Nov 19, Herlangga picked 1 seat (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
 | UI | Billing Change plan cards with limit line | **Done** (D-05) | US-68 |
@@ -223,8 +223,8 @@ Fase C · multi-repo — **semua D-11…D-19 udah dikerjain di branch `claude/pr
 - [ ] D-19 Auto PR `needs_reroute` + refund (`aHJCX`)
 
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
-Status Nov 19: D-21 done (1 seat). D-20 masih nunggu keputusan badge. D-10 belum (nunggu Polar M5).
-- [ ] D-20 Badge "Powered by Saidloop" hanya di Free (`s67yG`) — tunggu keputusan badge
+Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
+- [x] D-20 Badge "Powered by Saidloop" cuma di Free (`s67yG`): `/v1/ingest/config` kirim `badge` + `badge_url` (UTM `utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`), widget tampilkan di launcher (tooltip hover), form, sent, banner, dicek ulang tiap 1 menit; email pelapor/voter/comment/suggest footer `Powered by Saidloop` di Free, hilang di plan berbayar. Diputusin Herlangga 19 Nov
 - [x] D-21 Seat Indie = 1 + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
 
 ---
@@ -235,7 +235,7 @@ Status Nov 19: D-21 done (1 seat). D-20 masih nunggu keputusan badge. D-10 belum
 - [x] MoR: Polar (https://polar.sh/) — bukan Lemon Squeezy / Paddle
 - [ ] Domain final (code and snippets still use `closeloop.dev`)
 - [x] Seat Indie: 1 (diputusin 19 Nov)
-- [ ] Badge "Powered by Saidloop" di Free disetujui?
+- [x] Badge "Powered by Saidloop" cuma di Free (disetujui 19 Nov)
 - [ ] Kuota Free tetap 50?
 - [ ] Angka repo per project (3 / 5 / 10) — validate in M0 interviews
 - [ ] Basis repo: fork pola Bear Budget Go vs clean (current: new repo)

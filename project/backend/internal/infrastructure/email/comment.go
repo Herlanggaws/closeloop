@@ -12,6 +12,8 @@ type CommentVerifyMail struct {
 	IdeaTitle    string
 	ConfirmURL   string
 	GreetingName string
+	// BadgeURL shows "Powered by Saidloop" in the footer; empty on paid plans (D-20).
+	BadgeURL string
 }
 
 func CommentVerifySubject(projectName string) string {
@@ -25,6 +27,10 @@ func CommentVerifySubject(projectName string) string {
 }
 
 func RenderCommentVerifyHTML(m CommentVerifyMail) string {
+	return applyBadge(renderCommentVerifyHTMLRaw(m), m.BadgeURL)
+}
+
+func renderCommentVerifyHTMLRaw(m CommentVerifyMail) string {
 	project := html.EscapeString(fallback(m.ProjectName, "the project"))
 	idea := html.EscapeString(fallback(m.IdeaTitle, "this idea"))
 	url := html.EscapeString(m.ConfirmURL)

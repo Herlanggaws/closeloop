@@ -7,6 +7,11 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-19",
+    title: "“Powered by Saidloop” only on Free",
+    body: "The widget and the emails your reporters and voters get now show “Powered by Saidloop” only on the Free plan. On Indie and above it is gone everywhere, and it disappears within a minute of upgrading.",
+  },
+  {
+    date: "2026-11-19",
     title: "Indie includes 1 seat",
     body: "Indie is now a solo plan with 1 seat; team seats come with Studio (5 seats). Members who already joined an Indie workspace keep their access, and the Team page explains why a new invite was not sent.",
   },
