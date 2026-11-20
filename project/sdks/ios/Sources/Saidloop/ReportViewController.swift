@@ -7,7 +7,7 @@ import UIKit
 /// S-22 report sheet: type, message, masked screenshot, Send. Offline shows the queued state.
 @MainActor
 final class ReportViewController: UIViewController, UITextViewDelegate {
-    private let screenshot: Data?
+    private var screenshot: Data?
     private var type = "bug"
     private let segmented = UISegmentedControl(items: ["Bug", "Idea", "Question"])
     private let message = UITextView()
@@ -88,11 +88,15 @@ final class ReportViewController: UIViewController, UITextViewDelegate {
             thumb.heightAnchor.constraint(equalToConstant: 78).isActive = true
             let texts = UIStackView(arrangedSubviews: [
                 label("Screenshot attached", size: 13.5, weight: .semibold),
-                label("Sensitive fields are hidden.", size: 12, color: .secondaryLabel),
+                label("Tap to draw on it. Sensitive fields are hidden.", size: 12, color: .secondaryLabel),
             ])
             texts.axis = .vertical
             row.addArrangedSubview(thumb)
             row.addArrangedSubview(texts)
+            row.isUserInteractionEnabled = true
+            row.accessibilityLabel = "Draw on screenshot"
+            row.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openDraw)))
+            thumbView = thumb
             stack.addArrangedSubview(row)
         }
 
@@ -101,6 +105,17 @@ final class ReportViewController: UIViewController, UITextViewDelegate {
         send.alpha = 0.5
         send.addAction(UIAction { [weak self] _ in self?.submit() }, for: .touchUpInside)
         stack.addArrangedSubview(send)
+    }
+
+    private weak var thumbView: UIImageView?
+
+    @objc private func openDraw() {
+        guard let data = screenshot, let image = UIImage(data: data) else { return }
+        let draw = DrawViewController(image: image) { [weak self] png in
+            self?.screenshot = png
+            self?.thumbView?.image = UIImage(data: png)
+        }
+        present(draw, animated: true)
     }
 
     func textViewDidChange(_ textView: UITextView) {

@@ -54,7 +54,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-17 Self-host license | `/app/settings/self-host` | **UI only** route redirects to inbox; stays hidden until M6 |
 | S-18…S-20 Widget UX | `/preview/widget/*` + widget package | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet |
 | S-21 Fixed banner | `/preview/widget/fixed` + widget package | **Wired** ingest updates → banner; identify refetch |
-| S-22 Mobile report sheet | `/preview/widget/mobile` + Android/iOS SDK | **Wired** native sheet + offline state on Android and iOS; drawing on the screenshot todo |
+| S-22 Mobile report sheet | `/preview/widget/mobile` + Android/iOS SDK | **Done** native sheet, offline state and drawing on the screenshot on Android and iOS |
 | S-23 / S-27 Emails | `/preview/email/*` | **Wired** S-23 fixed, waitlist confirmation, S-27 vote verify + released-to-voters |
 | S-24…S-26 Public board | `/board/[slug]` | **Wired** list/detail/roadmap + votes/comments + suggest an idea |
 | S-28 Join Waitlist | `/` modal + `/preview/waitlist` | **Wired** enter / invalid / joined / already + resend; `?join=1` |

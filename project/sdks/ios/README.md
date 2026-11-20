@@ -29,4 +29,6 @@ xcodebuild -scheme Saidloop -destination 'generic/platform=iOS Simulator' build
 
 `Example/` is a tiny UIKit app that uses the package. Pass `SAIDLOOP_KEY` and `SAIDLOOP_API` as environment variables when launching it (`SIMCTL_CHILD_SAIDLOOP_KEY=pk_… xcrun simctl launch …`).
 
-Not done yet: drawing on the screenshot before sending, and a separate release repo for Swift Package Manager.
+Users can draw on the screenshot before sending (tap the thumbnail).
+
+Not done yet: a separate release repo for Swift Package Manager.
