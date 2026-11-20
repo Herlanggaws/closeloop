@@ -190,6 +190,9 @@ export function Integrations() {
   const [posthogHost, setPosthogHost] = useState("https://us.posthog.com");
   const [posthogProject, setPosthogProject] = useState("");
   const [slackWebhook, setSlackWebhook] = useState("");
+  const [slackChannel, setSlackChannel] = useState({ channel: "", team: "", configuration_url: "" });
+  const [slackOAuth, setSlackOAuth] = useState(false);
+  const [slackPaste, setSlackPaste] = useState(false);
   const [slackEvents, setSlackEvents] = useState<SlackEventsState>({
     new_bug: true,
     new_idea: true,
@@ -254,6 +257,11 @@ export function Integrations() {
         }
         if (slack) {
           setSlackWebhook(slack.config.webhook_url || "");
+          setSlackChannel({
+            channel: slack.config.channel || "",
+            team: slack.config.team || "",
+            configuration_url: slack.config.configuration_url || "",
+          });
           const row = (integRes.integrations || []).find((i) => i.provider === "slack");
           if (row) setSlackEvents(slackEventsFromConfig(row.config));
         }
@@ -282,6 +290,22 @@ export function Integrations() {
         }
 
         const params = new URLSearchParams(window.location.search);
+        api<{ oauth: boolean }>("/api/integrations/slack/config")
+          .then((res) => !cancelled && setSlackOAuth(Boolean(res.oauth)))
+          .catch(() => undefined);
+        const slackCode = params.get("slack_code");
+        const slackError = params.get("slack_error");
+        if (slackCode || slackError) {
+          if (slackCode) await finishSlackInstall(id, slackCode, params.get("slack_state") || "");
+          else setError("Slack was not connected. Try Add to Slack again.");
+          for (const key of ["slack_code", "slack_state", "slack_error"]) params.delete(key);
+          const rest = params.toString();
+          window.history.replaceState(
+            {},
+            "",
+            rest ? `${window.location.pathname}?${rest}` : window.location.pathname,
+          );
+        }
         const installationId = params.get("installation_id");
         if (installationId) {
           await finishGitHubInstall(id, Number(installationId));
@@ -312,6 +336,44 @@ export function Integrations() {
   function applyGitHubConfig(config: Record<string, string>) {
     setGithubInstallationId(String(config.installation_id || ""));
     setGithubAccount(config.account_login || "");
+  }
+
+  async function finishSlackInstall(project: string, code: string, state: string) {
+    setSaving("slack");
+    try {
+      const res = await api<{ integration: { config: Record<string, unknown> | string } }>(
+        `/api/projects/${project}/integrations/slack/complete`,
+        { method: "POST", body: JSON.stringify({ code, state }) },
+      );
+      const config = asConfig(res.integration.config);
+      setSlackWebhook(config.webhook_url || "");
+      setSlackChannel({
+        channel: config.channel || "",
+        team: config.team || "",
+        configuration_url: config.configuration_url || "",
+      });
+      setConfigureModal("slack");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not connect Slack");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function connectSlack() {
+    if (!projectId) return;
+    setSaving("slack");
+    setError("");
+    try {
+      const res = await api<{ url: string }>(
+        `/api/integrations/slack/install?project_id=${encodeURIComponent(projectId)}`,
+      );
+      if (!res.url) throw new Error("Slack sign-in URL missing");
+      window.location.href = res.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start Slack sign-in");
+      setSaving(null);
+    }
   }
 
   async function finishGitHubInstall(project: string, installationId: number) {
@@ -398,6 +460,7 @@ export function Integrations() {
         setPosthogProject("");
       } else if (provider === "slack") {
         setSlackWebhook("");
+        setSlackChannel({ channel: "", team: "", configuration_url: "" });
       } else if (provider === "webhooks") {
         setWebhookURL("");
         setWebhookSecret("");
@@ -621,11 +684,12 @@ export function Integrations() {
                               id={configureTitleId}
                               className="font-ds-sans text-[18px] font-semibold text-[#171717]"
                             >
-                              Slack · Incoming webhook
+                              Slack
                             </h3>
                             <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                              Choose which events post to the channel. Paste a Slack Incoming
-                              Webhook URL to connect.
+                              {slackOAuth
+                                ? "Pick a channel in Slack, then choose which events post there."
+                                : "Choose which events post to the channel. Paste a Slack Incoming Webhook URL to connect."}
                             </p>
                           </div>
                           <button
@@ -678,14 +742,46 @@ export function Integrations() {
                             </label>
                           ))}
                         </div>
-                        <div className="mt-4">
-                          <Field
-                            label="Incoming Webhook URL"
-                            value={slackWebhook}
-                            onChange={setSlackWebhook}
-                            placeholder="https://hooks.slack.com/services/…"
-                          />
-                        </div>
+                        {slackConnected && slackChannel.channel ? (
+                          <p className="mt-4 font-ds-ui text-[13px] text-[#171717]">
+                            Posting to <span className="font-medium">{slackChannel.channel}</span>
+                            {slackChannel.team ? ` in ${slackChannel.team}` : ""}
+                          </p>
+                        ) : null}
+                        {slackOAuth ? (
+                          <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <button
+                              type="button"
+                              disabled={saving === "slack"}
+                              onClick={() => void connectSlack()}
+                              className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717] disabled:opacity-50"
+                            >
+                              {slackConnected ? "Change channel" : "Add to Slack"}
+                            </button>
+                            {!slackPaste ? (
+                              <button
+                                type="button"
+                                onClick={() => setSlackPaste(true)}
+                                className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
+                              >
+                                Or paste a webhook URL
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {!slackOAuth || slackPaste ? (
+                          <div className="mt-4">
+                            <Field
+                              label="Incoming Webhook URL"
+                              value={slackWebhook}
+                              onChange={(v) => {
+                                setSlackWebhook(v);
+                                setSlackChannel({ channel: "", team: "", configuration_url: "" });
+                              }}
+                              placeholder="https://hooks.slack.com/services/…"
+                            />
+                          </div>
+                        ) : null}
                         <div className="mt-5 flex justify-end gap-2">
                           <button
                             type="button"
@@ -704,6 +800,9 @@ export function Integrations() {
                               void saveAndClose("slack", {
                                 webhook_url: slackWebhook.trim(),
                                 events: SLACK_EVENT_KEYS.filter((key) => slackEvents[key]),
+                                ...Object.fromEntries(
+                                  Object.entries(slackChannel).filter(([, v]) => v),
+                                ),
                               })
                             }
                             className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"

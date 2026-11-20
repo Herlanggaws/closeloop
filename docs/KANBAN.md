@@ -102,7 +102,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 
 #### M3 · Tool tim & publik (F8, F9, F11)
 - [x] **F8** Slack via Incoming Webhook: new report, status, event filters
-- [ ] **F8** Slack OAuth channel picker
+- [x] **F8** Slack OAuth channel picker — "Add to Slack" (scope `incoming-webhook`, Slack's own channel picker), keeps events, paste URL still works. Needs `SLACK_CLIENT_ID`/`SLACK_CLIENT_SECRET` from a real Slack app before it shows
 - [x] **F8** Outbound Webhooks (HTTPS + HMAC)
 - [x] **F8** GitHub Issues one-way create from ticket (via GitHub App)
 - [x] **F8** Linear / Jira create (API key) + inbound webhook status → fixed
@@ -251,7 +251,7 @@ Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete and validated on Bear Budget Web. Free MCP gate reverted (Pricing P1, D-07) |
 | M2 | F3 F7 mobile + Multi-repo R1–R3 | Todo |
-| M3 | F8 F9 F11 | Done except Slack OAuth channel picker. Plan gating for integrations and board shipped (D-08) |
+| M3 | F8 F9 F11 | Done (Slack OAuth needs the Slack app credentials in env). Plan gating for integrations and board shipped (D-08) |
 | M4 | F10 | GitHub App + stub runner done; real runner open |
 | M5 | Billing + public beta + Pricing update | Todo (manual plans only). Free, Indie, Studio only |
 | M6 | F12 Business: SSO, audit log, self-host, replay 30d, contract quota | Audit log built; rest todo. Business plan hidden until here |
