@@ -6,6 +6,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-11-20",
+    title: "Android, iOS, Flutter and React Native SDKs",
+    body: "Native report sheets for Android and iOS, plus a Flutter package that wraps them: users shake the phone or you call Saidloop.show(), the current screen is attached with sensitive views hidden, and reports made offline are sent as soon as the connection returns.",
+  },
+  {
+    date: "2026-11-20",
+    title: "Customize the Report button",
+    body: "Project settings now let you rename the Report button and move it to the bottom left, or hide it and open the form with Saidloop.show(). On Studio you can also pick the button's accent colour.",
+  },
+  {
     date: "2026-11-19",
     title: "Several repos per project, routed by platform",
     body: "Connect your web, Android, iOS and backend repos to one project and reports go to the right one automatically, with a fallback for the rest. Filter the inbox by repo, move a ticket to another repo, and tell your agent which repo it is in so it only sees its own reports. Marking a ticket fixed now warns you when some reporters are on a platform that repo does not cover, and auto PR runs in the ticket's repo, with a refund when the fix belongs elsewhere.",

@@ -68,7 +68,7 @@ export const PLANS: PlanInfo[] = [
     name: "Studio",
     price: "$39",
     blurb: "5 seats, branding, Linear & Jira, replay 7d",
-    billingLimits: "Unlimited projects · 10,000 reports / mo · 10 repos / project",
+    billingLimits: "Unlimited projects · 10,000 reports / mo · 10 repos / project · 5 seats",
     landing: {
       desc: "For small teams running client apps.",
       limits: "Unlimited projects · 10,000 reports / mo · 10 repos / project · 5 seats",
@@ -85,7 +85,7 @@ export const PLANS: PlanInfo[] = [
     name: "Business",
     price: "From $149",
     blurb: "SSO, audit log, replay 30d, self-host option",
-    billingLimits: "Unlimited projects · Contract quota · Unlimited repos",
+    billingLimits: "Unlimited projects · Contract quota · Unlimited repos · Unlimited seats",
     landing: {
       desc: "Security and control for companies.",
       limits: "Unlimited projects, repos and seats · custom report volume",

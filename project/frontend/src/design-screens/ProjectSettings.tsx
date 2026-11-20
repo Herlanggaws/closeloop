@@ -6,6 +6,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
 import { api, clearProjectSelection } from "@/lib/api";
+import { planAtLeast } from "@/lib/plans";
+import {
+  DEFAULT_WIDGET,
+  WIDGET_ACCENTS,
+  WIDGET_POSITIONS,
+  type WidgetSettings,
+} from "@/lib/widget-settings";
 import type { MeResponse } from "@/lib/usage";
 
 type ProjectInfo = {
@@ -23,6 +30,7 @@ type ProjectInfo = {
 type ProjectResponse = {
   public_key: string;
   project: ProjectInfo;
+  widget?: WidgetSettings;
 };
 
 const PLATFORM_OPTIONS = [
@@ -62,6 +70,9 @@ export function ProjectSettings() {
   const [error, setError] = useState("");
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [widget, setWidget] = useState<WidgetSettings>(DEFAULT_WIDGET);
+  const [labelDraft, setLabelDraft] = useState(DEFAULT_WIDGET.label);
+  const [widgetError, setWidgetError] = useState("");
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -82,6 +93,10 @@ export function ProjectSettings() {
         setProject(projectRes.project);
         setMe(meRes);
         setPublicKey(projectRes.public_key);
+        if (projectRes.widget) {
+          setWidget(projectRes.widget);
+          setLabelDraft(projectRes.widget.label);
+        }
         setNameDraft(projectRes.project.name || "");
         const nextPlatforms = normalizePlatforms(projectRes.project.platforms);
         setPlatforms(nextPlatforms);
@@ -118,6 +133,24 @@ export function ProjectSettings() {
   const projectName = project?.name || "Project";
   const plan = me?.org.plan || "free";
   const email = me?.user.email || "";
+
+  const brandingAllowed = planAtLeast(plan, "studio");
+
+  async function saveWidget(patch: Partial<WidgetSettings>) {
+    if (!project) return;
+    setWidgetError("");
+    try {
+      const res = await api<{ widget: WidgetSettings }>(`/api/projects/${project.id}/widget`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      // Keep the label the user just typed even if another save lands later.
+      setWidget((prev) => ({ ...res.widget, label: patch.label !== undefined ? res.widget.label : prev.label }));
+      if (patch.label !== undefined) setLabelDraft(res.widget.label);
+    } catch (err) {
+      setWidgetError(err instanceof Error ? err.message : "Could not save widget settings");
+    }
+  }
 
   async function copyPublicKey() {
     if (!publicKey) return;
@@ -529,32 +562,83 @@ export function ProjectSettings() {
                 <Field label="Button label">
                   <input
                     type="text"
-                    value="Report a problem"
-                    disabled
-                    className="box-border h-9 w-full rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5 font-ds-ui text-[13px] text-[#A3A3A3] outline-none"
+                    value={labelDraft}
+                    maxLength={40}
+                    onChange={(e) => setLabelDraft(e.target.value)}
+                    onBlur={() => {
+                      if (labelDraft.trim() !== widget.label) void saveWidget({ label: labelDraft });
+                    }}
+                    className="box-border h-9 w-full rounded-md border border-[#1717171F] bg-white px-2.5 font-ds-ui text-[13px] text-[#171717] outline-none focus:border-[#171717]"
                   />
                 </Field>
                 <Field label="Position">
-                  <input
-                    type="text"
-                    value="Bottom right"
-                    disabled
-                    className="box-border h-9 w-full rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5 font-ds-ui text-[13px] text-[#A3A3A3] outline-none"
-                  />
+                  <div
+                    role="radiogroup"
+                    aria-label="Position"
+                    className="flex w-fit gap-0.5 rounded-[10px] border border-[#17171714] bg-[#F5F5F5] p-[3px]"
+                  >
+                    {WIDGET_POSITIONS.map((opt) => {
+                      const active = widget.position === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => !active && void saveWidget({ position: opt.id })}
+                          className={`h-7 cursor-pointer rounded-md px-2.5 font-ds-ui text-xs font-medium ${
+                            active
+                              ? "bg-white text-[#171717] shadow-[0_1px_2px_#0000000F]"
+                              : "bg-transparent text-[#737373] hover:text-[#171717]"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {widget.position === "hidden" && (
+                    <p className="mt-1.5 font-ds-ui text-[12px] text-[#A3A3A3]">
+                      No button. Open the form from your app with Saidloop.show().
+                    </p>
+                  )}
                 </Field>
                 <Field label="Accent">
-                  <div className="flex h-9 items-center gap-2 rounded-md border border-[#1717171F] bg-[#FAFAFA] px-2.5">
-                    <span
-                      className="h-4 w-4 rounded-full"
-                      style={{ background: "#F59E0B" }}
-                      aria-hidden
-                    />
-                    <span className="font-ds-ui text-[13px] text-[#A3A3A3]">Saidloop amber</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {WIDGET_ACCENTS.map((color) => {
+                      const active = widget.accent.toUpperCase() === color;
+                      const locked = !brandingAllowed && color !== DEFAULT_WIDGET.accent;
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          aria-label={`Accent ${color}`}
+                          aria-pressed={active}
+                          disabled={locked}
+                          onClick={() => !active && void saveWidget({ accent: color })}
+                          className={`h-7 w-7 cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-40 ${
+                            active ? "ring-2 ring-[#171717] ring-offset-2" : "ring-1 ring-[#1717171F]"
+                          }`}
+                          style={{ background: color }}
+                        />
+                      );
+                    })}
+                    {!brandingAllowed && (
+                      <span className="ml-1 inline-flex items-center gap-2 font-ds-ui text-[12px] text-[#A3A3A3]">
+                        <span className="rounded-md bg-[#F5F5F5] px-1.5 py-0.5 text-[10px] font-medium text-[#737373]">
+                          Studio
+                        </span>
+                        Custom branding on Studio
+                        <Link href="/app/settings/billing" className="text-[#737373] underline">
+                          Upgrade to Studio
+                        </Link>
+                      </span>
+                    )}
                   </div>
                 </Field>
-                <p className="font-ds-ui text-[12px] text-[#A3A3A3]">
-                  Custom branding on Studio · Coming soon
-                </p>
+                {widgetError && (
+                  <p className="font-ds-ui text-[12px] text-[#DA314A]">{widgetError}</p>
+                )}
               </SettingsSection>
 
               <SettingsSection

@@ -82,8 +82,10 @@ export function methodsForPlatforms(platforms: string[]): InstallMethod[] {
   }
   if (platforms.includes("android")) methods.push("android");
   if (platforms.includes("ios")) methods.push("ios");
-  if (platforms.includes("flutter")) methods.push("flutter");
-  if (platforms.includes("react-native")) methods.push("react-native");
+  // Flutter and React Native wrap the native SDKs and still report as android/ios,
+  // so they are install options for any mobile project rather than platforms of their own.
+  const mobile = platforms.some((p) => p === "android" || p === "ios" || p === "flutter" || p === "react-native");
+  if (mobile) methods.push("flutter", "react-native");
   return methods.length > 0 ? methods : ["script"];
 }
 
@@ -136,7 +138,7 @@ Saidloop.init({ key: "${key}", api: "${API_URL}" });`,
         code: `implementation("ai.closeloop:sdk:0.1.0")
 
 // Application.onCreate
-Saidloop.init(this, "${key}")`,
+Saidloop.init(this, "${key}", api = "${API_URL}")`,
       };
     case "ios":
       return {
@@ -147,7 +149,7 @@ Saidloop.init(this, "${key}")`,
 
 import Saidloop
 
-Saidloop.start(key: "${key}")`,
+Saidloop.start(key: "${key}", api: URL(string: "${API_URL}")!)`,
       };
     case "flutter":
       return {
@@ -157,7 +159,7 @@ Saidloop.start(key: "${key}")`,
   closeloop: ^0.1.0
 
 // main.dart
-await Saidloop.init(key: "${key}");`,
+await Saidloop.init(key: "${key}", api: "${API_URL}");`,
       };
     case "react-native":
       return {
@@ -167,7 +169,7 @@ await Saidloop.init(key: "${key}");`,
 
 import { Saidloop } from "@closeloop/react-native";
 
-Saidloop.init({ key: "${key}" });`,
+Saidloop.init({ key: "${key}", api: "${API_URL}" });`,
       };
     case "script":
     default:
@@ -295,7 +297,7 @@ export function buildSnippet(platform: string, publicKey: string): string {
 implementation("ai.closeloop:sdk:0.1.0")
 
 // Application.onCreate
-Saidloop.init(this, "${key}")
+Saidloop.init(this, "${key}", api = "${API_URL}")
 Saidloop.identify(userId = "user_123", appVersion = "1.0.0")
 // Saidloop.show() // or enable shake`;
     case "ios":
@@ -304,7 +306,7 @@ Saidloop.identify(userId = "user_123", appVersion = "1.0.0")
 
 import Saidloop
 
-Saidloop.start(key: "${key}")
+Saidloop.start(key: "${key}", api: URL(string: "${API_URL}")!)
 Saidloop.identify(userId: "user_123", appVersion: "1.0.0")
 // Saidloop.show() // or enable shake`;
     case "flutter":
@@ -313,7 +315,7 @@ dependencies:
   closeloop: ^0.1.0
 
 // main.dart
-await Saidloop.init(key: "${key}");
+await Saidloop.init(key: "${key}", api: "${API_URL}");
 Saidloop.identify(userId: "user_123", appVersion: "1.0.0");
 // Saidloop.show();`;
     case "react-native":
@@ -321,7 +323,7 @@ Saidloop.identify(userId: "user_123", appVersion: "1.0.0");
 
 import { Saidloop } from "@closeloop/react-native";
 
-Saidloop.init({ key: "${key}" });
+Saidloop.init({ key: "${key}", api: "${API_URL}" });
 Saidloop.identify({ userId: "user_123", appVersion: "1.0.0" });
 // Saidloop.show();`;
     case "web":

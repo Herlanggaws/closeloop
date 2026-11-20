@@ -37,24 +37,24 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | --- | --- | --- |
 | S-03 Create project | `/app/onboarding` | **Wired** name + platforms → POST /api/projects → install |
 | S-04 Install widget | `/app/onboarding/install` | **Wired** public key + snippet + demo + first-report poll. npm tab hidden until the package is publishable |
-| S-04b Install status | `/app/install` | **Wired** two-column guide, snippet, first-report, demo link |
+| S-04b Install status | `/app/install` | **Wired** two-column guide, snippet, first-report, demo link. Tabs per project platform; mobile projects also get Flutter and React Native tabs (Nov 20), and every SDK snippet passes the API host. Snippets point at packages that are not published yet |
 | S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** token + scopes + Cursor/Claude copy + test connection. Footer "Every plan includes all MCP tools, mark_fixed too." (D-01) |
 | S-05b MCP status | `/app/mcp` | **Wired** status, multi-client install, token list, revoke, generate |
-| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status/platform filters + empty + test report; multi-select → S-08. Empty checklist 5 steps by plan (D-02). No repo filter yet (Multi-repo) |
-| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, Reporters panel (name/email/platform), notes, activity oldest → newest, Sentry/PostHog links, header: issue button by plan + Run auto PR + Mark fixed (D-03). No repo field yet (Multi-repo) |
+| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status/platform filters + empty + test report; multi-select → S-08. Empty checklist 5 steps by plan (D-02). Repo filter + column (D-15) |
+| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, Reporters panel (name/email/platform), notes, activity oldest → newest, Sentry/PostHog links, header: issue button by plan + Run auto PR + Mark fixed (D-03). Repo property + reroute picker + "No repo yet" (D-16) |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** pick parent + merge API |
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + Email/In-app toggles. No cross-platform warning yet (US-55) |
 | S-10 Auto PR runs | `/app/auto-pr` | **Wired** runs list + credits + single GitHub repo panel. Runner is a stub (opens a context PR) |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + vote counts + comment moderation + roadmap DnD |
-| S-12 Project settings | `/app/settings` | **Partial** name, platforms, notify kill switches, public key, mask text inputs, soft-delete live. Custom branding and board domain are "Coming soon" |
-| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section (D-12) on branch `claude/project-thread-q7465g` |
+| S-12 Project settings | `/app/settings` | **Partial** name, platforms, notify kill switches, public key, mask text inputs, soft-delete live. Widget section live (Nov 20): button label + position (Bottom right / Bottom left / Hidden) on every plan, accent colour on Studio (`PATCH /api/projects/:id/widget`, migration `024`). Board custom domain still "Coming soon" |
+| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section live (D-12) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan (`SEAT_LIMIT`) |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage (Reports, Projects, Auto PR credits, Seats, Repos) + credit balance. Change plan: Free/Indie/Studio cards with limit line from `lib/plans.ts` (D-05). Plan change is manual (`PATCH /api/org/plan`, Business rejected until M6); "Manual until Subscribed" pill hides once `usage.subscribed` is true. Buy credits is a stub. No invoices list yet |
 | S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only. **Hidden until M6** (D-22) |
 | S-17 Self-host license | `/app/settings/self-host` | **UI only** route redirects to inbox; stays hidden until M6 |
 | S-18…S-20 Widget UX | `/preview/widget/*` + widget package | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet |
 | S-21 Fixed banner | `/preview/widget/fixed` + widget package | **Wired** ingest updates → banner; identify refetch |
-| S-22 Mobile report sheet | `/preview/widget/mobile` | **UI only** needs F3 SDK |
+| S-22 Mobile report sheet | `/preview/widget/mobile` + Android/iOS SDK | **Done** native sheet, offline state and drawing on the screenshot on Android and iOS |
 | S-23 / S-27 Emails | `/preview/email/*` | **Wired** S-23 fixed, waitlist confirmation, S-27 vote verify + released-to-voters |
 | S-24…S-26 Public board | `/board/[slug]` | **Wired** list/detail/roadmap + votes/comments + suggest an idea |
 | S-28 Join Waitlist | `/` modal + `/preview/waitlist` | **Wired** enter / invalid / joined / already + resend; `?join=1` |
@@ -93,11 +93,11 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [x] Dogfood: Bear Budget Web loop verified via demo host and R-UI-01
 
 #### M2 · Mobile (F3, F7) + Multi-repo routing
-- [ ] **F3** Android Kotlin SDK (shake / `show()`, offline queue, masking)
-- [ ] **F3** iOS Swift Package
+- [x] **F3** Android Kotlin SDK (shake / `show()`, offline queue, masking) — `project/sdks/android` (Nov 20). Dites di emulator API 33: lapor online + offline queue terkirim otomatis, view `closeloopMask` ketutup di screenshot. Belum: publish ke Maven Central, coret-coret di screenshot, shake belum dites di HP asli (logika shake dites unit)
+- [x] **F3** iOS Swift Package — `project/sdks/ios` (Nov 20). Dites di Simulator iPhone 16 (iOS 18.4): lapor masuk ke API lokal, screenshot keupload dengan view `closeloopMask` ketutup, context `screen_name` benar; core 8/8 unit test. Belum: offline belum dites di Simulator (queue dites unit), coret-coret di screenshot, repo rilis SPM terpisah
 - [ ] **F3** Dogfood on Bear Budget KMP
-- [ ] **F7** Flutter package (pub.dev)
-- [ ] **F7** React Native + Expo config plugin
+- [x] **F7** Flutter package — `project/sdks/flutter` (Nov 20). Dites di emulator Android dan Simulator iOS: lapor masuk, `SaidloopMask` ketutup di screenshot. 4/4 test Dart. Belum: publish ke pub.dev (butuh SDK native ke Maven Central/CocoaPods dulu)
+- [x] **F7** React Native + Expo config plugin — `project/sdks/react-native` (Nov 20). Dites di emulator Android dan Simulator iOS (RN 0.76): lapor + mask + antrean offline jalan; plugin Expo dites lewat `expo prebuild` (minSdk 24, gak nurunin target iOS); JS 7/7. Belum: publish ke npm
 - [ ] **Multi-repo** see section below (R1–R3 ship with M2)
 
 #### M3 · Tool tim & publik (F8, F9, F11)
@@ -150,16 +150,16 @@ Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) 
 | P2 | Linear + Jira require Studio | **Done** same mechanism | US-69 |
 | P2 | Public board requires Indie | **Done** publishing an idea (`is_public: true`) needs Indie; unpublish always allowed; already-public ideas stay | US-69 |
 | P2 | Badge "Powered by Saidloop" only on Free | **Done** Nov 19 (D-20), Herlangga approved | US-65, US-66 |
-| P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts the single GitHub App repo until D-11) | US-68 |
+| P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts `project_repos`, D-11) | US-68 |
 | P3 | Indie seats: `MaxSeats: 3` → 1 | **Done** Nov 19, Herlangga picked 1 seat (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
 | UI | Billing Change plan cards with limit line | **Done** (D-05) | US-68 |
 | UI | Landing pricing cards | **Done** (D-06), 3 cards until M6 | US-68 |
 | UI | Remove "read-only / mark_fixed needs Indie" copy | **Done** (D-01, D-02) | US-60 |
 | TEST | Entitlement test per plan for every feature on a plan card | **Done** `TestIntegrationAndBoardGatingPerPlan` + `TestPlan_*` HTTP tests | US-69 |
 
-## PRD Multi-repo per Project (Nov 19) — built on branch, waiting for review
+## PRD Multi-repo per Project (Nov 19) — merged to dev Nov 20
 
-R1–R5 are built on branch `claude/project-thread-q7465g` (PR to dev, needs Herlangga's review before merge: it adds migration `023_project_repos.sql`). Until it merges, dev still stores one repo per project (`repo_full_name` in the `github_app` config). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR), and the GitHub App install flow still picks one repo first; extra repos are added from the Repositories section.
+R1–R5 merged to dev on Nov 20 (migration `023_project_repos.sql`; old `repo_full_name` becomes the fallback repo). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR), and the GitHub App install flow still picks one repo first; extra repos are added from the Repositories section.
 
 | ID | Item | Milestone | Story |
 | --- | --- | --- | --- |
@@ -184,13 +184,13 @@ Every story in both new PRDs now has a design: v2 frames, S-31 badge, and the co
 Fixed since the first audit: Saidloop copy on landing, waitlist, widget, emails and snippets; Free "full MCP loop" copy on S-01, S-05 and S-06 empty; Linear/Jira labelled Studio; S-15 Change plan with the limit line, seats and repos; S-09 cross-platform warning; S-13 repo list; S-06 repo filter; S-07 repo + reroute; S-10 `needs_reroute`; S-07 timeline order; S-06 empty Free gating.
 
 Still open:
-- [ ] Coach mark F5 (`ObRdo`, `KdiK2`, `nMRDS`) still shows the old "read-only" S-05 footer
-- [ ] S-14 v2: project switcher says "Pixel Studio · Studio" on an Indie page; S-14 (Studio) sidebar quota shows 312 / 1,000
-- [ ] S-10 v2: Needs reroute row shows PR `#318` though no PR was opened
-- [ ] S-09 v2: In-app banner card keeps "3 reporters on Web and iOS" when only 2 get notified
-- [ ] S-13 v2: GitHub Issues card still names `herlangga/bear-budget` (single-repo leftover)
+- [x] Coach mark F5 footer now "Every plan includes all MCP tools, mark_fixed too." (fixed in pen Nov 20)
+- [x] S-14 v2 switcher now "Pixel Studio · Indie"; S-14 Studio quota already 312 / 10,000 (fixed Nov 20)
+- [x] S-10 v2 Needs reroute row PR now `—` (fixed Nov 20)
+- [x] S-09 v2 banner card now "2 reporters on Web" (fixed Nov 20)
+- [x] GitHub Issues card now "Create issues from tickets" in every S-13 frame (fixed Nov 20)
 - [ ] Domain mix: `saidloop.com` (MCP, badge link) vs `saidloop.dev` (email sender). Settle once the domain is decided
-- [ ] S-15 Change plan: Free/Indie list seats in the limit line, Studio/Business don't
+- [x] S-15 Change plan: Studio "· 5 seats", Business "· Unlimited seats" in pen and `lib/plans.ts` (fixed Nov 20)
 
 ## Brief penyesuaian kode ke desain
 
@@ -211,7 +211,7 @@ Fase B · pricing di backend
 - [x] D-09 `MaxReposPerProject` + `usage.repos`
 - [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
 
-Fase C · multi-repo — dikerjain di branch `claude/project-thread-q7465g` (migrasi `023`), centang di sini berlaku setelah branch itu di-merge ke dev. Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri), connect GitHub App masih pilih 1 repo di awal.
+Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri), connect GitHub App masih pilih 1 repo di awal.
 - [x] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`. — `023_project_repos.sql` + migrasi repo lama jadi fallback
 - [x] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`). — S-13 Repositories section, counter, limit copy, read-access toggle
 - [x] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`). — modal Add repository + `PLATFORM_CONFLICT` / `REPO_LIMIT`
