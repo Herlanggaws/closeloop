@@ -129,7 +129,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
 - [x] **F12** Audit log + export — sudah dibangun, disembunyikan sampai M6 bersama S-16
 - [ ] **F12** Docker / Helm self-host + license activation (S-17)
-- [ ] Session replay 30 hari (retensi Business; Studio 7 hari tetap jalan)
+- [x] Session replay 30 hari (retensi Business; Studio 7 hari tetap jalan) — udah ada: `ReplayRetentionDays` + purge di worker, dites `TestR_REPLAY_03`
 - [ ] Kuota laporan sesuai kontrak + harga mulai $149
 - [ ] Billing Business (kontrak / invoice tahunan, lisensi self-host)
 - [ ] Tampilkan lagi plan Business di landing, Billing, sidebar (balikkan D-22)
