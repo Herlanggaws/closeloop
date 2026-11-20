@@ -542,6 +542,50 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(page).toHaveURL(/\/app\/settings\/billing/);
   });
 
+  // Multi-repo (D-12, D-15, D-16, D-18): repos list, inbox repo filter, reroute, cross-platform fix warning.
+  test("R-UI-20 Multi-repo routing, reroute and fix warning", async ({ page, request }) => {
+    const session = await seedSession(request, { plan: "indie" });
+    const auth = { Authorization: `Bearer ${session.accessToken}` };
+    const add = async (data: Record<string, unknown>) => {
+      const res = await request.post(`${API_URL}/api/projects/${session.projectId}/repos`, { headers: auth, data });
+      expect(res.ok(), await res.text()).toBeTruthy();
+      return (await res.json()).repo as { id: string };
+    };
+    await add({ full_name: "bear/web", routes: [{ platform: "web" }] });
+    await add({ full_name: "bear/app", routes: [{ platform: "ios", path: "composeApp" }] });
+
+    const message = `Chart broken ${Date.now()}`;
+    const { ticket_id: webTicket } = await ingestReport(request, session.publicKey, message);
+    const { ticket_id: iosTicket } = await ingestReport(request, session.publicKey, `${message} ios`, { platform: "ios" });
+    const merge = await request.post(`${API_URL}/api/tickets/merge`, {
+      headers: auth,
+      data: { parent_id: webTicket, child_ids: [iosTicket] },
+    });
+    expect(merge.ok(), await merge.text()).toBeTruthy();
+
+    await applySession(page, session);
+    await page.goto("/app/settings/integrations");
+    await expect(page.getByText("2 of 5 repos")).toBeVisible();
+    await expect(page.getByText("bear/app", { exact: true })).toBeVisible();
+
+    await page.goto("/app/inbox");
+    await page.getByRole("button", { name: /^Repo:/ }).click();
+    await expect(page.getByRole("listbox", { name: "Repo" }).getByText("No repo yet")).toBeVisible();
+    await page.getByRole("listbox", { name: "Repo" }).getByText("bear/web").click();
+    await expect(page.getByRole("link", { name: new RegExp(message) }).first()).toBeVisible();
+
+    await page.goto(`/app/tickets/${webTicket}/fixed`);
+    await expect(page.getByText("iOS reporters may not have the fix yet")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mark fixed, notify 1 on Web" })).toBeVisible();
+    await page.getByLabel(/iOS is fixed too/).check();
+    await expect(page.getByRole("button", { name: "Mark fixed and notify" })).toBeVisible();
+
+    await page.goto(`/app/tickets/${webTicket}`);
+    await page.getByRole("button", { name: /bear\/web/ }).first().click();
+    await page.getByRole("button", { name: /bear\/app/ }).first().click();
+    await expect(page.getByText(/Rerouted from bearbudget|Rerouted from web/)).toBeVisible();
+  });
+
   test("R-UI-17 Inbox coach-mark tour first visit", async ({ page, request }) => {
     const session = await seedSession(request);
     const message = `Tour report ${Date.now()}`;

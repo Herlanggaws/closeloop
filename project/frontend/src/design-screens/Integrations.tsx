@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
+import { RepositoriesSection } from "@/components/repos/RepositoriesSection";
 import { api } from "@/lib/api";
 import { asConfig, parseIntegrationConfig } from "@/lib/integration-config";
 import { planAtLeast, planInfo, type PlanId } from "@/lib/plans";
@@ -568,6 +569,13 @@ export function Integrations() {
           ) : (
             <>
               {error && <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p>}
+
+              <RepositoriesSection
+                projectId={projectId}
+                projectName={projectName}
+                installationId={Number(githubInstallationId) || 0}
+                accountLogin={githubAccount}
+              />
 
               <IntegrationGroup
                 title={

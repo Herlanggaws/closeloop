@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -144,24 +143,11 @@ func integrationFeatureName(provider string) string {
 	}
 }
 
-// ProjectRepoCount counts repos connected to a project. Until multi-repo (D-11)
-// lands, a project has at most one repo: the GitHub App's repo_full_name.
+// ProjectRepoCount counts repos connected to a project (D-09, D-11).
 func (s *Store) ProjectRepoCount(ctx context.Context, projectID string) (int, error) {
-	var raw json.RawMessage
-	err := s.DB.QueryRowContext(ctx, `
-		SELECT config FROM integrations WHERE project_id=$1 AND provider='github_app'`, projectID).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, nil
-	}
-	if err != nil {
-		return 0, err
-	}
-	var cfg map[string]any
-	_ = json.Unmarshal(raw, &cfg)
-	if repo, _ := cfg["repo_full_name"].(string); repo != "" {
-		return 1, nil
-	}
-	return 0, nil
+	var n int
+	err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_repos WHERE project_id=$1`, projectID).Scan(&n)
+	return n, err
 }
 
 // AutoPRCreditsGranted sums credits ever granted to an org (starter seeds, packs);

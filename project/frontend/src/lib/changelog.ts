@@ -7,6 +7,11 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-19",
+    title: "Several repos per project, routed by platform",
+    body: "Connect your web, Android, iOS and backend repos to one project and reports go to the right one automatically, with a fallback for the rest. Filter the inbox by repo, move a ticket to another repo, and tell your agent which repo it is in so it only sees its own reports. Marking a ticket fixed now warns you when some reporters are on a platform that repo does not cover, and auto PR runs in the ticket's repo, with a refund when the fix belongs elsewhere.",
+  },
+  {
+    date: "2026-11-19",
     title: "“Powered by Saidloop” only on Free",
     body: "The widget and the emails your reporters and voters get now show “Powered by Saidloop” only on the Free plan. On Indie and above it is gone everywhere, and it disappears within a minute of upgrading.",
   },

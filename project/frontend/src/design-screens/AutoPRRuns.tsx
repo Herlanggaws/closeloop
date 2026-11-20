@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
+import { repoPlatformLabel, shortRepo, type ProjectRepo, type ReposResponse } from "@/lib/repos";
 import type { MeResponse } from "@/lib/usage";
 
 type AutoprRun = {
@@ -20,6 +21,8 @@ type AutoprRun = {
   log_excerpt: string;
   created_at: string;
   finished_at?: string | null;
+  suggested_repo?: string;
+  reroute_reason?: string;
 };
 
 function statusLabel(status: string) {
@@ -34,6 +37,8 @@ function statusLabel(status: string) {
       return "Failed";
     case "cancelled":
       return "Cancelled";
+    case "needs_reroute":
+      return "Needs reroute";
     default:
       return status;
   }
@@ -59,6 +64,10 @@ export function AutoPRRuns() {
   const [runs, setRuns] = useState<AutoprRun[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [githubRepo, setGithubRepo] = useState("");
+  const [repos, setRepos] = useState<ProjectRepo[]>([]);
+  const [crossRead, setCrossRead] = useState(false);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [rerunning, setRerunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -77,9 +86,12 @@ export function AutoPRRuns() {
       api<{ integrations: { provider: string; config: Record<string, unknown> | string }[] }>(
         `/api/projects/${id}/integrations`,
       ),
+      api<ReposResponse>(`/api/projects/${id}/repos`).catch(() => null),
     ])
-      .then(([meRes, projectRes, runsRes, integRes]) => {
+      .then(([meRes, projectRes, runsRes, integRes, reposRes]) => {
         if (cancelled) return;
+        setRepos(reposRes?.repos || []);
+        setCrossRead(Boolean(reposRes?.allow_cross_repo_read));
         setMe(meRes);
         setProjectName(projectRes.project.name || "Project");
         const list = runsRes.runs || [];
@@ -106,6 +118,35 @@ export function AutoPRRuns() {
   }, [router]);
 
   const selected = runs.find((r) => r.id === selectedId) || null;
+  const rerouteRun =
+    selected && selected.status === "needs_reroute" && !dismissed.has(selected.id) ? selected : null;
+
+  // "Run in <repo>": move the ticket to the suggested repo, then start a new run there (US-57).
+  async function runInSuggested(run: AutoprRun) {
+    const target = repos.find((r) => r.full_name.toLowerCase() === (run.suggested_repo || "").toLowerCase());
+    if (!target) {
+      setError(`${run.suggested_repo} is not connected to this project. Add it in Integrations first.`);
+      return;
+    }
+    setRerunning(true);
+    setError("");
+    try {
+      await api(`/api/tickets/${run.ticket_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ repo_id: target.id, reason: run.reroute_reason || "Suggested by auto PR" }),
+      });
+      const res = await api<{ run: AutoprRun }>(`/api/tickets/${run.ticket_id}/autopr`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      setRuns((prev) => [res.run, ...prev]);
+      setSelectedId(res.run.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start the run");
+    } finally {
+      setRerunning(false);
+    }
+  }
   const credits = me?.usage?.auto_pr_credits ?? 0;
   const succeeded = runs.filter((r) => r.status === "succeeded").length;
 
@@ -159,8 +200,8 @@ export function AutoPRRuns() {
                 <Stat label="Credits left" value={String(credits)} />
                 <Stat
                   label="Repository"
-                  value={githubRepo || "Not connected"}
-                  href={githubRepo ? undefined : "/app/settings/integrations"}
+                  value={repos.length ? `${repos.length} connected` : githubRepo || "Not connected"}
+                  href={repos.length || githubRepo ? undefined : "/app/settings/integrations"}
                 />
               </div>
 
@@ -208,10 +249,23 @@ export function AutoPRRuns() {
                             key={run.id}
                             onClick={() => setSelectedId(run.id)}
                             className={`cursor-pointer border-t border-[#17171714] font-ds-ui text-[13px] ${
-                              selectedId === run.id ? "bg-[#FAFAFA]" : "bg-white"
+                              run.status === "needs_reroute"
+                                ? "bg-[#FFF7ED]"
+                                : selectedId === run.id
+                                  ? "bg-[#FAFAFA]"
+                                  : "bg-white"
                             }`}
                           >
-                            <td className="px-4 py-3 text-[#171717]">{statusLabel(run.status)}</td>
+                            <td className="px-4 py-3 text-[#171717]">
+                              {run.status === "needs_reroute" ? (
+                                <span className="inline-flex items-center gap-1.5 text-[#EA6C0C]">
+                                  <span aria-hidden>↪</span>
+                                  {statusLabel(run.status)}
+                                </span>
+                              ) : (
+                                statusLabel(run.status)
+                              )}
+                            </td>
                             <td className="px-4 py-3">
                               <Link
                                 href={`/app/tickets/${run.ticket_id}`}
@@ -237,7 +291,11 @@ export function AutoPRRuns() {
                               )}
                             </td>
                             <td className="px-4 py-3 font-ds-mono text-[12px]">
-                              {formatCost(run.cost_cents)}
+                              {run.status === "needs_reroute" ? (
+                                <span className="text-[#16A34A]">Refund</span>
+                              ) : (
+                                formatCost(run.cost_cents)
+                              )}
                             </td>
                             <td className="px-4 py-3 text-[#737373]">
                               {formatWhen(run.created_at)}
@@ -249,14 +307,85 @@ export function AutoPRRuns() {
                   </table>
                 </div>
 
-                <aside className="flex flex-col gap-4 rounded-xl border border-[#17171714] bg-[#FAFAFA] p-4">
-                  <div data-tour="autopr-repo">
-                    <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Repository</div>
-                    <div className="mt-1 font-ds-ui text-[13px] text-[#171717]">
-                      {githubRepo || "Connect GitHub App"}
+                {rerouteRun && (
+                  <div
+                    data-pencil-name="Needs reroute"
+                    className="flex flex-col gap-3 rounded-xl border border-[#F59E0B4D] bg-white p-5 lg:col-start-1"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="font-ds-sans text-[15px] font-semibold text-[#171717]">
+                          Run #{rerouteRun.id.slice(0, 6)} stopped: the fix belongs in another repo
+                        </div>
+                        <div className="font-ds-ui text-[12.5px] text-[#737373]">
+                          #{rerouteRun.ticket_id.slice(0, 8)} · ran in {rerouteRun.repo}
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-[#F0FDF4] px-2 py-0.5 font-ds-ui text-[11px] font-medium text-[#16A34A]">
+                        1 credit refunded
+                      </span>
                     </div>
+                    <div className="rounded-lg bg-[#FAFAFA] p-3 font-ds-mono text-[12px] text-[#171717]">
+                      Suggested repo: {rerouteRun.suggested_repo || "—"}
+                      {rerouteRun.reroute_reason && (
+                        <div className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                          “{rerouteRun.reroute_reason}”
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-ds-ui text-[12px] text-[#A3A3A3]">No pull request was opened.</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDismissed((prev) => new Set(prev).add(rerouteRun.id))}
+                          className="h-8 cursor-pointer rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                        >
+                          Dismiss
+                        </button>
+                        {rerouteRun.suggested_repo && (
+                          <button
+                            type="button"
+                            disabled={rerunning}
+                            onClick={() => void runInSuggested(rerouteRun)}
+                            className="h-8 cursor-pointer rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {rerunning ? "Starting…" : `Run in ${shortRepo(rerouteRun.suggested_repo)}`}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <aside className="flex flex-col gap-4 rounded-xl border border-[#17171714] bg-[#FAFAFA] p-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                  <div data-tour="autopr-repo">
+                    <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Repositories</div>
                     <p className="mt-1 font-ds-ui text-[12px] text-[#737373]">
-                      Read code · create PRs · never merges
+                      Each run uses the ticket&apos;s repo. Write access covers that repo only.
+                    </p>
+                    {repos.length === 0 ? (
+                      <div className="mt-2 font-ds-ui text-[13px] text-[#171717]">
+                        {githubRepo || "Connect GitHub App"}
+                      </div>
+                    ) : (
+                      <ul className="mt-2 flex flex-col gap-1.5">
+                        {repos.map((r) => (
+                          <li key={r.id} className="flex flex-col">
+                            <span className="font-ds-mono text-[12px] text-[#171717]">{r.full_name}</span>
+                            <span className="font-ds-ui text-[11px] text-[#A3A3A3]">
+                              {r.routes.length
+                                ? r.routes.map((rt) => repoPlatformLabel(rt.platform)).join(", ")
+                                : r.is_fallback
+                                  ? "Fallback"
+                                  : "No platforms"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="mt-2 font-ds-ui text-[12px] text-[#737373]">
+                      Read access to other repos: {crossRead ? "on" : "off"}
                     </p>
                   </div>
                   <div>

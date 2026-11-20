@@ -134,8 +134,9 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 	switch kind {
 	case "notify_reporters":
 		var p struct {
-			TicketID string `json:"ticket_id"`
-			Notify   *struct {
+			TicketID  string   `json:"ticket_id"`
+			Platforms []string `json:"platforms"`
+			Notify    *struct {
 				Email *bool `json:"email"`
 				InApp *bool `json:"in_app"`
 			} `json:"notify"`
@@ -152,7 +153,7 @@ func handleJob(ctx context.Context, store *Store, deps WorkerDeps, kind string, 
 				channels.InApp = *p.Notify.InApp
 			}
 		}
-		_, mails, err := store.NotifyReporters(ctx, p.TicketID, "", channels.Email, channels.InApp)
+		_, mails, err := store.NotifyReporters(ctx, p.TicketID, "", channels.Email, channels.InApp, p.Platforms...)
 		if err != nil {
 			return err
 		}

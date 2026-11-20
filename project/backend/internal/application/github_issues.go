@@ -76,6 +76,13 @@ func (s *Store) CreateGitHubIssueForTicket(
 		return GitHubIssueResult{}, fmt.Errorf("%w: connect GitHub App first", ErrInvalidInput)
 	}
 	ghCfg, err := ParseGitHubAppConfig(raw)
+	// R5 / US-59: issues go to the ticket's repo; the old single repo is the fallback.
+	if err == nil && ticket.RepoFullName != "" {
+		ghCfg.RepoFullName = ticket.RepoFullName
+		if r, rerr := s.ProjectRepoByFullName(ctx, ticket.ProjectID, ticket.RepoFullName); rerr == nil && r.InstallationID != 0 {
+			ghCfg.InstallationID = r.InstallationID
+		}
+	}
 	if err != nil || ghCfg.InstallationID == 0 || strings.TrimSpace(ghCfg.RepoFullName) == "" {
 		return GitHubIssueResult{}, fmt.Errorf("%w: select a repository for GitHub App", ErrInvalidInput)
 	}
