@@ -28,4 +28,6 @@ balanceView.closeloopMask = true
 ./gradlew :sample:installDebug -Psaidloop.key=pk_… -Psaidloop.api=http://10.0.2.2:8080
 ```
 
-Not done yet: publishing to Maven Central, and drawing on the screenshot before sending.
+Users can draw on the screenshot before sending (tap the thumbnail).
+
+Not done yet: publishing to Maven Central.

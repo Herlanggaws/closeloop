@@ -33,10 +33,12 @@ class ReportActivity : Activity() {
     private lateinit var sheet: LinearLayout
     private lateinit var message: EditText
     private lateinit var send: Button
+    private var screenshot: ByteArray? = null
+    private lateinit var root: FrameLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val screenshot = Saidloop.pendingScreenshot
+        screenshot = Saidloop.pendingScreenshot
         Saidloop.pendingScreenshot = null
 
         val scrim = FrameLayout(this).apply {
@@ -53,6 +55,7 @@ class ReportActivity : Activity() {
             isClickable = true
         }
         scrim.addView(sheet, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM))
+        root = scrim
         setContentView(scrim)
         buildForm(screenshot)
     }
@@ -132,8 +135,10 @@ class ReportActivity : Activity() {
                 setPadding(dp(12), 0, 0, 0)
             }
             texts.addView(text("Screenshot attached", 13.5f, bold = true))
-            texts.addView(text("Sensitive fields are hidden.", 12f, color = GRAY))
+            texts.addView(text("Tap to draw on it. Sensitive fields are hidden.", 12f, color = GRAY))
             row.addView(texts)
+            row.contentDescription = "Draw on screenshot"
+            row.setOnClickListener { openDraw(thumb) }
             sheet.addView(row)
         }
 
@@ -145,9 +150,45 @@ class ReportActivity : Activity() {
             background = rounded(Color.rgb(23, 23, 23), 10f)
             isEnabled = false
             alpha = 0.5f
-            setOnClickListener { submit(screenshot) }
+            setOnClickListener { submit(this@ReportActivity.screenshot) }
         }
         sheet.addView(send, LinearLayout.LayoutParams(MATCH_PARENT, dp(48)).apply { topMargin = dp(16) })
+    }
+
+    /** Full-screen drawing on the screenshot; Done burns the marks into the PNG. */
+    private fun openDraw(thumb: ImageView) {
+        val png = screenshot ?: return
+        val bitmap = BitmapFactory.decodeByteArray(png, 0, png.size) ?: return
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.rgb(23, 23, 23))
+            isClickable = true
+        }
+        val canvas = DrawView(this, bitmap)
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+        }
+        bar.addView(text("Draw on the screenshot", 15f, bold = true, color = Color.WHITE), LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+        bar.addView(text("Undo", 15f, color = Color.WHITE).apply {
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            setOnClickListener { canvas.undo() }
+        })
+        bar.addView(text("Done", 15f, bold = true, color = Color.WHITE).apply {
+            setPadding(dp(12), dp(6), 0, dp(6))
+            setOnClickListener {
+                if (canvas.hasStrokes) {
+                    val drawn = canvas.render()
+                    screenshot = drawn
+                    thumb.setImageBitmap(BitmapFactory.decodeByteArray(drawn, 0, drawn.size))
+                }
+                root.removeView(panel)
+            }
+        })
+        panel.addView(bar)
+        panel.addView(canvas, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+        root.addView(panel, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
     }
 
     private fun selectType(id: String) {
