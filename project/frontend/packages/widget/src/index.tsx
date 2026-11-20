@@ -74,7 +74,22 @@ type IngestMaskConfig = {
   /** "Powered by Saidloop" shows on Free only (D-20). */
   badge: boolean;
   badgeUrl: string;
+  /** S-12 Widget section: label, position, accent (accent is Studio branding). */
+  look: WidgetLook;
 };
+
+type WidgetLook = { label: string; position: "bottom_right" | "bottom_left" | "hidden"; accent: string };
+
+const DEFAULT_LOOK: WidgetLook = { label: "Report a problem", position: "bottom_right", accent: "#171717" };
+
+function parseLook(raw: unknown): WidgetLook {
+  const w = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const position =
+    w.position === "bottom_left" || w.position === "hidden" ? w.position : "bottom_right";
+  const accent = typeof w.accent === "string" && /^#[0-9a-fA-F]{6}$/.test(w.accent) ? w.accent : DEFAULT_LOOK.accent;
+  const label = typeof w.label === "string" && w.label.trim() ? w.label.trim().slice(0, 40) : DEFAULT_LOOK.label;
+  return { label, position, accent };
+}
 
 const NO_CONFIG: IngestMaskConfig = {
   selectors: [],
@@ -82,9 +97,19 @@ const NO_CONFIG: IngestMaskConfig = {
   replayEnabled: false,
   badge: false,
   badgeUrl: "",
+  look: DEFAULT_LOOK,
 };
 
 /** Badge link per surface: launcher, form, sent, banner. */
+/** Position + accent overrides on top of the base stylesheet. */
+function lookCss(look: WidgetLook) {
+  let out = `.fab.left, .fab-badge.left { right:auto; left:20px; }`;
+  if (look.accent.toLowerCase() !== DEFAULT_LOOK.accent) {
+    out += ` .fab, .btn, .chip.on { background:${look.accent}; }`;
+  }
+  return out;
+}
+
 export function badgeHref(base: string, surface: string) {
   if (!base) return "";
   const sep = base.includes("?") ? "&" : "?";
@@ -127,6 +152,7 @@ async function fetchProjectMaskConfig(cfg: Config): Promise<IngestMaskConfig> {
       replayEnabled: data?.replay_enabled === true,
       badge: data?.badge === true,
       badgeUrl: typeof data?.badge_url === "string" ? data.badge_url : "",
+      look: parseLook(data?.widget),
     };
   } catch {
     return NO_CONFIG;
@@ -352,6 +378,7 @@ function Widget({ cfg }: { cfg: Config }) {
   const [capturing, setCapturing] = useState(false);
   const [banner, setBanner] = useState<BannerUpdate | null>(null);
   const [badge, setBadge] = useState<{ on: boolean; url: string }>({ on: false, url: "" });
+  const [look, setLook] = useState<WidgetLook>(DEFAULT_LOOK);
   const [error, setError] = useState("");
   const [shot, setShot] = useState<string>("");
   const [tool, setTool] = useState<AnnotateTool>("pen");
@@ -372,6 +399,7 @@ function Widget({ cfg }: { cfg: Config }) {
     const timer = setInterval(async () => {
       const next = await fetchProjectMaskConfig(cfg);
       setBadge({ on: next.badge, url: next.badgeUrl });
+      setLook(next.look);
     }, 60_000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -385,6 +413,7 @@ function Widget({ cfg }: { cfg: Config }) {
       maskConfigRef.current = maskCfg;
       if (cancelled) return;
       setBadge({ on: maskCfg.badge, url: maskCfg.badgeUrl });
+      setLook(maskCfg.look);
       if (maskCfg.selectors.length) {
         cfg.selectors = uniqueSelectors(cfg.selectors, maskCfg.selectors);
       }
@@ -820,16 +849,17 @@ function Widget({ cfg }: { cfg: Config }) {
   const ui = (
     <>
       <style>{css}</style>
-      {state === "launcher" && (
-        <button class="fab" type="button" onClick={openForm}>
+      <style>{lookCss(look)}</style>
+      {state === "launcher" && look.position !== "hidden" && (
+        <button class={look.position === "bottom_left" ? "fab left" : "fab"} type="button" onClick={openForm}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          Report a problem
+          {look.label}
         </button>
       )}
-      {state === "launcher" && badge.on && (
-        <a class="fab-badge" href={badgeHref(badge.url, "launcher")} target="_blank" rel="noopener noreferrer">
+      {state === "launcher" && badge.on && look.position !== "hidden" && (
+        <a class={look.position === "bottom_left" ? "fab-badge left" : "fab-badge"} href={badgeHref(badge.url, "launcher")} target="_blank" rel="noopener noreferrer">
           Feedback by Saidloop ↗
         </a>
       )}
