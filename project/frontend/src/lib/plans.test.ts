@@ -28,7 +28,7 @@ describe("plans (D-05, D-06, D-22)", () => {
     const lines = Object.fromEntries(PLANS.map((p) => [p.id, p.billingLimits]));
     assert.equal(lines.free, "1 project · 50 reports / mo · 3 repos / project · 1 seat");
     assert.equal(lines.indie, "3 projects · 1,000 reports / mo · 5 repos / project · 1 seat");
-    assert.equal(lines.studio, "Unlimited projects · 10,000 reports / mo · 10 repos / project");
+    assert.equal(lines.studio, "Unlimited projects · 10,000 reports / mo · 10 repos / project · 5 seats");
   });
 
   it("drops the old read-only MCP copy", () => {

@@ -184,13 +184,13 @@ Every story in both new PRDs now has a design: v2 frames, S-31 badge, and the co
 Fixed since the first audit: Saidloop copy on landing, waitlist, widget, emails and snippets; Free "full MCP loop" copy on S-01, S-05 and S-06 empty; Linear/Jira labelled Studio; S-15 Change plan with the limit line, seats and repos; S-09 cross-platform warning; S-13 repo list; S-06 repo filter; S-07 repo + reroute; S-10 `needs_reroute`; S-07 timeline order; S-06 empty Free gating.
 
 Still open:
-- [ ] Coach mark F5 (`ObRdo`, `KdiK2`, `nMRDS`) still shows the old "read-only" S-05 footer
-- [ ] S-14 v2: project switcher says "Pixel Studio · Studio" on an Indie page; S-14 (Studio) sidebar quota shows 312 / 1,000
-- [ ] S-10 v2: Needs reroute row shows PR `#318` though no PR was opened
-- [ ] S-09 v2: In-app banner card keeps "3 reporters on Web and iOS" when only 2 get notified
-- [ ] S-13 v2: GitHub Issues card still names `herlangga/bear-budget` (single-repo leftover)
+- [x] Coach mark F5 footer now "Every plan includes all MCP tools, mark_fixed too." (fixed in pen Nov 20)
+- [x] S-14 v2 switcher now "Pixel Studio · Indie"; S-14 Studio quota already 312 / 10,000 (fixed Nov 20)
+- [x] S-10 v2 Needs reroute row PR now `—` (fixed Nov 20)
+- [x] S-09 v2 banner card now "2 reporters on Web" (fixed Nov 20)
+- [x] GitHub Issues card now "Create issues from tickets" in every S-13 frame (fixed Nov 20)
 - [ ] Domain mix: `saidloop.com` (MCP, badge link) vs `saidloop.dev` (email sender). Settle once the domain is decided
-- [ ] S-15 Change plan: Free/Indie list seats in the limit line, Studio/Business don't
+- [x] S-15 Change plan: Studio "· 5 seats", Business "· Unlimited seats" in pen and `lib/plans.ts` (fixed Nov 20)
 
 ## Brief penyesuaian kode ke desain
 
