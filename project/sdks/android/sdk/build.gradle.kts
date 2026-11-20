@@ -1,5 +1,6 @@
 plugins {
     id("com.android.library")
+    `maven-publish`
 }
 
 group = "ai.closeloop"
@@ -18,6 +19,22 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+    publishing {
+        singleVariant("release")
+    }
+}
+
+// `./gradlew :sdk:publishToMavenLocal` lets the Flutter and React Native wrappers
+// build against this SDK before it is on Maven Central.
+publishing {
+    publications {
+        create<MavenPublication>("release") {
+            groupId = "ai.closeloop"
+            artifactId = "sdk"
+            version = "0.1.0"
+            afterEvaluate { from(components["release"]) }
+        }
     }
 }
 

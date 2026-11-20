@@ -44,8 +44,24 @@ object Saidloop {
     internal var config: Config? = null
         private set
 
+    /** True after [init]. */
+    @JvmStatic
+    val isStarted: Boolean get() = config != null
+
     private var currentActivity = WeakReference<Activity>(null)
     private var shakeListener: SensorEventListener? = null
+
+    /**
+     * Extra areas to cover in screenshots, in window pixels. Used by the Flutter and
+     * React Native wrappers, whose widgets are not Android views.
+     */
+    @Volatile
+    internal var extraMasks: List<android.graphics.Rect> = emptyList()
+
+    @JvmStatic
+    fun setMaskRects(rects: List<android.graphics.Rect>) {
+        extraMasks = rects.toList()
+    }
 
     /** Pending screenshot for the report sheet, captured right before it opens. */
     internal var pendingScreenshot: ByteArray? = null
@@ -70,6 +86,16 @@ object Saidloop {
         app.registerActivityLifecycleCallbacks(Lifecycle)
         // Anything left over from a previous run goes out when online.
         if (queue(app).size() > 0) FlushWorker.schedule(app)
+    }
+
+    /**
+     * Tell the SDK which activity is on screen. Only needed when init runs after the
+     * activity resumed (Flutter, React Native); normal apps never call it.
+     */
+    @JvmStatic
+    fun attachActivity(activity: Activity) {
+        currentActivity = WeakReference(activity)
+        startShake(activity)
     }
 
     @JvmStatic

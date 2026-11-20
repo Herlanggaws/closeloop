@@ -20,6 +20,7 @@ enum ScreenCapture {
         guard let window = scenes.flatMap(\.windows).first(where: { $0.isKeyWindow }) else { return nil }
         var masks: [CGRect] = []
         collect(window, in: window, maskTextInputs: maskTextInputs, into: &masks)
+        masks += Saidloop.extraMasks
         let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
         let image = renderer.image { ctx in
             window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)

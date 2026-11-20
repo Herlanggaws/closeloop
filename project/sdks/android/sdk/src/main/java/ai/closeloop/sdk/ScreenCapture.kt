@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.PixelCopy
+import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
@@ -30,6 +31,7 @@ internal object ScreenCapture {
         if (root.width == 0 || root.height == 0) return done(null)
         val masks = mutableListOf<Rect>()
         collectMasks(root, maskTextInputs, masks)
+        masks += Saidloop.extraMasks
         val bitmap = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
 
         fun finish(ok: Boolean) {
@@ -45,7 +47,9 @@ internal object ScreenCapture {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 PixelCopy.request(activity.window, bitmap, { result ->
-                    finish(result == PixelCopy.SUCCESS)
+                    if (result != PixelCopy.SUCCESS) return@request finish(false)
+                    // SurfaceViews (Flutter, video, maps) are separate layers; copy each one in.
+                    copySurfaces(collectSurfaces(root), bitmap) { finish(true) }
                 }, Handler(Looper.getMainLooper()))
                 return
             } catch (_: IllegalArgumentException) {
@@ -53,6 +57,42 @@ internal object ScreenCapture {
             }
         }
         finish(false)
+    }
+
+    private fun collectSurfaces(view: View, out: MutableList<SurfaceView> = mutableListOf()): List<SurfaceView> {
+        if (view.visibility != View.VISIBLE) return out
+        if (view is SurfaceView && view.width > 0 && view.height > 0 && view.holder.surface?.isValid == true) out += view
+        if (view is ViewGroup) for (i in 0 until view.childCount) collectSurfaces(view.getChildAt(i), out)
+        return out
+    }
+
+    private fun copySurfaces(surfaces: List<SurfaceView>, target: Bitmap, done: () -> Unit) {
+        if (surfaces.isEmpty() || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return done()
+        val sv = surfaces.first()
+        val part = Bitmap.createBitmap(sv.width, sv.height, Bitmap.Config.ARGB_8888)
+        try {
+            PixelCopy.request(sv, part, { result ->
+                if (result == PixelCopy.SUCCESS) {
+                    val loc = IntArray(2)
+                    sv.getLocationInWindow(loc)
+                    // Surfaces sit behind the window; draw them under its pixels.
+                    val merged = Bitmap.createBitmap(target.width, target.height, Bitmap.Config.ARGB_8888)
+                    val c = Canvas(merged)
+                    c.drawBitmap(part, loc[0].toFloat(), loc[1].toFloat(), null)
+                    c.drawBitmap(target, 0f, 0f, null)
+                    Canvas(target).apply {
+                        drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
+                        drawBitmap(merged, 0f, 0f, null)
+                    }
+                    merged.recycle()
+                }
+                part.recycle()
+                copySurfaces(surfaces.drop(1), target, done)
+            }, Handler(Looper.getMainLooper()))
+        } catch (_: IllegalArgumentException) {
+            part.recycle()
+            copySurfaces(surfaces.drop(1), target, done)
+        }
     }
 
     private fun collectMasks(view: View, maskTextInputs: Boolean, out: MutableList<Rect>) {

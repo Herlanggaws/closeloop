@@ -1,5 +1,7 @@
 #if canImport(UIKit)
-import SaidloopCore
+#if canImport(SaidloopCore)
+import SaidloopCore // SwiftPM: separate module; CocoaPods: same module
+#endif
 import UIKit
 
 /// S-22 report sheet: type, message, masked screenshot, Send. Offline shows the queued state.

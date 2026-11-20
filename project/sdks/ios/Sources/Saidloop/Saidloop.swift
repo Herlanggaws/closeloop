@@ -1,7 +1,9 @@
 #if canImport(UIKit)
 import CoreMotion
 import Network
-import SaidloopCore
+#if canImport(SaidloopCore)
+import SaidloopCore // SwiftPM: separate module; CocoaPods: same module
+#endif
 import UIKit
 
 /// Saidloop iOS SDK.
@@ -31,6 +33,14 @@ public enum Saidloop {
     static var shake: ShakeDetector?
     static let pathMonitor = NWPathMonitor()
     static var lastScreenName: String?
+
+    /// Extra areas to cover in screenshots, in window points. Used by the Flutter and
+    /// React Native wrappers, whose widgets are not UIViews.
+    static var extraMasks: [CGRect] = []
+
+    public static func setMaskRects(_ rects: [CGRect]) {
+        extraMasks = rects
+    }
 
     static var queue: ReportQueue = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
