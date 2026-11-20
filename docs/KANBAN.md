@@ -54,7 +54,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-17 Self-host license | `/app/settings/self-host` | **UI only** route redirects to inbox; stays hidden until M6 |
 | S-18…S-20 Widget UX | `/preview/widget/*` + widget package | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet |
 | S-21 Fixed banner | `/preview/widget/fixed` + widget package | **Wired** ingest updates → banner; identify refetch |
-| S-22 Mobile report sheet | `/preview/widget/mobile` + Android SDK | **Partial** native sheet + offline state live on Android; iOS todo |
+| S-22 Mobile report sheet | `/preview/widget/mobile` + Android/iOS SDK | **Wired** native sheet + offline state on Android and iOS; drawing on the screenshot todo |
 | S-23 / S-27 Emails | `/preview/email/*` | **Wired** S-23 fixed, waitlist confirmation, S-27 vote verify + released-to-voters |
 | S-24…S-26 Public board | `/board/[slug]` | **Wired** list/detail/roadmap + votes/comments + suggest an idea |
 | S-28 Join Waitlist | `/` modal + `/preview/waitlist` | **Wired** enter / invalid / joined / already + resend; `?join=1` |
@@ -94,7 +94,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 
 #### M2 · Mobile (F3, F7) + Multi-repo routing
 - [x] **F3** Android Kotlin SDK (shake / `show()`, offline queue, masking) — `project/sdks/android` (Nov 20). Dites di emulator API 33: lapor online + offline queue terkirim otomatis, view `closeloopMask` ketutup di screenshot. Belum: publish ke Maven Central, coret-coret di screenshot, shake belum dites di HP asli (logika shake dites unit)
-- [ ] **F3** iOS Swift Package
+- [x] **F3** iOS Swift Package — `project/sdks/ios` (Nov 20). Dites di Simulator iPhone 16 (iOS 18.4): lapor masuk ke API lokal, screenshot keupload dengan view `closeloopMask` ketutup, context `screen_name` benar; core 8/8 unit test. Belum: offline belum dites di Simulator (queue dites unit), coret-coret di screenshot, repo rilis SPM terpisah
 - [ ] **F3** Dogfood on Bear Budget KMP
 - [ ] **F7** Flutter package (pub.dev)
 - [ ] **F7** React Native + Expo config plugin

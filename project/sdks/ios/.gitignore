@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+DerivedData/
+Example/build/
+Example/SaidloopExample.xcodeproj/xcuserdata/
+Example/SaidloopExample.xcodeproj/project.xcworkspace/

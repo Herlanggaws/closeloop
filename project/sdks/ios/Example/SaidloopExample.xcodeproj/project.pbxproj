@@ -1,0 +1,60 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+		A10000000000000000000001 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* App.swift */; };
+		A10000000000000000000003 /* Saidloop in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000004 /* Saidloop */; };
+		A10000000000000000000002 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000006 /* SaidloopExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SaidloopExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000007 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003 /* Saidloop in Frameworks */,); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000008 = {isa = PBXGroup; children = (A10000000000000000000009 /* SaidloopExample */, A1000000000000000000000A /* Products */,); sourceTree = "<group>"; };
+		A10000000000000000000009 /* SaidloopExample */ = {isa = PBXGroup; children = (A10000000000000000000002 /* App.swift */, A10000000000000000000005 /* Info.plist */,); path = SaidloopExample; sourceTree = "<group>"; };
+		A1000000000000000000000A /* Products */ = {isa = PBXGroup; children = (A10000000000000000000006 /* SaidloopExample.app */,); name = Products; sourceTree = "<group>"; };
+		A1000000000000000000000B /* SaidloopExample */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1000000000000000000000C;
+			buildPhases = (A1000000000000000000000D /* Sources */, A10000000000000000000007 /* Frameworks */,);
+			buildRules = ();
+			dependencies = ();
+			name = SaidloopExample;
+			packageProductDependencies = (A10000000000000000000004 /* Saidloop */,);
+			productName = SaidloopExample;
+			productReference = A10000000000000000000006;
+			productType = "com.apple.product-type.application";
+		};
+		A1000000000000000000000D /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* App.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		A1000000000000000000000E /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = A1000000000000000000000F;
+			compatibilityVersion = "Xcode 14.0";
+			mainGroup = A10000000000000000000008;
+			packageReferences = (A10000000000000000000010 /* XCLocalSwiftPackageReference ".." */,);
+			productRefGroup = A1000000000000000000000A;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (A1000000000000000000000B,);
+		};
+		A10000000000000000000010 /* XCLocalSwiftPackageReference ".." */ = {isa = XCLocalSwiftPackageReference; relativePath = ..; };
+		A10000000000000000000004 /* Saidloop */ = {isa = XCSwiftPackageProductDependency; package = A10000000000000000000010; productName = Saidloop; };
+		A10000000000000000000011 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+			CODE_SIGNING_ALLOWED = NO;
+			GENERATE_INFOPLIST_FILE = NO;
+			INFOPLIST_FILE = SaidloopExample/Info.plist;
+			IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+			PRODUCT_BUNDLE_IDENTIFIER = ai.closeloop.example;
+			PRODUCT_NAME = "$(TARGET_NAME)";
+			SDKROOT = iphoneos;
+			SWIFT_VERSION = 5.0;
+			TARGETED_DEVICE_FAMILY = 1;
+			SAIDLOOP_KEY = pk_demo;
+		}; name = Debug; };
+		A10000000000000000000012 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos;}; name = Debug; };
+		A1000000000000000000000C = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000011,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+		A1000000000000000000000F = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000012,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+	};
+	rootObject = A1000000000000000000000E;
+}
