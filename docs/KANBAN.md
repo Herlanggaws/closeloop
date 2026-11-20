@@ -97,7 +97,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [x] **F3** iOS Swift Package — `project/sdks/ios` (Nov 20). Dites di Simulator iPhone 16 (iOS 18.4): lapor masuk ke API lokal, screenshot keupload dengan view `closeloopMask` ketutup, context `screen_name` benar; core 8/8 unit test. Belum: offline belum dites di Simulator (queue dites unit), coret-coret di screenshot, repo rilis SPM terpisah
 - [ ] **F3** Dogfood on Bear Budget KMP
 - [x] **F7** Flutter package — `project/sdks/flutter` (Nov 20). Dites di emulator Android dan Simulator iOS: lapor masuk, `SaidloopMask` ketutup di screenshot. 4/4 test Dart. Belum: publish ke pub.dev (butuh SDK native ke Maven Central/CocoaPods dulu)
-- [ ] **F7** React Native + Expo config plugin
+- [x] **F7** React Native + Expo config plugin — `project/sdks/react-native` (Nov 20). Dites di emulator Android (RN 0.76): lapor + mask + antrean offline jalan; JS 5/5. Belum: alur lapor di iOS belum dites (build + launch udah), plugin Expo belum dites di app Expo, publish ke npm
 - [ ] **Multi-repo** see section below (R1–R3 ship with M2)
 
 #### M3 · Tool tim & publik (F8, F9, F11)

@@ -7,7 +7,7 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-20",
-    title: "Android, iOS and Flutter SDKs",
+    title: "Android, iOS, Flutter and React Native SDKs",
     body: "Native report sheets for Android and iOS, plus a Flutter package that wraps them: users shake the phone or you call Saidloop.show(), the current screen is attached with sensitive views hidden, and reports made offline are sent as soon as the connection returns.",
   },
   {

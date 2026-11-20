@@ -8,7 +8,7 @@ version = "0.1.0"
 
 android {
     namespace = "ai.closeloop.sdk"
-    compileSdk = 36
+    compileSdk = 35
     defaultConfig {
         minSdk = 24
         consumerProguardFiles("consumer-rules.pro")
@@ -41,4 +41,13 @@ publishing {
 dependencies {
     implementation("androidx.work:work-runtime:2.9.0")
     testImplementation("junit:junit:4.13.2")
+}
+
+// Apps on older Kotlin (React Native 0.76 ships 1.9) must be able to read this library.
+kotlin {
+    coreLibrariesVersion = "1.9.24"
+    compilerOptions {
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+    }
 }
