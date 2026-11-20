@@ -1515,6 +1515,9 @@ func (s *Server) ingestConfig(c *gin.Context) {
 		"sensitive_selectors": selectors,
 		"mask_text_inputs":    p.MaskTextInputs,
 		"replay_enabled":      application.ReplayAllowed(plan),
+		// D-20: "Powered by Saidloop" on Free only; the widget adds utm_medium per surface.
+		"badge":     application.BadgeShown(plan),
+		"badge_url": ternary(application.BadgeShown(plan), application.BadgeLink(s.Cfg.WebURL, p.ID), ""),
 	})
 }
 

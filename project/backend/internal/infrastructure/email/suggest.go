@@ -12,6 +12,8 @@ type SuggestVerifyMail struct {
 	IdeaTitle    string
 	ConfirmURL   string
 	GreetingName string
+	// BadgeURL shows "Powered by Saidloop" in the footer; empty on paid plans (D-20).
+	BadgeURL string
 }
 
 func SuggestVerifySubject(projectName string) string {
@@ -25,6 +27,10 @@ func SuggestVerifySubject(projectName string) string {
 }
 
 func RenderSuggestVerifyHTML(m SuggestVerifyMail) string {
+	return applyBadge(renderSuggestVerifyHTMLRaw(m), m.BadgeURL)
+}
+
+func renderSuggestVerifyHTMLRaw(m SuggestVerifyMail) string {
 	project := html.EscapeString(fallback(m.ProjectName, "the project"))
 	idea := html.EscapeString(fallback(m.IdeaTitle, "your idea"))
 	url := html.EscapeString(m.ConfirmURL)

@@ -3,6 +3,8 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -308,5 +310,46 @@ func TestRepos_LegacyGitHubRepoBecomesFallback(t *testing.T) {
 	}
 	if len(repos) != 1 || repos[0].FullName != "bear/legacy" || !repos[0].IsFallback || repos[0].DefaultBranch != "trunk" {
 		t.Fatalf("repos = %+v", repos)
+	}
+}
+
+// D-11: migration 023 turns an existing github_app repo_full_name into a fallback
+// repo and points that project's tickets at it. The Up section is safe to re-run.
+func TestRepos_Migration023DataStep(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	ticket, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{"type": "bug", "message": "old ticket", "platform": "ios"})
+	// Simulate pre-023 data: the config holds the repo, project_repos is empty.
+	if _, err := h.db.Exec(`
+		INSERT INTO integrations(project_id, provider, config)
+		VALUES ($1, 'github_app', '{"installation_id": 42, "account_login": "bear", "repo_full_name": "bear/legacy", "default_branch": "trunk"}')`,
+		seed.ProjectID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.db.Exec(`DELETE FROM project_repos WHERE project_id=$1`, seed.ProjectID); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join("..", "..", "..", "db", "migrations", "023_project_repos.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	up := strings.ReplaceAll(strings.Split(string(body), "-- +goose Down")[0], "-- +goose Up", "")
+	if _, err := h.db.Exec(up); err != nil {
+		t.Fatalf("migration 023 up: %v", err)
+	}
+	repos, err := h.store.ListProjectRepos(context.Background(), seed.ProjectID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repos) != 1 || repos[0].FullName != "bear/legacy" || !repos[0].IsFallback ||
+		repos[0].InstallationID != 42 || repos[0].DefaultBranch != "trunk" {
+		t.Fatalf("repos = %+v", repos)
+	}
+	var repoID string
+	if err := h.db.QueryRow(`SELECT COALESCE(repo_id::text,'') FROM tickets WHERE id=$1`, ticket).Scan(&repoID); err != nil {
+		t.Fatal(err)
+	}
+	if repoID != repos[0].ID {
+		t.Fatalf("old ticket should point at the fallback, got %q", repoID)
 	}
 }

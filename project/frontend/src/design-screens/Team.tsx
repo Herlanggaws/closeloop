@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
-import { api } from "@/lib/api";
+import { ApiRequestError, api } from "@/lib/api";
+import { planAtLeast } from "@/lib/plans";
+import { memberSummary, seatLimitBanner, seatSubtitle } from "@/lib/seats";
 import {
   avatarTone,
   drainInviteDraft,
@@ -13,9 +15,7 @@ import {
 } from "@/lib/inviteEmails";
 import { displayName, initials } from "@/lib/tickets";
 import {
-  formatLimit,
   formatUsage,
-  planLabel,
   type MeResponse,
   type OrgUsage,
 } from "@/lib/usage";
@@ -56,6 +56,7 @@ export function Team() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [projectName, setProjectName] = useState("Project");
   const [members, setMembers] = useState<Member[]>([]);
+  const [seatRefused, setSeatRefused] = useState(false);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [usage, setUsage] = useState<OrgUsage | null>(null);
   const [inviteEmails, setInviteEmails] = useState<string[]>([]);
@@ -163,6 +164,10 @@ export function Team() {
       setInviteNotice(`Invite sent to ${list.length} address${list.length === 1 ? "" : "es"}`);
       await reload();
     } catch (err) {
+      if (err instanceof ApiRequestError && err.code === "SEAT_LIMIT") {
+        setSeatRefused(true);
+        return;
+      }
       setInviteError(err instanceof Error ? err.message : "Could not send invites");
     } finally {
       setSaving(false);
@@ -250,8 +255,12 @@ export function Team() {
     ...members.map((member) => ({ kind: "member" as const, member })),
     ...invites.map((invite) => ({ kind: "invite" as const, invite })),
   ];
-  const seatSubtitle = `${planLabel(plan)} plan · ${seats.used} of ${formatLimit(seats.limit)} seats used`;
-  const memberSummary = `${members.length} active · ${invites.length} pending`;
+  const subtitle = seatSubtitle(plan, seats);
+  const summary = memberSummary(plan, members.length, invites.length, seats);
+  // Someone other than the current user, named in the S-14 v2 seat banner.
+  const otherMember = members.find((m) => m.email !== me?.user.email);
+  const banner = seatLimitBanner(plan, seats, otherMember ? otherMember.name || displayName(otherMember.email) : undefined);
+  const showStudioUpsell = !planAtLeast(plan, "studio");
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -272,7 +281,7 @@ export function Team() {
             <h1 className="font-ds-sans text-2xl font-medium tracking-[-0.4px] text-[#171717]">
               Team
             </h1>
-            <p className="font-ds-ui text-[13.5px] text-[#737373]">{seatSubtitle}</p>
+            <p className="font-ds-ui text-[13.5px] text-[#737373]">{subtitle}</p>
           </div>
         </header>
 
@@ -285,16 +294,22 @@ export function Team() {
 
               {isOwner && (
                 <section className="flex flex-wrap items-center gap-2 rounded-xl border border-[#17171714] bg-[#FAFAFA] p-4">
-                  {atCap ? (
-                    <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <p className="font-ds-ui text-[13px] text-[#171717]">
-                        Seat limit reached ({formatUsage(seats)}).
-                      </p>
+                  {atCap || seatRefused ? (
+                    <div
+                      data-pencil-name="Seat limit"
+                      className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-[#DA314A33] bg-[#FEF2F2] px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-ds-ui text-[13px] font-semibold text-[#991B1B]">{banner.title}</p>
+                        <p className="font-ds-ui text-[12.5px] text-[#991B1B]">
+                          {showStudioUpsell ? banner.body : `Seat limit reached (${formatUsage(seats)}).`}
+                        </p>
+                      </div>
                       <Link
                         href="/app/settings/billing"
-                        className="font-ds-ui text-[13px] font-medium text-[#171717] underline"
+                        className="inline-flex h-8 shrink-0 items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white no-underline"
                       >
-                        Upgrade on Billing
+                        {showStudioUpsell ? banner.cta : "Upgrade on Billing"}
                       </Link>
                     </div>
                   ) : (
@@ -408,7 +423,7 @@ export function Team() {
               <section className="overflow-hidden rounded-xl border border-[#17171714] bg-white">
                 <div className="flex items-center justify-between gap-3 border-b border-[#17171714] px-[18px] py-3.5">
                   <h2 className="font-ds-sans text-[13px] font-semibold text-[#171717]">Members</h2>
-                  <span className="font-ds-ui text-xs text-[#A3A3A3]">{memberSummary}</span>
+                  <span className="font-ds-ui text-xs text-[#A3A3A3]">{summary}</span>
                 </div>
                 <div className="flex flex-col">
                   {roster.length === 0 ? (

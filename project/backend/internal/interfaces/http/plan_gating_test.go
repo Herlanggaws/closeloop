@@ -241,3 +241,22 @@ func TestTicketDetailListsReporters(t *testing.T) {
 		t.Fatalf("by_platform = %v", by)
 	}
 }
+
+// D-20: the widget config tells Free projects to show the badge, with a UTM link.
+func TestPlan_WidgetBadgeFreeOnly(t *testing.T) {
+	h := newReportHarness(t)
+	free := h.seedUserProject("free")
+	indie := h.seedUserProject("indie")
+	code, body := h.do(http.MethodGet, "/v1/ingest/config", nil, h.keyHeaders(free.PublicKey))
+	if code != 200 || body["badge"] != true {
+		t.Fatalf("free should show badge: %d %v", code, body)
+	}
+	url, _ := body["badge_url"].(string)
+	if !strings.Contains(url, "utm_source=badge") || !strings.Contains(url, "utm_campaign="+free.ProjectID) {
+		t.Fatalf("badge_url = %q", url)
+	}
+	code, body = h.do(http.MethodGet, "/v1/ingest/config", nil, h.keyHeaders(indie.PublicKey))
+	if code != 200 || body["badge"] != false || body["badge_url"] != "" {
+		t.Fatalf("indie should hide badge: %d %v", code, body)
+	}
+}
