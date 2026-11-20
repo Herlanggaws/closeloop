@@ -6,6 +6,11 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-11-20",
+    title: "Customize the Report button",
+    body: "Project settings now let you rename the Report button and move it to the bottom left, or hide it and open the form with Saidloop.show(). On Studio you can also pick the button's accent colour.",
+  },
+  {
     date: "2026-11-19",
     title: "“Powered by Saidloop” only on Free",
     body: "The widget and the emails your reporters and voters get now show “Powered by Saidloop” only on the Free plan. On Indie and above it is gone everywhere, and it disappears within a minute of upgrading.",

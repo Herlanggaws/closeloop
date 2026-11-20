@@ -67,6 +67,7 @@ func (s *Server) Router() *gin.Engine {
 		api.GET("/projects/:id", s.authRequired(), s.getProject)
 		api.PATCH("/projects/:id", s.authRequired(), s.patchProject)
 		api.DELETE("/projects/:id", s.authRequired(), s.deleteProject)
+		api.PATCH("/projects/:id/widget", s.authRequired(), s.patchProjectWidget)
 		api.GET("/projects/:id/mcp-tokens", s.authRequired(), s.listMCPTokens)
 		api.POST("/projects/:id/mcp-tokens", s.authRequired(), s.createMCPToken)
 		api.DELETE("/projects/:id/mcp-tokens/:tokenId", s.authRequired(), s.deleteMCPToken)
@@ -785,7 +786,27 @@ func (s *Server) getProject(c *gin.Context) {
 		return
 	}
 	key, _ := s.Store.PublicKeyForProject(c.Request.Context(), id)
-	c.JSON(200, gin.H{"project": p, "public_key": key})
+	widget, _ := s.Store.WidgetSettings(c.Request.Context(), id)
+	c.JSON(200, gin.H{"project": p, "public_key": key, "widget": widget})
+}
+
+// patchProjectWidget saves the S-12 Widget section; a custom accent needs Studio.
+func (s *Server) patchProjectWidget(c *gin.Context) {
+	id := c.Param("id")
+	if !s.requireTicketWrite(c, id) {
+		return
+	}
+	var body application.WidgetSettingsInput
+	if err := c.BindJSON(&body); err != nil {
+		writeErr(c, 400, "INVALID_INPUT", "bad json")
+		return
+	}
+	widget, err := s.Store.UpdateWidgetSettings(c.Request.Context(), id, body)
+	if err != nil {
+		s.mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"widget": widget})
 }
 
 func (s *Server) patchProject(c *gin.Context) {
@@ -1478,10 +1499,16 @@ func (s *Server) ingestConfig(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	widget, err := s.Store.EffectiveWidgetSettings(c.Request.Context(), p.ID, plan)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
 	c.JSON(200, gin.H{
 		"sensitive_selectors": selectors,
 		"mask_text_inputs":    p.MaskTextInputs,
 		"replay_enabled":      application.ReplayAllowed(plan),
+		"widget":              widget,
 		// D-20: "Powered by Saidloop" on Free only; the widget adds utm_medium per surface.
 		"badge":     application.BadgeShown(plan),
 		"badge_url": ternary(application.BadgeShown(plan), application.BadgeLink(s.Cfg.WebURL, p.ID), ""),

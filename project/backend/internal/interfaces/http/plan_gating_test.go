@@ -260,3 +260,45 @@ func TestPlan_WidgetBadgeFreeOnly(t *testing.T) {
 		t.Fatalf("indie should hide badge: %d %v", code, body)
 	}
 }
+
+// S-12 Widget: label and position on every plan; custom accent is Studio branding.
+func TestWidgetSettingsBranding(t *testing.T) {
+	h := newReportHarness(t)
+	free := h.seedUserProject("free")
+	studio := h.seedUserProject("studio")
+	path := func(p string) string { return "/api/projects/" + p + "/widget" }
+
+	code, body := h.do(http.MethodPatch, path(free.ProjectID), map[string]any{
+		"label": "Send feedback", "position": "bottom_left",
+	}, h.authHeaders(free.AccessToken))
+	if code != 200 {
+		t.Fatalf("free label/position: %d %v", code, body)
+	}
+	code, body = h.do(http.MethodPatch, path(free.ProjectID), map[string]any{"accent": "#266DF0"}, h.authHeaders(free.AccessToken))
+	if code != 402 || errCode(body) != "PREMIUM_REQUIRED" || errField(body, "required_plan") != "studio" {
+		t.Fatalf("free accent should need Studio: %d %v", code, body)
+	}
+	code, body = h.do(http.MethodPatch, path(free.ProjectID), map[string]any{"position": "top"}, h.authHeaders(free.AccessToken))
+	if code != 400 {
+		t.Fatalf("bad position should 400: %d %v", code, body)
+	}
+
+	code, body = h.do(http.MethodPatch, path(studio.ProjectID), map[string]any{"accent": "#266df0"}, h.authHeaders(studio.AccessToken))
+	if code != 200 || body["widget"].(map[string]any)["accent"] != "#266DF0" {
+		t.Fatalf("studio accent: %d %v", code, body)
+	}
+
+	code, cfg := h.do(http.MethodGet, "/v1/ingest/config", nil, h.keyHeaders(free.PublicKey))
+	w := cfg["widget"].(map[string]any)
+	if code != 200 || w["label"] != "Send feedback" || w["position"] != "bottom_left" || w["accent"] != "#171717" {
+		t.Fatalf("free widget config: %v", cfg)
+	}
+	// Downgrade keeps the saved accent but the widget falls back to the default.
+	if _, err := h.db.Exec(`UPDATE organizations SET plan='indie' WHERE id=$1`, studio.OrgID); err != nil {
+		t.Fatal(err)
+	}
+	_, cfg = h.do(http.MethodGet, "/v1/ingest/config", nil, h.keyHeaders(studio.PublicKey))
+	if cfg["widget"].(map[string]any)["accent"] != "#171717" {
+		t.Fatalf("downgraded accent should fall back: %v", cfg["widget"])
+	}
+}

@@ -542,6 +542,35 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(page).toHaveURL(/\/app\/settings\/billing/);
   });
 
+  // S-12 Widget (nZUSl): label + position on every plan, accent is Studio branding.
+  test("R-UI-21 Widget label, position and Studio accent", async ({ page, request }) => {
+    const session = await seedSession(request);
+    await applySession(page, session);
+    await page.goto("/app/settings");
+    await page.locator('input[maxlength="40"]').fill("Send feedback");
+    await page.getByRole("radio", { name: "Bottom left" }).click();
+    await expect(page.getByRole("radio", { name: "Bottom left" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("button", { name: "Accent #266DF0" })).toBeDisabled();
+    await expect(page.getByText("Custom branding on Studio")).toBeVisible();
+
+    const cfg = await (
+      await request.get(`${API_URL}/v1/ingest/config`, { headers: { "X-Closeloop-Key": session.publicKey } })
+    ).json();
+    expect(cfg.widget.label).toBe("Send feedback");
+    expect(cfg.widget.position).toBe("bottom_left");
+
+    await page.goto(
+      `/demo.html?key=${encodeURIComponent(session.publicKey)}&api=${encodeURIComponent(API_URL)}`,
+    );
+    await expect(page.getByRole("button", { name: "Send feedback" })).toBeVisible();
+
+    const studio = await seedSession(request, { plan: "studio" });
+    await applySession(page, studio);
+    await page.goto("/app/settings");
+    await page.getByRole("button", { name: "Accent #266DF0" }).click();
+    await expect(page.getByRole("button", { name: "Accent #266DF0" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("R-UI-17 Inbox coach-mark tour first visit", async ({ page, request }) => {
     const session = await seedSession(request);
     const message = `Tour report ${Date.now()}`;
