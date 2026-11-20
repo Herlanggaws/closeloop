@@ -19,8 +19,9 @@ function withSaidloop(config) {
     return c;
   });
   config = withPodfileProperties(config, (c) => {
-    const current = parseFloat(c.modResults["ios.deploymentTarget"] ?? "0");
-    if (!(current >= 15)) c.modResults["ios.deploymentTarget"] = "15.0";
+    // Only raise an explicit lower target; unset means Expo's default, which is already >= 15.
+    const raw = c.modResults["ios.deploymentTarget"];
+    if (raw != null && parseFloat(raw) < 15) c.modResults["ios.deploymentTarget"] = "15.0";
     return c;
   });
   return config;

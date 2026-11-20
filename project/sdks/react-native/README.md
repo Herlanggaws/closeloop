@@ -20,4 +20,4 @@ Expo: add `"plugins": ["@closeloop/react-native"]` (sets Android minSdk 24 and i
 - iOS: in the app Podfile, `pod 'Saidloop', :path => '<repo>/project/sdks/ios'`.
 - `npm test` runs the JS tests.
 
-Tested on an Android emulator with a React Native 0.76 app (bridgeless): report sent, `SaidloopMask` covered, offline queue flushed. iOS builds and launches but the report flow was not tested yet.
+Tested with a React Native 0.76 app (bridgeless) on the Android emulator and iOS simulator: report sent, `SaidloopMask` covered, offline queue flushed on Android. The Expo plugin was checked with `expo prebuild`.
