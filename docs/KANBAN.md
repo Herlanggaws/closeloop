@@ -37,7 +37,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | --- | --- | --- |
 | S-03 Create project | `/app/onboarding` | **Wired** name + platforms → POST /api/projects → install |
 | S-04 Install widget | `/app/onboarding/install` | **Wired** public key + snippet + demo + first-report poll. npm tab hidden until the package is publishable |
-| S-04b Install status | `/app/install` | **Wired** two-column guide, snippet, first-report, demo link |
+| S-04b Install status | `/app/install` | **Wired** two-column guide, snippet, first-report, demo link. Tabs per project platform; mobile projects also get Flutter and React Native tabs (Nov 20), and every SDK snippet passes the API host. Snippets point at packages that are not published yet |
 | S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** token + scopes + Cursor/Claude copy + test connection. Footer "Every plan includes all MCP tools, mark_fixed too." (D-01) |
 | S-05b MCP status | `/app/mcp` | **Wired** status, multi-client install, token list, revoke, generate |
 | S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status/platform filters + empty + test report; multi-select → S-08. Empty checklist 5 steps by plan (D-02). No repo filter yet (Multi-repo) |

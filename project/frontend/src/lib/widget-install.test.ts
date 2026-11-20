@@ -15,7 +15,8 @@ describe("methodsForPlatforms", () => {
   });
 
   it("includes native methods for selected platforms", () => {
-    assert.deepEqual(methodsForPlatforms(["android", "ios"]), ["android", "ios"]);
+    assert.deepEqual(methodsForPlatforms(["android", "ios"]), ["android", "ios", "flutter", "react-native"]);
+    assert.deepEqual(methodsForPlatforms(["web", "ios"]), ["script", "ios", "flutter", "react-native"]);
   });
 
   it("defaults to script when empty", () => {
@@ -80,5 +81,14 @@ describe("buildSnippet", () => {
     const snippet = buildSnippet("web", "pk_legacy");
     assert.match(snippet, /<script src=/);
     assert.match(snippet, /data-key="pk_legacy"/);
+  });
+});
+
+describe("mobile snippets pass the API host", () => {
+  it("fills api for every native SDK", async () => {
+    const { buildSnippet } = await import("./widget-install.ts");
+    for (const p of ["android", "ios", "flutter", "react-native"]) {
+      assert.ok(buildSnippet(p, "pk_test").includes("api"), p);
+    }
   });
 });
