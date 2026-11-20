@@ -40,14 +40,14 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-04b Install status | `/app/install` | **Wired** two-column guide, snippet, first-report, demo link. Tabs per project platform; mobile projects also get Flutter and React Native tabs (Nov 20), and every SDK snippet passes the API host. Snippets point at packages that are not published yet |
 | S-05 Connect MCP | `/app/onboarding/mcp` | **Wired** token + scopes + Cursor/Claude copy + test connection. Footer "Every plan includes all MCP tools, mark_fixed too." (D-01) |
 | S-05b MCP status | `/app/mcp` | **Wired** status, multi-client install, token list, revoke, generate |
-| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status/platform filters + empty + test report; multi-select → S-08. Empty checklist 5 steps by plan (D-02). No repo filter yet (Multi-repo) |
-| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, Reporters panel (name/email/platform), notes, activity oldest → newest, Sentry/PostHog links, header: issue button by plan + Run auto PR + Mark fixed (D-03). No repo field yet (Multi-repo) |
+| S-06 Inbox (+ empty) | `/app/inbox`, `/app/inbox/empty` | **Wired** list + type/status/platform filters + empty + test report; multi-select → S-08. Empty checklist 5 steps by plan (D-02). Repo filter + column (D-15) |
+| S-07 Report detail | `/app/tickets/[id]` | **Wired** screenshot, context, status, Reporters panel (name/email/platform), notes, activity oldest → newest, Sentry/PostHog links, header: issue button by plan + Run auto PR + Mark fixed (D-03). Repo property + reroute picker + "No repo yet" (D-16) |
 | S-08 Merge duplicates | `/app/inbox/merge` | **Wired** pick parent + merge API |
 | S-09 Mark fixed + notify | `/app/tickets/[id]/fixed` | **Wired** release note + preview + Email/In-app toggles. No cross-platform warning yet (US-55) |
 | S-10 Auto PR runs | `/app/auto-pr` | **Wired** runs list + credits + single GitHub repo panel. Runner is a stub (opens a context PR) |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + vote counts + comment moderation + roadmap DnD |
 | S-12 Project settings | `/app/settings` | **Partial** name, platforms, notify kill switches, public key, mask text inputs, soft-delete live. Widget section live (Nov 20): button label + position (Bottom right / Bottom left / Hidden) on every plan, accent colour on Studio (`PATCH /api/projects/:id/widget`, migration `024`). Board custom domain still "Coming soon" |
-| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section (D-12) on branch `claude/project-thread-q7465g` |
+| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section live (D-12) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan (`SEAT_LIMIT`) |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage (Reports, Projects, Auto PR credits, Seats, Repos) + credit balance. Change plan: Free/Indie/Studio cards with limit line from `lib/plans.ts` (D-05). Plan change is manual (`PATCH /api/org/plan`, Business rejected until M6); "Manual until Subscribed" pill hides once `usage.subscribed` is true. Buy credits is a stub. No invoices list yet |
 | S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only. **Hidden until M6** (D-22) |
@@ -150,16 +150,16 @@ Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) 
 | P2 | Linear + Jira require Studio | **Done** same mechanism | US-69 |
 | P2 | Public board requires Indie | **Done** publishing an idea (`is_public: true`) needs Indie; unpublish always allowed; already-public ideas stay | US-69 |
 | P2 | Badge "Powered by Saidloop" only on Free | **Done** Nov 19 (D-20), Herlangga approved | US-65, US-66 |
-| P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts the single GitHub App repo until D-11) | US-68 |
+| P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts `project_repos`, D-11) | US-68 |
 | P3 | Indie seats: `MaxSeats: 3` → 1 | **Done** Nov 19, Herlangga picked 1 seat (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
 | UI | Billing Change plan cards with limit line | **Done** (D-05) | US-68 |
 | UI | Landing pricing cards | **Done** (D-06), 3 cards until M6 | US-68 |
 | UI | Remove "read-only / mark_fixed needs Indie" copy | **Done** (D-01, D-02) | US-60 |
 | TEST | Entitlement test per plan for every feature on a plan card | **Done** `TestIntegrationAndBoardGatingPerPlan` + `TestPlan_*` HTTP tests | US-69 |
 
-## PRD Multi-repo per Project (Nov 19) — built on branch, waiting for review
+## PRD Multi-repo per Project (Nov 19) — merged to dev Nov 20
 
-R1–R5 are built on branch `claude/project-thread-q7465g` (PR to dev, needs Herlangga's review before merge: it adds migration `023_project_repos.sql`). Until it merges, dev still stores one repo per project (`repo_full_name` in the `github_app` config). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR), and the GitHub App install flow still picks one repo first; extra repos are added from the Repositories section.
+R1–R5 merged to dev on Nov 20 (migration `023_project_repos.sql`; old `repo_full_name` becomes the fallback repo). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR), and the GitHub App install flow still picks one repo first; extra repos are added from the Repositories section.
 
 | ID | Item | Milestone | Story |
 | --- | --- | --- | --- |
@@ -211,7 +211,7 @@ Fase B · pricing di backend
 - [x] D-09 `MaxReposPerProject` + `usage.repos`
 - [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
 
-Fase C · multi-repo — dikerjain di branch `claude/project-thread-q7465g` (migrasi `023`), centang di sini berlaku setelah branch itu di-merge ke dev. Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri), connect GitHub App masih pilih 1 repo di awal.
+Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri), connect GitHub App masih pilih 1 repo di awal.
 - [x] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`. — `023_project_repos.sql` + migrasi repo lama jadi fallback
 - [x] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`). — S-13 Repositories section, counter, limit copy, read-access toggle
 - [x] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`). — modal Add repository + `PLATFORM_CONFLICT` / `REPO_LIMIT`
