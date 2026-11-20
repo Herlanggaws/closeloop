@@ -1,0 +1,2 @@
+-keep class ai.closeloop.sdk.Saidloop { *; }
+-keep class ai.closeloop.sdk.FlushWorker { *; }

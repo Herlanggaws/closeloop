@@ -7,6 +7,11 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-20",
+    title: "Android SDK",
+    body: "A native Android report sheet: users shake the phone or you call Saidloop.show(), the current screen is attached with sensitive views hidden, and reports made offline are sent as soon as the connection returns.",
+  },
+  {
+    date: "2026-11-20",
     title: "Customize the Report button",
     body: "Project settings now let you rename the Report button and move it to the bottom left, or hide it and open the form with Saidloop.show(). On Studio you can also pick the button's accent colour.",
   },

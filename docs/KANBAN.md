@@ -54,7 +54,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-17 Self-host license | `/app/settings/self-host` | **UI only** route redirects to inbox; stays hidden until M6 |
 | S-18…S-20 Widget UX | `/preview/widget/*` + widget package | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet |
 | S-21 Fixed banner | `/preview/widget/fixed` + widget package | **Wired** ingest updates → banner; identify refetch |
-| S-22 Mobile report sheet | `/preview/widget/mobile` | **UI only** needs F3 SDK |
+| S-22 Mobile report sheet | `/preview/widget/mobile` + Android SDK | **Partial** native sheet + offline state live on Android; iOS todo |
 | S-23 / S-27 Emails | `/preview/email/*` | **Wired** S-23 fixed, waitlist confirmation, S-27 vote verify + released-to-voters |
 | S-24…S-26 Public board | `/board/[slug]` | **Wired** list/detail/roadmap + votes/comments + suggest an idea |
 | S-28 Join Waitlist | `/` modal + `/preview/waitlist` | **Wired** enter / invalid / joined / already + resend; `?join=1` |
@@ -93,7 +93,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [x] Dogfood: Bear Budget Web loop verified via demo host and R-UI-01
 
 #### M2 · Mobile (F3, F7) + Multi-repo routing
-- [ ] **F3** Android Kotlin SDK (shake / `show()`, offline queue, masking)
+- [x] **F3** Android Kotlin SDK (shake / `show()`, offline queue, masking) — `project/sdks/android` (Nov 20). Dites di emulator API 33: lapor online + offline queue terkirim otomatis, view `closeloopMask` ketutup di screenshot. Belum: publish ke Maven Central, coret-coret di screenshot, shake belum dites di HP asli (logika shake dites unit)
 - [ ] **F3** iOS Swift Package
 - [ ] **F3** Dogfood on Bear Budget KMP
 - [ ] **F7** Flutter package (pub.dev)
