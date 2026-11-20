@@ -204,12 +204,8 @@ export function Integrations() {
     "ticket.fixed": true,
   });
   const [githubInstallationId, setGithubInstallationId] = useState("");
-  const [githubRepo, setGithubRepo] = useState("");
-  const [githubBranch, setGithubBranch] = useState("main");
   const [githubAccount, setGithubAccount] = useState("");
-  const [githubRepos, setGithubRepos] = useState<
-    { full_name: string; default_branch: string }[]
-  >([]);
+  const [repoAddRequest, setRepoAddRequest] = useState(0);
   const [linearAPIKey, setLinearAPIKey] = useState("");
   const [linearTeamID, setLinearTeamID] = useState("");
   const [jiraEmail, setJiraEmail] = useState("");
@@ -315,8 +311,6 @@ export function Integrations() {
 
   function applyGitHubConfig(config: Record<string, string>) {
     setGithubInstallationId(String(config.installation_id || ""));
-    setGithubRepo(config.repo_full_name || "");
-    setGithubBranch(config.default_branch || "main");
     setGithubAccount(config.account_login || "");
   }
 
@@ -329,11 +323,12 @@ export function Integrations() {
         method: "POST",
         body: JSON.stringify({ installation_id: installationId }),
       });
-      applyGitHubConfig(asConfig(res.integration.config));
+      const config = asConfig(res.integration.config);
+      applyGitHubConfig(config);
       // Callback id is authoritative; config may still omit it if JSON types drift.
       setGithubInstallationId(String(installationId));
-      setConfigureModal("github_app");
-      await loadGitHubRepos(project, installationId);
+      // A single-repo install is added for you; otherwise pick repos and routes next.
+      if (!config.repo_full_name) setRepoAddRequest((n) => n + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not connect GitHub App");
     } finally {
@@ -341,18 +336,6 @@ export function Integrations() {
     }
   }
 
-  async function loadGitHubRepos(project: string, installationId?: number) {
-    const q =
-      installationId && installationId > 0 ? `?installation_id=${installationId}` : "";
-    try {
-      const res = await api<{
-        repos: { full_name: string; default_branch: string }[];
-      }>(`/api/projects/${project}/integrations/github_app/repos${q}`);
-      setGithubRepos(res.repos || []);
-    } catch {
-      setGithubRepos([]);
-    }
-  }
 
   async function connectGitHubApp() {
     if (!projectId) return;
@@ -425,10 +408,7 @@ export function Integrations() {
         });
       } else if (provider === "github_app") {
         setGithubInstallationId("");
-        setGithubRepo("");
-        setGithubBranch("main");
         setGithubAccount("");
-        setGithubRepos([]);
       } else if (provider === "linear") {
         setLinearAPIKey("");
         setLinearTeamID("");
@@ -509,7 +489,6 @@ export function Integrations() {
         void connectGitHubApp();
         return;
       }
-      void loadGitHubRepos(projectId, Number(githubInstallationId) || undefined);
       setConfigureModal("github_app");
       return;
     }
@@ -575,6 +554,7 @@ export function Integrations() {
                 projectName={projectName}
                 installationId={Number(githubInstallationId) || 0}
                 accountLogin={githubAccount}
+                addRequest={repoAddRequest}
               />
 
               <IntegrationGroup
@@ -1034,7 +1014,7 @@ export function Integrations() {
                               GitHub App
                             </h3>
                             <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                              Choose the repo Auto PR may open branches and pull requests in. Saidloop
+                              Auto PR opens branches and pull requests in your project's repos. Saidloop
                               never merges.
                             </p>
                           </div>
@@ -1063,7 +1043,7 @@ export function Integrations() {
                               onClick={() => void connectGitHubApp()}
                               className="cursor-pointer font-ds-ui text-xs text-[#737373] hover:text-[#171717]"
                             >
-                              Reinstall / change repos
+                              Change repo access on GitHub
                             </button>
                           </div>
                         )}
@@ -1073,76 +1053,28 @@ export function Integrations() {
                             {githubAccount ? ` · ${githubAccount}` : ""}
                           </p>
                         ) : null}
-                        <div className="mt-4">
-                          <label className="flex flex-col gap-1.5">
-                            <span className="font-ds-ui text-[11px] font-medium text-[#737373]">
-                              Repository
-                            </span>
-                            {githubRepos.length > 0 ? (
-                              <select
-                                value={githubRepo}
-                                onChange={(e) => {
-                                  const full = e.target.value;
-                                  setGithubRepo(full);
-                                  const match = githubRepos.find((r) => r.full_name === full);
-                                  if (match?.default_branch) setGithubBranch(match.default_branch);
-                                  if (full.includes("/")) {
-                                    setGithubAccount(full.split("/")[0] || "");
-                                  }
-                                }}
-                                className="h-10 rounded-md border border-[#1717171F] bg-white px-3 font-ds-ui text-[13px] text-[#171717]"
-                              >
-                                <option value="">Select a repository…</option>
-                                {githubRepos.map((r) => (
-                                  <option key={r.full_name} value={r.full_name}>
-                                    {r.full_name}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <Field
-                                label=""
-                                value={githubRepo}
-                                onChange={setGithubRepo}
-                                placeholder="owner/repo"
-                              />
-                            )}
-                          </label>
-                        </div>
-                        <div className="mt-3">
-                          <Field
-                            label="Base branch"
-                            value={githubBranch}
-                            onChange={setGithubBranch}
-                            placeholder="main"
-                          />
-                        </div>
+                        <p className="mt-4 font-ds-ui text-[13px] text-[#171717]">
+                          Pick which repos this project ships from, and which platform goes to
+                          which repo, in Repositories at the top of this page.
+                        </p>
                         <div className="mt-5 flex justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => setConfigureModal(null)}
                             className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
                           >
-                            Cancel
+                            Done
                           </button>
                           <button
                             type="button"
-                            disabled={
-                              saving === "github_app" ||
-                              !githubInstallationId ||
-                              !githubRepo.trim()
-                            }
-                            onClick={() =>
-                              void saveAndClose("github_app", {
-                                installation_id: githubInstallationId,
-                                account_login: githubAccount || githubRepo.split("/")[0] || "",
-                                repo_full_name: githubRepo.trim(),
-                                default_branch: githubBranch.trim() || "main",
-                              })
-                            }
+                            disabled={!githubInstallationId}
+                            onClick={() => {
+                              setConfigureModal(null);
+                              setRepoAddRequest((n) => n + 1);
+                            }}
                             className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
                           >
-                            {saving === "github_app" ? "Saving…" : "Save repository"}
+                            Add repository
                           </button>
                         </div>
                       </>
@@ -1159,8 +1091,8 @@ export function Integrations() {
                               GitHub Issues
                             </h3>
                             <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                              Uses the same GitHub App installation and repository. Create an issue
-                              from any ticket detail with one click.
+                              Uses the GitHub App installation. Create an issue from any ticket
+                              detail with one click.
                             </p>
                           </div>
                           <button
@@ -1173,19 +1105,13 @@ export function Integrations() {
                           </button>
                         </div>
                         <p className="mt-4 font-ds-ui text-[13px] text-[#171717]">
-                          Repo:{" "}
-                          <span className="font-ds-mono text-[12px]">
-                            {githubRepo || "Not selected"}
-                          </span>
+                          Issues open in the ticket&apos;s repo. Tickets with no repo yet use the
+                          fallback repo.
                         </p>
                         <div className="mt-5 flex justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => {
-                              void loadGitHubRepos(
-                                projectId,
-                                Number(githubInstallationId) || undefined,
-                              );
                               setConfigureModal("github_app");
                             }}
                             className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"

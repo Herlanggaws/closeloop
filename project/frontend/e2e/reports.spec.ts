@@ -615,6 +615,31 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(page.getByRole("button", { name: "Accent #266DF0" })).toHaveAttribute("aria-pressed", "true");
   });
 
+  // Multi-repo: connecting the GitHub App never forces one repo; repos are picked in Repositories.
+  test("R-UI-22 GitHub App modal sends you to Add repository", async ({ page, request }) => {
+    const session = await seedSession(request, { plan: "studio" });
+    const put = await request.put(`${API_URL}/api/projects/${session.projectId}/integrations/github_app`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+      data: { config: { installation_id: 4242, account_login: "bear" } },
+    });
+    expect(put.ok(), await put.text()).toBeTruthy();
+
+    await applySession(page, session);
+    await page.goto("/app/settings/integrations");
+    await expect(page.getByText("No repos yet. Add one so reports reach the right codebase.")).toBeVisible();
+    await page
+      .locator("div")
+      .filter({ has: page.getByText("Repository access for AI auto PR", { exact: true }) })
+      .getByRole("button", { name: "Configure" })
+      .last()
+      .click();
+    const modal = page.getByRole("dialog");
+    await expect(modal.getByText("Installation 4242 · bear")).toBeVisible();
+    await expect(modal.getByText("Select a repository…")).toHaveCount(0);
+    await modal.getByRole("button", { name: "Add repository" }).click();
+    await expect(page.locator("#add-repo-title")).toBeVisible();
+  });
+
   test("R-UI-17 Inbox coach-mark tour first visit", async ({ page, request }) => {
     const session = await seedSession(request);
     const message = `Tour report ${Date.now()}`;

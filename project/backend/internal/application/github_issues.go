@@ -82,9 +82,22 @@ func (s *Store) CreateGitHubIssueForTicket(
 		if r, rerr := s.ProjectRepoByFullName(ctx, ticket.ProjectID, ticket.RepoFullName); rerr == nil && r.InstallationID != 0 {
 			ghCfg.InstallationID = r.InstallationID
 		}
+	} else if err == nil {
+		// No repo on the ticket yet: use the project's fallback repo when there is one.
+		if repos, rerr := s.ListProjectRepos(ctx, ticket.ProjectID); rerr == nil {
+			for _, r := range repos {
+				if r.IsFallback {
+					ghCfg.RepoFullName = r.FullName
+					if r.InstallationID != 0 {
+						ghCfg.InstallationID = r.InstallationID
+					}
+					break
+				}
+			}
+		}
 	}
 	if err != nil || ghCfg.InstallationID == 0 || strings.TrimSpace(ghCfg.RepoFullName) == "" {
-		return GitHubIssueResult{}, fmt.Errorf("%w: select a repository for GitHub App", ErrInvalidInput)
+		return GitHubIssueResult{}, fmt.Errorf("%w: add a repository in Integrations, or pick a repo for this ticket", ErrInvalidInput)
 	}
 	parts := strings.SplitN(ghCfg.RepoFullName, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {

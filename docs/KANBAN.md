@@ -159,7 +159,7 @@ Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) 
 
 ## PRD Multi-repo per Project (Nov 19) — merged to dev Nov 20
 
-R1–R5 merged to dev on Nov 20 (migration `023_project_repos.sql`; old `repo_full_name` becomes the fallback repo). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR), and the GitHub App install flow still picks one repo first; extra repos are added from the Repositories section.
+R1–R5 merged to dev on Nov 20 (migration `023_project_repos.sql`; old `repo_full_name` becomes the fallback repo). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR). Connecting the GitHub App no longer picks one repo: a single-repo install is added for you, otherwise the Add repository modal opens (Nov 20).
 
 | ID | Item | Milestone | Story |
 | --- | --- | --- | --- |
@@ -211,7 +211,7 @@ Fase B · pricing di backend
 - [x] D-09 `MaxReposPerProject` + `usage.repos`
 - [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
 
-Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri), connect GitHub App masih pilih 1 repo di awal.
+Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri) Connect GitHub App udah gak maksa pilih 1 repo lagi (20 Nov).
 - [x] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`. — `023_project_repos.sql` + migrasi repo lama jadi fallback
 - [x] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`). — S-13 Repositories section, counter, limit copy, read-access toggle
 - [x] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`). — modal Add repository + `PLATFORM_CONFLICT` / `REPO_LIMIT`
