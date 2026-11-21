@@ -82,6 +82,10 @@ type WidgetLook = { label: string; position: "bottom_right" | "bottom_left" | "h
 
 const DEFAULT_LOOK: WidgetLook = { label: "Report a problem", position: "bottom_right", accent: "#171717" };
 
+/** Open-loop mark from Saidloop Brand Guidelines (TQYXQ). */
+const SAIDLOOP_MARK_PATH =
+  "M2.574 3.927A11 11 0 1 0 11.957 0.044L11.479 5.522A5.5 5.5 0 1 1 6.787 7.464Z";
+
 function parseLook(raw: unknown): WidgetLook {
   const w = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const position =
@@ -103,9 +107,9 @@ const NO_CONFIG: IngestMaskConfig = {
 /** Badge link per surface: launcher, form, sent, banner. */
 /** Position + accent overrides on top of the base stylesheet. */
 function lookCss(look: WidgetLook) {
-  let out = `.fab.left, .fab-badge.left, .panel.left { right:auto; left:max(20px, env(safe-area-inset-left, 0px)); }`;
+  let out = `.fab.left, .panel.left { right:auto; left:max(20px, env(safe-area-inset-left, 0px)); } .panel.left { transform-origin:bottom left; }`;
   if (look.accent.toLowerCase() !== DEFAULT_LOOK.accent) {
-    out += ` .fab, .btn, .chip.on { background:${look.accent}; }`;
+    out += ` .fab, .btn, .chip.on { background-color:${look.accent}; }`;
   }
   return out;
 }
@@ -690,7 +694,40 @@ function Widget({ cfg }: { cfg: Config }) {
   const css = `
     :host { all: initial; }
     * { box-sizing: border-box; font-family: Inter, Geist, system-ui, sans-serif; }
-    .btn { background:#171717; color:#fff; border:0; border-radius:8px; padding:10px 14px; cursor:pointer; font-size:13px; font-weight:500; }
+    :where(a, button, input, textarea):focus-visible {
+      outline: 2px solid #171717;
+      outline-offset: 2px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes fabIn {
+      from { opacity: 0; translate: 0 10px; scale: 0.92; }
+      to { opacity: 1; translate: 0 0; scale: 1; }
+    }
+    @keyframes panelIn {
+      from { opacity: 0; translate: 0 10px; scale: 0.96; }
+      to { opacity: 1; translate: 0 0; scale: 1; }
+    }
+    @keyframes sheetIn {
+      from { opacity: 0; translate: 0 28px; }
+      to { opacity: 1; translate: 0 0; }
+    }
+    @keyframes bannerIn {
+      from { opacity: 0; translate: 0 -12px; scale: 0.97; }
+      to { opacity: 1; translate: 0 0; scale: 1; }
+    }
+    .btn {
+      background-color:#171717; color:#fff; border:0; border-radius:8px;
+      padding:10px 14px; cursor:pointer; font-size:13px; font-weight:500;
+      transition: background-color 150ms ease-out, background-image 150ms ease-out, box-shadow 150ms ease-out, translate 150ms ease-out, scale 150ms ease-out;
+    }
+    .btn:hover:not(:disabled) {
+      background-color:#262626;
+      background-image:linear-gradient(rgba(255,255,255,.14), rgba(255,255,255,.14));
+      box-shadow:0 6px 16px rgba(0,0,0,.18);
+    }
     .btn:disabled { opacity:.5; cursor:default; }
     .fab {
       position:fixed;
@@ -698,12 +735,57 @@ function Widget({ cfg }: { cfg: Config }) {
       bottom:max(20px, env(safe-area-inset-bottom, 0px));
       z-index:2147483000;
       display:inline-flex; align-items:center; gap:8px;
-      background:#171717; color:#fff; border:0; border-radius:999px;
+      background-color:#171717; color:#fff; border:0; border-radius:999px;
       padding:11px 16px; cursor:pointer; font-size:13px; font-weight:500;
-      box-shadow:0 8px 24px rgba(0,0,0,.18);
+      box-shadow:0 8px 24px rgba(0,0,0,.18), 0 0 0 1px rgba(255,255,255,.06) inset;
+      overflow:hidden;
+      transition: background-color 180ms ease-out, background-image 180ms ease-out, box-shadow 180ms ease-out, translate 180ms cubic-bezier(0.22, 1, 0.36, 1), scale 150ms ease-out;
+    }
+    .fab svg {
+      flex-shrink:0;
+      transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .fab:hover {
+      background-color:#262626;
+      background-image:linear-gradient(rgba(255,255,255,.15), rgba(255,255,255,.15));
+      box-shadow:0 12px 28px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.14) inset;
+    }
+    .fab-slot {
+      display:inline-grid;
+      align-items:center;
+      line-height:1.25;
+    }
+    .fab-primary, .fab-sub {
+      grid-area:1 / 1;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      white-space:nowrap;
+      transition: opacity 220ms cubic-bezier(0.22, 1, 0.36, 1), translate 240ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .fab-primary {
+      opacity:1;
+    }
+    .fab-sub {
+      opacity:0;
+      pointer-events:none;
+    }
+    .fab-sub b {
+      font-weight:700;
+      letter-spacing:-0.02em;
+    }
+    .fab.has-badge:hover .fab-primary,
+    .fab.has-badge:focus-visible .fab-primary {
+      opacity:0;
+    }
+    .fab.has-badge:hover .fab-sub,
+    .fab.has-badge:focus-visible .fab-sub {
+      opacity:1;
     }
     .scrim {
       position:fixed; inset:0; background:rgba(23,23,23,.28); z-index:2147482990;
+      animation: fadeIn 160ms ease-out both;
     }
     .panel {
       position:fixed;
@@ -715,16 +797,40 @@ function Widget({ cfg }: { cfg: Config }) {
       overflow-y:auto; overscroll-behavior:contain;
       background:#fff; border:1px solid #1717171f; border-radius:16px;
       box-shadow:0 12px 40px rgba(0,0,0,.14); padding:16px; z-index:2147483000;
+      transform-origin:bottom right;
     }
     .title { font-size:15px; font-weight:600; color:#171717; margin:0 0 4px; text-wrap:balance; }
     .sub { color:#737373; font-size:12px; margin:0 0 12px; text-wrap:pretty; }
     .row { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }
-    .chip { border:1px solid #1717171f; background:#fafafa; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer; text-transform:capitalize; }
-    .chip.on { background:#171717; color:#fff; }
+    .chip {
+      border:1px solid #1717171f; background-color:#fafafa; border-radius:999px;
+      padding:6px 10px; font-size:12px; cursor:pointer; text-transform:capitalize;
+      transition: background-color 150ms ease-out, background-image 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out, scale 150ms ease-out;
+    }
+    .chip:hover {
+      background-color:#efefef;
+      border-color:#17171738;
+    }
+    .chip.on {
+      background-color:#171717; color:#fff; border-color:transparent;
+    }
+    .chip.on:hover {
+      background-color:#262626;
+      background-image:linear-gradient(rgba(255,255,255,.14), rgba(255,255,255,.14));
+      box-shadow:0 3px 10px rgba(0,0,0,.14);
+    }
     .shot-head { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin:4px 0 8px; }
     .shot-label { font-size:12px; font-weight:600; color:#171717; }
-    .shot-actions { display:flex; gap:10px; align-items:center; }
-    .link { background:none; border:0; color:#2563eb; font-size:12px; font-weight:500; cursor:pointer; padding:4px 2px; }
+    .shot-actions { display:flex; gap:8px; align-items:center; }
+    .link {
+      background:none; border:0; border-radius:6px; color:#2563eb;
+      font-size:12px; font-weight:500; cursor:pointer; padding:4px 6px;
+      transition: background-color 150ms ease-out, color 150ms ease-out, scale 150ms ease-out;
+    }
+    .link:hover:not(:disabled) {
+      background-color:rgba(37, 99, 235, 0.09);
+      color:#1d4ed8;
+    }
     .link:disabled { opacity:.5; cursor:default; }
     .snip-overlay {
       position:fixed; inset:0; z-index:2147483640;
@@ -817,14 +923,27 @@ function Widget({ cfg }: { cfg: Config }) {
     .dock {
       position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
       display:flex; gap:4px; padding:4px; background:#171717; border-radius:999px;
+      box-shadow:0 6px 16px rgba(0,0,0,.22);
     }
     .dock button {
       width:32px; height:32px; border:0; border-radius:999px; background:transparent;
       color:#fff; cursor:pointer; display:grid; place-items:center;
+      transition: background-color 150ms ease-out, scale 150ms ease-out;
     }
+    .dock button:hover { background:#2e2e2e; }
     .dock button.on { background:#404040; }
+    .dock button.on:hover { background:#525252; }
     .note { color:#a3a3a3; font-size:11px; margin:8px 0 10px; text-wrap:pretty; }
-    textarea, input { width:100%; border:1px solid #1717171f; border-radius:10px; padding:10px; font-size:13px; margin-bottom:10px; }
+    textarea, input {
+      width:100%; border:1px solid #1717171f; border-radius:10px; padding:10px; font-size:13px; margin-bottom:10px;
+      transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+    }
+    textarea:hover, input:hover { border-color:#17171740; }
+    textarea:focus, input:focus {
+      outline:none;
+      border-color:#171717;
+      box-shadow:0 0 0 3px rgba(23,23,23,.08);
+    }
     .muted { color:#737373; font-size:12px; text-wrap:pretty; }
     .err { color:#da314a; font-size:12px; margin-bottom:8px; overflow-wrap:break-word; }
     .pill {
@@ -833,18 +952,9 @@ function Widget({ cfg }: { cfg: Config }) {
       background:#f5f5f5; border:1px solid #17171714;
       font-size:12px; font-weight:500; color:#171717;
     }
-    .fab-badge {
-      position:fixed;
-      right:max(20px, env(safe-area-inset-right, 0px));
-      bottom:calc(max(20px, env(safe-area-inset-bottom, 0px)) + 44px);
-      z-index:2147483646; padding:4px 8px; border-radius:6px;
-      background:#171717; color:#fff; font-size:11px; text-decoration:none; opacity:0; pointer-events:none;
-      transition:opacity .15s ease;
-    }
-    .fab:hover ~ .fab-badge, .fab-badge:hover { opacity:1; pointer-events:auto; }
     .badge-link { color:#737373; text-decoration:none; font-weight:500; }
-    .powered { margin-top:12px; text-align:center; color:#a3a3a3; font-size:11px; }
-    .powered a { color:#737373; text-decoration:none; font-weight:500; }
+    .powered { margin-top:12px; display:flex; align-items:center; justify-content:center; gap:4px; color:#a3a3a3; font-size:11px; }
+    .powered a { display:inline-flex; align-items:center; gap:4px; color:#737373; text-decoration:none; font-weight:600; transition: color 150ms ease-out; }
     .powered a:hover { color:#171717; text-decoration:underline; }
     .banner {
       position:fixed; left:50%;
@@ -868,12 +978,40 @@ function Widget({ cfg }: { cfg: Config }) {
     .banner-meta { font-size:11.5px; color:#a3a3a3; }
     .banner-x {
       position:relative;
-      width:24px; height:24px; flex-shrink:0; padding:0; border:0;
+      width:24px; height:24px; flex-shrink:0; padding:0; border:0; border-radius:6px;
       display:inline-flex; align-items:center; justify-content:center;
       background:transparent; cursor:pointer; color:#a3a3a3;
+      transition: background-color 150ms ease-out, color 150ms ease-out;
     }
+    .banner-x:hover { background:#f5f5f5; color:#171717; }
     .banner-x::after {
       content:""; position:absolute; inset:-10px;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .fab { animation: fabIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+      .fab:hover { translate: 0 -2px; }
+      .fab:not(.has-badge):hover .fab-chat-icon { transform: scale(1.12) rotate(-6deg); }
+      .fab:active { translate: 0 0; scale: 0.97; }
+      .fab-primary { translate: 0 0; }
+      .fab-sub { translate: 0 110%; }
+      .fab-brand-icon { transform: rotate(-45deg) scale(0.85); }
+      .fab.has-badge:hover .fab-primary,
+      .fab.has-badge:focus-visible .fab-primary {
+        translate: 0 -110%;
+      }
+      .fab.has-badge:hover .fab-sub,
+      .fab.has-badge:focus-visible .fab-sub {
+        translate: 0 0;
+      }
+      .fab.has-badge:hover .fab-brand-icon,
+      .fab.has-badge:focus-visible .fab-brand-icon {
+        transform: rotate(0deg) scale(1);
+      }
+      .btn:hover:not(:disabled) { translate: 0 -1px; }
+      .btn:active:not(:disabled) { translate: 0 0; scale: 0.98; }
+      .chip:active, .link:active:not(:disabled), .dock button:active, .snip-cancel:active { scale: 0.96; }
+      .panel { animation: panelIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+      .banner { animation: bannerIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
     }
     @media (pointer: coarse) {
       .chip { padding:8px 14px; font-size:13px; min-height:36px; }
@@ -901,6 +1039,12 @@ function Widget({ cfg }: { cfg: Config }) {
         border-radius:20px 20px 0 0;
         border-left:0; border-right:0; border-bottom:0;
         padding:16px 16px max(16px, env(safe-area-inset-bottom, 0px));
+        transform-origin:bottom center;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .panel, .panel.left {
+          animation: sheetIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
       }
       textarea, input { font-size:16px; }
       .actions-row .btn { flex:1; min-height:44px; }
@@ -923,17 +1067,30 @@ function Widget({ cfg }: { cfg: Config }) {
       <style>{css}</style>
       <style>{lookCss(look)}</style>
       {state === "launcher" && look.position !== "hidden" && (
-        <button class={look.position === "bottom_left" ? "fab left" : "fab"} type="button" onClick={openForm}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          {look.label}
+        <button
+          class={`${look.position === "bottom_left" ? "fab left" : "fab"}${badge.on ? " has-badge" : ""}`}
+          type="button"
+          onClick={openForm}
+        >
+          <span class="fab-slot">
+            <span class="fab-primary">
+              <svg class="fab-chat-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>{look.label}</span>
+            </span>
+            {badge.on && (
+              <span class="fab-sub" aria-hidden="true">
+                <svg class="fab-brand-icon" width="14" height="14" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
+                  <path d={SAIDLOOP_MARK_PATH} />
+                </svg>
+                <span>
+                  Feedback by <b>Saidloop</b>
+                </span>
+              </span>
+            )}
+          </span>
         </button>
-      )}
-      {state === "launcher" && badge.on && look.position !== "hidden" && (
-        <a class={look.position === "bottom_left" ? "fab-badge left" : "fab-badge"} href={badgeHref(badge.url, "launcher")} target="_blank" rel="noopener noreferrer">
-          Feedback by Saidloop ↗
-        </a>
       )}
       {state === "form" && (
         <>
@@ -1027,6 +1184,9 @@ function Widget({ cfg }: { cfg: Config }) {
               <div class="powered">
                 Powered by{" "}
                 <a href={badgeHref(badge.url, "form")} target="_blank" rel="noopener noreferrer">
+                  <svg width="11" height="11" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
+                    <path d={SAIDLOOP_MARK_PATH} />
+                  </svg>
                   Saidloop
                 </a>
               </div>
@@ -1052,6 +1212,9 @@ function Widget({ cfg }: { cfg: Config }) {
             <div class="powered">
               Powered by{" "}
               <a href={badgeHref(badge.url, "sent")} target="_blank" rel="noopener noreferrer">
+                <svg width="11" height="11" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
+                  <path d={SAIDLOOP_MARK_PATH} />
+                </svg>
                 Saidloop
               </a>
             </div>
