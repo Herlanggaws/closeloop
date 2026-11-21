@@ -10,6 +10,10 @@ func TestR_GITLAB_01_ConnectAndWebhookCloses(t *testing.T) {
 	h := newReportHarness(t)
 	seed := h.seedUserProject("studio")
 
+	if _, err := h.store.GrantAutoPRCredits(context.Background(), seed.OrgID, 5, "test_seed"); err != nil {
+		t.Fatalf("grant credits: %v", err)
+	}
+
 	// 1. Connect GitLab integration
 	code, body := h.do(http.MethodPut, "/api/projects/"+seed.ProjectID+"/integrations/gitlab", map[string]any{
 		"config": map[string]any{
