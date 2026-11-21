@@ -82,6 +82,10 @@ type WidgetLook = { label: string; position: "bottom_right" | "bottom_left" | "h
 
 const DEFAULT_LOOK: WidgetLook = { label: "Report a problem", position: "bottom_right", accent: "#171717" };
 
+/** Open-loop mark from Saidloop Brand Guidelines (TQYXQ). */
+const SAIDLOOP_MARK_PATH =
+  "M2.574 3.927A11 11 0 1 0 11.957 0.044L11.479 5.522A5.5 5.5 0 1 1 6.787 7.464Z";
+
 function parseLook(raw: unknown): WidgetLook {
   const w = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const position =
@@ -103,9 +107,9 @@ const NO_CONFIG: IngestMaskConfig = {
 /** Badge link per surface: launcher, form, sent, banner. */
 /** Position + accent overrides on top of the base stylesheet. */
 function lookCss(look: WidgetLook) {
-  let out = `.fab.left, .fab-badge.left { right:auto; left:20px; }`;
+  let out = `.fab.left, .panel.left { right:auto; left:max(20px, env(safe-area-inset-left, 0px)); } .panel.left { transform-origin:bottom left; }`;
   if (look.accent.toLowerCase() !== DEFAULT_LOOK.accent) {
-    out += ` .fab, .btn, .chip.on { background:${look.accent}; }`;
+    out += ` .fab, .btn, .chip.on { background-color:${look.accent}; }`;
   }
   return out;
 }
@@ -469,8 +473,13 @@ function Widget({ cfg }: { cfg: Config }) {
 
     const img = new Image();
     img.onload = () => {
-      const width = wrap.clientWidth || 360;
-      const height = Math.max(160, Math.round((width * img.naturalHeight) / Math.max(img.naturalWidth, 1)));
+      const maxW = wrap.clientWidth || 360;
+      const maxH = window.innerWidth <= 640 ? 200 : 280;
+      const naturalW = Math.max(img.naturalWidth, 1);
+      const naturalH = Math.max(img.naturalHeight, 1);
+      const scale = Math.min(maxW / naturalW, maxH / naturalH);
+      const width = Math.max(1, Math.round(naturalW * scale));
+      const height = Math.max(1, Math.round(naturalH * scale));
       canvas.width = width;
       canvas.height = height;
       ctx.clearRect(0, 0, width, height);
@@ -479,6 +488,14 @@ function Widget({ cfg }: { cfg: Config }) {
     };
     img.src = shot;
   }
+
+  useEffect(() => {
+    if (state !== "form" || !shot) return;
+    const onResize = () => paintPreview();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, shot, strokes, draft]);
 
   const host = useMemo(() => {
     const root = document.createElement("div");
@@ -545,7 +562,7 @@ function Widget({ cfg }: { cfg: Config }) {
   }, [state]);
 
   function onSnipPointerDown(e: PointerEvent) {
-    if (snipFlash) return;
+    if (snipFlash || (e.target as HTMLElement)?.closest?.(".snip-bar")) return;
     snipping.current = true;
     snipStart.current = { x: e.clientX, y: e.clientY };
     setSnipRect({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
@@ -677,33 +694,143 @@ function Widget({ cfg }: { cfg: Config }) {
   const css = `
     :host { all: initial; }
     * { box-sizing: border-box; font-family: Inter, Geist, system-ui, sans-serif; }
-    .btn { background:#171717; color:#fff; border:0; border-radius:8px; padding:10px 14px; cursor:pointer; font-size:13px; font-weight:500; }
+    :where(a, button, input, textarea):focus-visible {
+      outline: 2px solid #171717;
+      outline-offset: 2px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes fabIn {
+      from { opacity: 0; translate: 0 10px; scale: 0.92; }
+      to { opacity: 1; translate: 0 0; scale: 1; }
+    }
+    @keyframes panelIn {
+      from { opacity: 0; translate: 0 10px; scale: 0.96; }
+      to { opacity: 1; translate: 0 0; scale: 1; }
+    }
+    @keyframes sheetIn {
+      from { opacity: 0; translate: 0 28px; }
+      to { opacity: 1; translate: 0 0; }
+    }
+    @keyframes bannerIn {
+      from { opacity: 0; translate: 0 -12px; scale: 0.97; }
+      to { opacity: 1; translate: 0 0; scale: 1; }
+    }
+    .btn {
+      background-color:#171717; color:#fff; border:0; border-radius:8px;
+      padding:10px 14px; cursor:pointer; font-size:13px; font-weight:500;
+      transition: background-color 150ms ease-out, background-image 150ms ease-out, box-shadow 150ms ease-out, translate 150ms ease-out, scale 150ms ease-out;
+    }
+    .btn:hover:not(:disabled) {
+      background-color:#262626;
+      background-image:linear-gradient(rgba(255,255,255,.14), rgba(255,255,255,.14));
+      box-shadow:0 6px 16px rgba(0,0,0,.18);
+    }
     .btn:disabled { opacity:.5; cursor:default; }
     .fab {
-      position:fixed; right:20px; bottom:20px; z-index:2147483000;
+      position:fixed;
+      right:max(20px, env(safe-area-inset-right, 0px));
+      bottom:max(20px, env(safe-area-inset-bottom, 0px));
+      z-index:2147483000;
       display:inline-flex; align-items:center; gap:8px;
-      background:#171717; color:#fff; border:0; border-radius:999px;
+      background-color:#171717; color:#fff; border:0; border-radius:999px;
       padding:11px 16px; cursor:pointer; font-size:13px; font-weight:500;
-      box-shadow:0 8px 24px rgba(0,0,0,.18);
+      box-shadow:0 8px 24px rgba(0,0,0,.18), 0 0 0 1px rgba(255,255,255,.06) inset;
+      overflow:hidden;
+      transition: background-color 180ms ease-out, background-image 180ms ease-out, box-shadow 180ms ease-out, translate 180ms cubic-bezier(0.22, 1, 0.36, 1), scale 150ms ease-out;
+    }
+    .fab svg {
+      flex-shrink:0;
+      transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .fab:hover {
+      background-color:#262626;
+      background-image:linear-gradient(rgba(255,255,255,.15), rgba(255,255,255,.15));
+      box-shadow:0 12px 28px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.14) inset;
+    }
+    .fab-slot {
+      display:inline-grid;
+      align-items:center;
+      line-height:1.25;
+    }
+    .fab-primary, .fab-sub {
+      grid-area:1 / 1;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      white-space:nowrap;
+      transition: opacity 220ms cubic-bezier(0.22, 1, 0.36, 1), translate 240ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .fab-primary {
+      opacity:1;
+    }
+    .fab-sub {
+      opacity:0;
+      pointer-events:none;
+    }
+    .fab-sub b {
+      font-weight:700;
+      letter-spacing:-0.02em;
+    }
+    .fab.has-badge:hover .fab-primary,
+    .fab.has-badge:focus-visible .fab-primary {
+      opacity:0;
+    }
+    .fab.has-badge:hover .fab-sub,
+    .fab.has-badge:focus-visible .fab-sub {
+      opacity:1;
     }
     .scrim {
       position:fixed; inset:0; background:rgba(23,23,23,.28); z-index:2147482990;
+      animation: fadeIn 160ms ease-out both;
     }
     .panel {
-      position:fixed; right:20px; bottom:76px; width:min(400px, calc(100vw - 24px));
-      max-height:calc(100vh - 100px); overflow:auto;
+      position:fixed;
+      right:max(20px, env(safe-area-inset-right, 0px));
+      bottom:calc(max(20px, env(safe-area-inset-bottom, 0px)) + 56px);
+      width:min(400px, calc(100vw - 24px));
+      max-height:calc(100vh - 100px);
+      max-height:calc(100dvh - 100px);
+      overflow-y:auto; overscroll-behavior:contain;
       background:#fff; border:1px solid #1717171f; border-radius:16px;
       box-shadow:0 12px 40px rgba(0,0,0,.14); padding:16px; z-index:2147483000;
+      transform-origin:bottom right;
     }
-    .title { font-size:15px; font-weight:600; color:#171717; margin:0 0 4px; }
-    .sub { color:#737373; font-size:12px; margin:0 0 12px; }
+    .title { font-size:15px; font-weight:600; color:#171717; margin:0 0 4px; text-wrap:balance; }
+    .sub { color:#737373; font-size:12px; margin:0 0 12px; text-wrap:pretty; }
     .row { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }
-    .chip { border:1px solid #1717171f; background:#fafafa; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer; text-transform:capitalize; }
-    .chip.on { background:#171717; color:#fff; }
-    .shot-head { display:flex; justify-content:space-between; align-items:center; margin:4px 0 8px; }
+    .chip {
+      border:1px solid #1717171f; background-color:#fafafa; border-radius:999px;
+      padding:6px 10px; font-size:12px; cursor:pointer; text-transform:capitalize;
+      transition: background-color 150ms ease-out, background-image 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out, scale 150ms ease-out;
+    }
+    .chip:hover {
+      background-color:#efefef;
+      border-color:#17171738;
+    }
+    .chip.on {
+      background-color:#171717; color:#fff; border-color:transparent;
+    }
+    .chip.on:hover {
+      background-color:#262626;
+      background-image:linear-gradient(rgba(255,255,255,.14), rgba(255,255,255,.14));
+      box-shadow:0 3px 10px rgba(0,0,0,.14);
+    }
+    .shot-head { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin:4px 0 8px; }
     .shot-label { font-size:12px; font-weight:600; color:#171717; }
-    .shot-actions { display:flex; gap:10px; align-items:center; }
-    .link { background:none; border:0; color:#2563eb; font-size:12px; font-weight:500; cursor:pointer; padding:0; }
+    .shot-actions { display:flex; gap:8px; align-items:center; }
+    .link {
+      background:none; border:0; border-radius:6px; color:#2563eb;
+      font-size:12px; font-weight:500; cursor:pointer; padding:4px 6px;
+      transition: background-color 150ms ease-out, color 150ms ease-out, scale 150ms ease-out;
+    }
+    .link:hover:not(:disabled) {
+      background-color:rgba(37, 99, 235, 0.09);
+      color:#1d4ed8;
+    }
     .link:disabled { opacity:.5; cursor:default; }
     .snip-overlay {
       position:fixed; inset:0; z-index:2147483640;
@@ -711,15 +838,18 @@ function Widget({ cfg }: { cfg: Config }) {
       background:rgba(0,0,0,0.22);
     }
     .snip-bar {
-      position:fixed; top:20px; left:50%; transform:translateX(-50%);
-      display:flex; align-items:center; gap:12px;
-      background:#171717; color:#fff; padding:8px 16px; border-radius:999px;
+      position:fixed;
+      top:max(16px, env(safe-area-inset-top, 0px));
+      left:50%; transform:translateX(-50%);
+      width:max-content; max-width:calc(100vw - 24px);
+      display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px;
+      background:#171717; color:#fff; padding:8px 14px; border-radius:999px;
       font-size:13px; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,0.25);
-      z-index:2147483647; pointer-events:auto;
+      z-index:2147483647; pointer-events:auto; text-align:center;
     }
     .snip-cancel {
       background:#333; color:#fff; border:0; border-radius:999px;
-      padding:4px 10px; font-size:12px; cursor:pointer; font-weight:500;
+      padding:5px 12px; font-size:12px; cursor:pointer; font-weight:500; flex-shrink:0;
     }
     .snip-cancel:hover { background:#444; }
     .snip-box {
@@ -769,7 +899,8 @@ function Widget({ cfg }: { cfg: Config }) {
     }
     .preview {
       position:relative; width:100%; border-radius:12px; overflow:hidden;
-      border:1px solid #17171714; background:#f5f5f5; min-height:160px;
+      border:1px solid #17171714; background:#f5f5f5; min-height:140px;
+      display:flex; align-items:center; justify-content:center;
     }
     .preview-loading {
       position:absolute; inset:0;
@@ -784,7 +915,7 @@ function Widget({ cfg }: { cfg: Config }) {
       animation:spin 0.75s linear infinite;
     }
     .preview canvas {
-      display:block; width:100%; height:auto;
+      display:block; max-width:100%; width:auto; height:auto; margin:0 auto;
       cursor:crosshair; touch-action:none;
       animation: shotPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
@@ -792,36 +923,45 @@ function Widget({ cfg }: { cfg: Config }) {
     .dock {
       position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
       display:flex; gap:4px; padding:4px; background:#171717; border-radius:999px;
+      box-shadow:0 6px 16px rgba(0,0,0,.22);
     }
     .dock button {
       width:32px; height:32px; border:0; border-radius:999px; background:transparent;
       color:#fff; cursor:pointer; display:grid; place-items:center;
+      transition: background-color 150ms ease-out, scale 150ms ease-out;
     }
+    .dock button:hover { background:#2e2e2e; }
     .dock button.on { background:#404040; }
-    .note { color:#a3a3a3; font-size:11px; margin:8px 0 10px; }
-    textarea, input { width:100%; border:1px solid #1717171f; border-radius:10px; padding:10px; font-size:13px; margin-bottom:10px; }
-    .muted { color:#737373; font-size:12px; }
-    .err { color:#da314a; font-size:12px; margin-bottom:8px; }
+    .dock button.on:hover { background:#525252; }
+    .note { color:#a3a3a3; font-size:11px; margin:8px 0 10px; text-wrap:pretty; }
+    textarea, input {
+      width:100%; border:1px solid #1717171f; border-radius:10px; padding:10px; font-size:13px; margin-bottom:10px;
+      transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+    }
+    textarea:hover, input:hover { border-color:#17171740; }
+    textarea:focus, input:focus {
+      outline:none;
+      border-color:#171717;
+      box-shadow:0 0 0 3px rgba(23,23,23,.08);
+    }
+    .muted { color:#737373; font-size:12px; text-wrap:pretty; }
+    .err { color:#da314a; font-size:12px; margin-bottom:8px; overflow-wrap:break-word; }
     .pill {
       display:inline-flex; align-items:center; gap:6px;
       margin:10px 0 14px; padding:6px 10px; border-radius:999px;
       background:#f5f5f5; border:1px solid #17171714;
       font-size:12px; font-weight:500; color:#171717;
     }
-    .fab-badge {
-      position:fixed; right:20px; bottom:64px; z-index:2147483646; padding:4px 8px; border-radius:6px;
-      background:#171717; color:#fff; font-size:11px; text-decoration:none; opacity:0; pointer-events:none;
-      transition:opacity .15s ease;
-    }
-    .fab:hover ~ .fab-badge, .fab-badge:hover { opacity:1; pointer-events:auto; }
     .badge-link { color:#737373; text-decoration:none; font-weight:500; }
-    .powered { margin-top:12px; text-align:center; color:#a3a3a3; font-size:11px; }
-    .powered a { color:#737373; text-decoration:none; font-weight:500; }
+    .powered { margin-top:12px; display:flex; align-items:center; justify-content:center; gap:4px; color:#a3a3a3; font-size:11px; }
+    .powered a { display:inline-flex; align-items:center; gap:4px; color:#737373; text-decoration:none; font-weight:600; transition: color 150ms ease-out; }
     .powered a:hover { color:#171717; text-decoration:underline; }
     .banner {
-      position:fixed; left:50%; top:24px; transform:translateX(-50%);
+      position:fixed; left:50%;
+      top:max(16px, env(safe-area-inset-top, 0px));
+      transform:translateX(-50%);
       display:flex; align-items:center; gap:14px;
-      width:min(560px, calc(100vw - 32px));
+      width:min(560px, calc(100vw - 24px));
       padding:14px 16px; background:#fff;
       border:1px solid #17171714; border-radius:12px;
       box-shadow:0 16px 40px #1717171f, 0 4px 8px #1717170f;
@@ -832,13 +972,89 @@ function Widget({ cfg }: { cfg: Config }) {
       display:flex; align-items:center; justify-content:center;
       background:#f0fdf4; border-radius:999px;
     }
-    .banner-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+    .banner-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; overflow-wrap:break-word; }
     .banner-title { font-size:14px; font-weight:600; color:#171717; }
     .banner-body { font-size:13px; line-height:19px; color:#737373; }
     .banner-meta { font-size:11.5px; color:#a3a3a3; }
     .banner-x {
-      width:16px; height:16px; flex-shrink:0; padding:0; border:0;
+      position:relative;
+      width:24px; height:24px; flex-shrink:0; padding:0; border:0; border-radius:6px;
+      display:inline-flex; align-items:center; justify-content:center;
       background:transparent; cursor:pointer; color:#a3a3a3;
+      transition: background-color 150ms ease-out, color 150ms ease-out;
+    }
+    .banner-x:hover { background:#f5f5f5; color:#171717; }
+    .banner-x::after {
+      content:""; position:absolute; inset:-10px;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .fab { animation: fabIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+      .fab:hover { translate: 0 -2px; }
+      .fab:not(.has-badge):hover .fab-chat-icon { transform: scale(1.12) rotate(-6deg); }
+      .fab:active { translate: 0 0; scale: 0.97; }
+      .fab-primary { translate: 0 0; }
+      .fab-sub { translate: 0 110%; }
+      .fab-brand-icon { transform: rotate(-45deg) scale(0.85); }
+      .fab.has-badge:hover .fab-primary,
+      .fab.has-badge:focus-visible .fab-primary {
+        translate: 0 -110%;
+      }
+      .fab.has-badge:hover .fab-sub,
+      .fab.has-badge:focus-visible .fab-sub {
+        translate: 0 0;
+      }
+      .fab.has-badge:hover .fab-brand-icon,
+      .fab.has-badge:focus-visible .fab-brand-icon {
+        transform: rotate(0deg) scale(1);
+      }
+      .btn:hover:not(:disabled) { translate: 0 -1px; }
+      .btn:active:not(:disabled) { translate: 0 0; scale: 0.98; }
+      .chip:active, .link:active:not(:disabled), .dock button:active, .snip-cancel:active { scale: 0.96; }
+      .panel { animation: panelIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+      .banner { animation: bannerIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+    }
+    @media (pointer: coarse) {
+      .chip { padding:8px 14px; font-size:13px; min-height:36px; }
+      .btn { padding:12px 16px; font-size:14px; min-height:44px; }
+      .link { padding:6px 4px; font-size:13px; }
+      .dock { gap:6px; padding:5px; }
+      .dock button { width:38px; height:38px; font-size:15px; }
+      .snip-cancel { padding:7px 14px; font-size:13px; min-height:36px; }
+      textarea, input { font-size:16px; padding:11px 12px; }
+    }
+    @media (max-width: 640px) {
+      .fab {
+        right:max(16px, env(safe-area-inset-right, 0px));
+        bottom:max(16px, env(safe-area-inset-bottom, 0px));
+      }
+      .fab.left {
+        right:auto;
+        left:max(16px, env(safe-area-inset-left, 0px));
+      }
+      .panel, .panel.left {
+        left:0; right:0; bottom:0;
+        width:100%;
+        max-height:calc(100vh - 16px);
+        max-height:calc(100dvh - 16px - env(safe-area-inset-top, 0px));
+        border-radius:20px 20px 0 0;
+        border-left:0; border-right:0; border-bottom:0;
+        padding:16px 16px max(16px, env(safe-area-inset-bottom, 0px));
+        transform-origin:bottom center;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .panel, .panel.left {
+          animation: sheetIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+      }
+      textarea, input { font-size:16px; }
+      .actions-row .btn { flex:1; min-height:44px; }
+      .actions-row .chip { min-height:44px; padding:0 16px; }
+      .sent-panel .btn { width:100%; min-height:44px; }
+      .snip-bar {
+        border-radius:16px;
+        padding:8px 12px;
+        font-size:12px;
+      }
     }
   `;
 
@@ -851,22 +1067,35 @@ function Widget({ cfg }: { cfg: Config }) {
       <style>{css}</style>
       <style>{lookCss(look)}</style>
       {state === "launcher" && look.position !== "hidden" && (
-        <button class={look.position === "bottom_left" ? "fab left" : "fab"} type="button" onClick={openForm}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          {look.label}
+        <button
+          class={`${look.position === "bottom_left" ? "fab left" : "fab"}${badge.on ? " has-badge" : ""}`}
+          type="button"
+          onClick={openForm}
+        >
+          <span class="fab-slot">
+            <span class="fab-primary">
+              <svg class="fab-chat-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>{look.label}</span>
+            </span>
+            {badge.on && (
+              <span class="fab-sub" aria-hidden="true">
+                <svg class="fab-brand-icon" width="14" height="14" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
+                  <path d={SAIDLOOP_MARK_PATH} />
+                </svg>
+                <span>
+                  Feedback by <b>Saidloop</b>
+                </span>
+              </span>
+            )}
+          </span>
         </button>
-      )}
-      {state === "launcher" && badge.on && look.position !== "hidden" && (
-        <a class={look.position === "bottom_left" ? "fab-badge left" : "fab-badge"} href={badgeHref(badge.url, "launcher")} target="_blank" rel="noopener noreferrer">
-          Feedback by Saidloop ↗
-        </a>
       )}
       {state === "form" && (
         <>
           <div class="scrim" onClick={() => setState("launcher")} />
-          <div class="panel">
+          <div class={look.position === "bottom_left" ? "panel left" : "panel"}>
             <p class="title">Send feedback</p>
             <p class="sub">Screenshot is attached automatically. Annotate before you send.</p>
             <div class="row">
@@ -906,16 +1135,16 @@ function Widget({ cfg }: { cfg: Config }) {
                     onPointerCancel={onPointerUp}
                   />
                   <div class="dock" role="toolbar" aria-label="Annotate">
-                    <button type="button" class={tool === "pen" ? "on" : ""} title="Draw" onClick={() => setTool("pen")}>
+                    <button type="button" class={tool === "pen" ? "on" : ""} title="Draw" aria-label="Draw" onClick={() => setTool("pen")}>
                       ✎
                     </button>
-                    <button type="button" class={tool === "rect" ? "on" : ""} title="Box" onClick={() => setTool("rect")}>
+                    <button type="button" class={tool === "rect" ? "on" : ""} title="Box" aria-label="Box" onClick={() => setTool("rect")}>
                       ▢
                     </button>
-                    <button type="button" class={tool === "mask" ? "on" : ""} title="Mask" onClick={() => setTool("mask")}>
+                    <button type="button" class={tool === "mask" ? "on" : ""} title="Mask" aria-label="Mask" onClick={() => setTool("mask")}>
                       ▮
                     </button>
-                    <button type="button" title="Undo" onClick={undoStroke}>
+                    <button type="button" title="Undo" aria-label="Undo" onClick={undoStroke}>
                       ↶
                     </button>
                   </div>
@@ -936,7 +1165,7 @@ function Widget({ cfg }: { cfg: Config }) {
               onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
             />
             {error && <div class="err">{error}</div>}
-            <div class="row">
+            <div class="row actions-row">
               <button class="btn" disabled={busy || capturing || !message || !shot} onClick={() => void send()}>
                 {busy ? "Sending…" : "Send report"}
               </button>
@@ -955,6 +1184,9 @@ function Widget({ cfg }: { cfg: Config }) {
               <div class="powered">
                 Powered by{" "}
                 <a href={badgeHref(badge.url, "form")} target="_blank" rel="noopener noreferrer">
+                  <svg width="11" height="11" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
+                    <path d={SAIDLOOP_MARK_PATH} />
+                  </svg>
                   Saidloop
                 </a>
               </div>
@@ -963,7 +1195,7 @@ function Widget({ cfg }: { cfg: Config }) {
         </>
       )}
       {state === "sent" && (
-        <div class="panel">
+        <div class={look.position === "bottom_left" ? "panel sent-panel left" : "panel sent-panel"}>
           <p class="title">Report sent</p>
           <p class="muted">Thanks — we attached a screenshot and context for your team.</p>
           {sentTicketId && <div class="pill">Report #{shortId(sentTicketId)}</div>}
@@ -980,6 +1212,9 @@ function Widget({ cfg }: { cfg: Config }) {
             <div class="powered">
               Powered by{" "}
               <a href={badgeHref(badge.url, "sent")} target="_blank" rel="noopener noreferrer">
+                <svg width="11" height="11" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
+                  <path d={SAIDLOOP_MARK_PATH} />
+                </svg>
                 Saidloop
               </a>
             </div>
