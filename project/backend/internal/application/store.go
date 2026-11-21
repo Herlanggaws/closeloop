@@ -1921,7 +1921,7 @@ func (s *Store) existingWebhookSecret(ctx context.Context, projectID string) (st
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	if provider != "sentry" && provider != "posthog" && provider != "slack" && provider != "webhooks" &&
-		provider != "github_app" && provider != "linear" && provider != "jira" {
+		provider != "github_app" && provider != "linear" && provider != "jira" && provider != "gitlab" {
 		return Integration{}, ErrInvalidInput
 	}
 	if config == nil {
@@ -2010,6 +2010,28 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		}
 		cleaned = map[string]any{
 			"email": email, "api_token": token, "site": site, "project_key": projectKey,
+		}
+	}
+	if provider == "gitlab" {
+		token, _ := cleaned["token"].(string)
+		if token == "" {
+			token, _ = cleaned["api_token"].(string)
+		}
+		if token == "" {
+			return Integration{}, ErrInvalidInput
+		}
+		baseURL, _ := cleaned["base_url"].(string)
+		if baseURL == "" {
+			baseURL = "https://gitlab.com"
+		}
+		baseURL = strings.TrimRight(baseURL, "/")
+		username, _ := cleaned["username"].(string)
+		webhookSecret, _ := cleaned["webhook_secret"].(string)
+		cleaned = map[string]any{
+			"token":          token,
+			"base_url":       baseURL,
+			"username":       username,
+			"webhook_secret": webhookSecret,
 		}
 	}
 	body, err := json.Marshal(cleaned)

@@ -24,7 +24,7 @@ type IntegrationRow = {
   config: Record<string, unknown> | string;
 };
 
-type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks" | "github_app" | "linear" | "jira";
+type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks" | "github_app" | "linear" | "jira" | "gitlab";
 
 type CatalogItem = {
   id: string;
@@ -108,6 +108,15 @@ const DEBUG_CATALOG: CatalogItem[] = [
     iconBg: "#171717",
     action: "configure",
     wired: "github_app",
+  },
+  {
+    id: "gitlab",
+    name: "GitLab",
+    description: "Repository access for multi-repo routing and Auto PR merge requests",
+    icon: "GL",
+    iconBg: "#FC6D26",
+    action: "configure",
+    wired: "gitlab",
   },
   {
     id: "webhooks",
@@ -208,6 +217,9 @@ export function Integrations() {
   });
   const [githubInstallationId, setGithubInstallationId] = useState("");
   const [githubAccount, setGithubAccount] = useState("");
+  const [gitlabToken, setGitlabToken] = useState("");
+  const [gitlabHost, setGitlabHost] = useState("https://gitlab.com");
+  const [gitlabUsername, setGitlabUsername] = useState("");
   const [repoAddRequest, setRepoAddRequest] = useState(0);
   const [linearAPIKey, setLinearAPIKey] = useState("");
   const [linearTeamID, setLinearTeamID] = useState("");
@@ -275,6 +287,12 @@ export function Integrations() {
         const gh = list.find((i) => i.provider === "github_app");
         if (gh) {
           applyGitHubConfig(gh.config);
+        }
+        const gl = list.find((i) => i.provider === "gitlab");
+        if (gl) {
+          setGitlabToken(gl.config.token || gl.config.api_token || "");
+          setGitlabHost(gl.config.base_url || "https://gitlab.com");
+          setGitlabUsername(gl.config.username || "");
         }
         const linear = list.find((i) => i.provider === "linear");
         if (linear) {
@@ -444,6 +462,40 @@ export function Integrations() {
     }
   }
 
+  async function testAndSaveGitLab() {
+    if (!gitlabToken.trim()) {
+      setError("GitLab Personal Access Token is required");
+      return;
+    }
+    setSaving("gitlab");
+    setError("");
+    try {
+      const testRes = await api<{ ok: boolean; username: string }>(
+        `/api/projects/${projectId}/integrations/gitlab/test`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            token: gitlabToken.trim(),
+            base_url: gitlabHost.trim() || "https://gitlab.com",
+          }),
+        },
+      );
+      if (testRes.username) {
+        setGitlabUsername(testRes.username);
+      }
+      await saveProvider("gitlab", {
+        token: gitlabToken.trim(),
+        base_url: gitlabHost.trim() || "https://gitlab.com",
+        username: testRes.username || gitlabUsername.trim(),
+      });
+      setConfigureModal(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "GitLab authentication failed");
+    } finally {
+      setSaving(null);
+    }
+  }
+
   async function clearProvider(provider: WiredProvider) {
     if (!projectId) return;
     setSaving(provider);
@@ -472,6 +524,9 @@ export function Integrations() {
       } else if (provider === "github_app") {
         setGithubInstallationId("");
         setGithubAccount("");
+      } else if (provider === "gitlab") {
+        setGitlabToken("");
+        setGitlabUsername("");
       } else if (provider === "linear") {
         setLinearAPIKey("");
         setLinearTeamID("");
@@ -495,6 +550,7 @@ export function Integrations() {
   const slackConnected = Boolean(slackWebhook.trim());
   const webhooksConnected = Boolean(webhookURL.trim());
   const githubConnected = Boolean(githubInstallationId.trim());
+  const gitlabConnected = Boolean(gitlabToken.trim());
   const linearConnected = Boolean(linearAPIKey.trim() && linearTeamID.trim());
   const jiraConnected = Boolean(
     jiraEmail.trim() && jiraToken.trim() && jiraSite.trim() && jiraProjectKey.trim(),
@@ -507,6 +563,7 @@ export function Integrations() {
     if (item.wired === "slack") return slackConnected ? "connected" : "none";
     if (item.wired === "webhooks") return webhooksConnected ? "connected" : "none";
     if (item.wired === "github_app") return githubConnected ? "connected" : "none";
+    if (item.wired === "gitlab") return gitlabConnected ? "connected" : "none";
     if (item.wired === "linear") return linearConnected ? "connected" : "none";
     if (item.wired === "jira") return jiraConnected ? "connected" : "none";
     if (item.id === "github_issues") return githubConnected ? "connected" : "none";
@@ -568,6 +625,7 @@ export function Integrations() {
     if (item.action === "coming_soon") return "Coming soon";
     if (item.id === "github_issues") return githubConnected ? "Configure" : "Connect";
     if (item.wired === "github_app") return githubConnected ? "Configure" : "Connect";
+    if (item.wired === "gitlab") return gitlabConnected ? "Configure" : "Connect";
     return "Configure";
   }
 
@@ -617,6 +675,8 @@ export function Integrations() {
                 projectName={projectName}
                 installationId={Number(githubInstallationId) || 0}
                 accountLogin={githubAccount}
+                gitlabConnected={gitlabConnected}
+                gitlabUsername={gitlabUsername}
                 addRequest={repoAddRequest}
               />
 
@@ -1174,6 +1234,99 @@ export function Integrations() {
                             className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
                           >
                             Add repository
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {configureModal === "gitlab" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              GitLab
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Connect GitLab with a Personal Access Token or Project Token with{" "}
+                              <code className="font-ds-mono text-xs text-[#171717]">api</code> and{" "}
+                              <code className="font-ds-mono text-xs text-[#171717]">write_repository</code> scopes.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+
+                        <div className="mt-4 flex flex-col gap-3">
+                          <div>
+                            <label className="font-ds-ui text-[12px] font-medium text-[#171717]">
+                              GitLab Host URL
+                            </label>
+                            <input
+                              type="text"
+                              value={gitlabHost}
+                              onChange={(e) => setGitlabHost(e.target.value)}
+                              placeholder="https://gitlab.com"
+                              className="mt-1 w-full rounded-md border border-[#1717171F] px-3 py-2 font-ds-ui text-[13px] text-[#171717] outline-none focus:border-[#171717]"
+                            />
+                            <p className="mt-1 font-ds-ui text-[11px] text-[#737373]">
+                              Leave as https://gitlab.com or enter your self-hosted GitLab URL.
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="font-ds-ui text-[12px] font-medium text-[#171717]">
+                              Access Token
+                            </label>
+                            <input
+                              type="password"
+                              value={gitlabToken}
+                              onChange={(e) => setGitlabToken(e.target.value)}
+                              placeholder="glpat-..."
+                              className="mt-1 w-full rounded-md border border-[#1717171F] px-3 py-2 font-ds-ui text-[13px] text-[#171717] outline-none focus:border-[#171717]"
+                            />
+                          </div>
+
+                          {gitlabConnected && (
+                            <div className="flex items-center justify-between rounded-md bg-[#FAFAFA] px-3 py-2 border border-[#1717170F]">
+                              <span className="font-ds-ui text-xs text-[#171717]">
+                                Connected{gitlabUsername ? ` as @${gitlabUsername}` : ""}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={saving === "gitlab"}
+                                onClick={() => void clearProvider("gitlab")}
+                                className="cursor-pointer font-ds-ui text-xs text-[#DA314A] hover:underline"
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving === "gitlab"}
+                            onClick={() => void testAndSaveGitLab()}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "gitlab" ? "Connecting…" : gitlabConnected ? "Save" : "Connect"}
                           </button>
                         </div>
                       </>

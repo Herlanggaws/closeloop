@@ -24,12 +24,16 @@ export function RepositoriesSection({
   projectName,
   installationId,
   accountLogin,
+  gitlabConnected = false,
+  gitlabUsername = "",
   addRequest = 0,
 }: {
   projectId: string;
   projectName: string;
   installationId: number;
   accountLogin: string;
+  gitlabConnected?: boolean;
+  gitlabUsername?: string;
   /** Bumped by the page (e.g. right after the GitHub App install) to open Add repository. */
   addRequest?: number;
 }) {
@@ -176,13 +180,13 @@ export function RepositoriesSection({
                   >
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
-                        <GitHubMark />
+                        {repo.provider === "gitlab" ? <GitLabMark /> : <GitHubMark />}
                         <div className="min-w-0">
                           <div className="truncate font-ds-mono text-[12.5px] text-[#171717]">
                             {repo.full_name}
                           </div>
                           <div className="font-ds-ui text-[11px] text-[#A3A3A3]">
-                            GitHub App · {repo.account_login || repo.full_name.split("/")[0]}
+                            {repo.provider === "gitlab" ? "GitLab" : "GitHub App"} · {repo.account_login || repo.full_name.split("/")[0]}
                           </div>
                         </div>
                       </div>
@@ -299,6 +303,8 @@ export function RepositoriesSection({
           projectId={projectId}
           installationId={installationId}
           accountLogin={accountLogin}
+          gitlabConnected={gitlabConnected}
+          gitlabUsername={gitlabUsername}
           data={data}
           onClose={() => setAdding(false)}
           onAdded={async () => {
@@ -327,6 +333,8 @@ function AddRepositoryModal({
   projectId,
   installationId,
   accountLogin,
+  gitlabConnected = false,
+  gitlabUsername = "",
   data,
   onClose,
   onAdded,
@@ -334,10 +342,15 @@ function AddRepositoryModal({
   projectId: string;
   installationId: number;
   accountLogin: string;
+  gitlabConnected?: boolean;
+  gitlabUsername?: string;
   data: ReposResponse;
   onClose: () => void;
   onAdded: () => Promise<void>;
 }) {
+  const [provider, setProvider] = useState<"github" | "gitlab">(
+    installationId ? "github" : gitlabConnected ? "gitlab" : "github"
+  );
   const [options, setOptions] = useState<GitHubRepoOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [query, setQuery] = useState("");
@@ -350,16 +363,21 @@ function AddRepositoryModal({
 
   useEffect(() => {
     let cancelled = false;
-    api<{ repos: GitHubRepoOption[] }>(
-      `/api/projects/${projectId}/integrations/github_app/repos?installation_id=${installationId}`,
-    )
+    setLoadingOptions(true);
+    setError("");
+    const endpoint =
+      provider === "gitlab"
+        ? `/api/projects/${projectId}/integrations/gitlab/repos`
+        : `/api/projects/${projectId}/integrations/github_app/repos?installation_id=${installationId}`;
+
+    api<{ repos: GitHubRepoOption[] }>(endpoint)
       .then((res) => !cancelled && setOptions(res.repos || []))
       .catch((err) => !cancelled && setError(err instanceof Error ? err.message : "Could not list repos"))
       .finally(() => !cancelled && setLoadingOptions(false));
     return () => {
       cancelled = true;
     };
-  }, [projectId, installationId]);
+  }, [projectId, installationId, provider]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -385,8 +403,9 @@ function AddRepositoryModal({
       await api(`/api/projects/${projectId}/repos`, {
         method: "POST",
         body: JSON.stringify({
-          installation_id: installationId,
-          account_login: accountLogin,
+          provider,
+          installation_id: provider === "github" ? installationId : 0,
+          account_login: provider === "github" ? accountLogin : gitlabUsername,
           full_name: picked.full_name,
           default_branch: picked.default_branch,
           is_fallback: fallback,
@@ -429,6 +448,38 @@ function AddRepositoryModal({
         </div>
 
         <div className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
+          {installationId > 0 && gitlabConnected && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setProvider("github");
+                  setPicked(null);
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium cursor-pointer ${
+                  provider === "github"
+                    ? "bg-[#171717] text-white"
+                    : "bg-[#F5F5F5] text-[#737373] hover:text-[#171717]"
+                }`}
+              >
+                <GitHubMark /> GitHub
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProvider("gitlab");
+                  setPicked(null);
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium cursor-pointer ${
+                  provider === "gitlab"
+                    ? "bg-[#FC6D26] text-white"
+                    : "bg-[#F5F5F5] text-[#737373] hover:text-[#171717]"
+                }`}
+              >
+                <GitLabMark /> GitLab
+              </button>
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <span className="font-ds-ui text-[12px] font-medium text-[#171717]">Repository</span>
             <div className="overflow-hidden rounded-lg border border-[#1717171F]">
@@ -440,7 +491,9 @@ function AddRepositoryModal({
               />
               <div className="max-h-48 overflow-y-auto">
                 <div className="bg-[#FAFAFA] px-3 py-1.5 font-ds-ui text-[11px] text-[#A3A3A3]">
-                  {accountLogin || "GitHub App"} · installation
+                  {provider === "gitlab"
+                    ? `${gitlabUsername || "GitLab"} · projects`
+                    : `${accountLogin || "GitHub App"} · installation`}
                 </div>
                 {loadingOptions ? (
                   <p className="px-3 py-2 font-ds-ui text-[12.5px] text-[#737373]">Loading…</p>
@@ -674,6 +727,14 @@ function GitHubMark() {
   return (
     <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" aria-hidden fill="#171717">
       <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  );
+}
+
+function GitLabMark() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" aria-hidden fill="#FC6D26">
+      <path d="M15.97 9.058l-.8-2.464a.54.54 0 00-.206-.276.545.545 0 00-.342-.08.542.542 0 00-.327.126.548.548 0 00-.174.298L12.9 10.42H3.102L1.878 6.662a.544.544 0 00-.174-.298.546.546 0 00-.328-.126.547.547 0 00-.342.08.543.543 0 00-.206.276l-.8 2.464a.81.81 0 00.294.898l7.444 5.408a.542.542 0 00.64 0l7.444-5.408a.81.81 0 00.294-.898z" />
     </svg>
   );
 }

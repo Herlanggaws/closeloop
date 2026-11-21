@@ -14,6 +14,7 @@ export type ProjectRepo = {
   default_branch: string;
   is_fallback: boolean;
   routing_paused: boolean;
+  provider?: "github" | "gitlab";
   routes: RepoRoute[];
   created_at: string;
 };

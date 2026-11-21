@@ -89,6 +89,8 @@ func (s *Server) Router() *gin.Engine {
 		api.GET("/integrations/github/callback", s.githubSetupCallback)
 		api.POST("/projects/:id/integrations/github_app/complete", s.authRequired(), s.completeGitHubApp)
 		api.GET("/projects/:id/integrations/github_app/repos", s.authRequired(), s.listGitHubRepos)
+		api.POST("/projects/:id/integrations/gitlab/test", s.authRequired(), s.testGitLabIntegration)
+		api.GET("/projects/:id/integrations/gitlab/repos", s.authRequired(), s.listGitLabRepos)
 		api.GET("/projects/:id/autopr/runs", s.authRequired(), s.listAutoprRuns)
 		api.GET("/org/credits", s.authRequired(), s.listOrgCredits)
 		api.GET("/tickets/:id", s.authRequired(), s.getTicket)
@@ -127,6 +129,7 @@ func (s *Server) Router() *gin.Engine {
 
 	r.GET("/v1/files/:token", s.readFile)
 	r.POST("/webhooks/github", s.githubWebhook)
+	r.POST("/webhooks/gitlab", s.gitlabWebhook)
 	r.POST("/webhooks/linear", s.linearWebhook)
 	r.POST("/webhooks/jira", s.jiraWebhook)
 	r.Any("/mcp", s.mcpHandler)
