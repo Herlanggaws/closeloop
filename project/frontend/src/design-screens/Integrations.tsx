@@ -470,23 +470,27 @@ export function Integrations() {
     setSaving("gitlab");
     setError("");
     try {
-      const testRes = await api<{ ok: boolean; username: string }>(
-        `/api/projects/${projectId}/integrations/gitlab/test`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            token: gitlabToken.trim(),
-            base_url: gitlabHost.trim() || "https://gitlab.com",
-          }),
-        },
-      );
-      if (testRes.username) {
-        setGitlabUsername(testRes.username);
+      let verifiedUsername = gitlabUsername.trim();
+      if (gitlabToken.trim() !== "••••••••") {
+        const testRes = await api<{ ok: boolean; username: string }>(
+          `/api/projects/${projectId}/integrations/gitlab/test`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              token: gitlabToken.trim(),
+              base_url: gitlabHost.trim() || "https://gitlab.com",
+            }),
+          },
+        );
+        if (testRes.username) {
+          verifiedUsername = testRes.username;
+          setGitlabUsername(testRes.username);
+        }
       }
       await saveProvider("gitlab", {
         token: gitlabToken.trim(),
         base_url: gitlabHost.trim() || "https://gitlab.com",
-        username: testRes.username || gitlabUsername.trim(),
+        username: verifiedUsername,
       });
       setConfigureModal(null);
     } catch (err) {
