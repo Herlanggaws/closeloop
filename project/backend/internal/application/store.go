@@ -1950,7 +1950,14 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		if err != nil {
 			return Integration{}, err
 		}
-		cleaned = map[string]any{"webhook_url": url, "events": events}
+		next := map[string]any{"webhook_url": url, "events": events}
+		// Set by "Add to Slack" (F8); a pasted webhook has none of these.
+		for _, k := range []string{"channel", "team", "configuration_url"} {
+			if v, ok := cleaned[k].(string); ok && strings.TrimSpace(v) != "" {
+				next[k] = strings.TrimSpace(v)
+			}
+		}
+		cleaned = next
 	}
 	if provider == "webhooks" {
 		url, _ := cleaned["url"].(string)

@@ -22,6 +22,9 @@ type Config struct {
 	GitHubAppPrivateKey     string
 	GitHubAppPrivateKeyPath string
 	AnthropicAPIKey         string
+	SlackClientID           string
+	SlackClientSecret       string
+	SlackAPIBase            string // https://slack.com unless overridden (tests)
 }
 
 func Load() Config {
@@ -47,6 +50,9 @@ func Load() Config {
 		GitHubAppWebhookSecret:  os.Getenv("GITHUB_APP_WEBHOOK_SECRET"),
 		GitHubAppPrivateKey:     os.Getenv("GITHUB_APP_PRIVATE_KEY"),
 		GitHubAppPrivateKeyPath: os.Getenv("GITHUB_APP_PRIVATE_KEY_PATH"),
+		SlackClientID:           os.Getenv("SLACK_CLIENT_ID"),
+		SlackClientSecret:       os.Getenv("SLACK_CLIENT_SECRET"),
+		SlackAPIBase:            env("SLACK_API_BASE", "https://slack.com"),
 		AnthropicAPIKey:         os.Getenv("ANTHROPIC_API_KEY"),
 	}
 }

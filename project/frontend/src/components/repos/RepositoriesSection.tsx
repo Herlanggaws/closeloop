@@ -24,11 +24,14 @@ export function RepositoriesSection({
   projectName,
   installationId,
   accountLogin,
+  addRequest = 0,
 }: {
   projectId: string;
   projectName: string;
   installationId: number;
   accountLogin: string;
+  /** Bumped by the page (e.g. right after the GitHub App install) to open Add repository. */
+  addRequest?: number;
 }) {
   const [data, setData] = useState<ReposResponse | null>(null);
   const [error, setError] = useState("");
@@ -48,7 +51,11 @@ export function RepositoriesSection({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, installationId]);
+
+  useEffect(() => {
+    if (addRequest > 0 && installationId) setAdding(true);
+  }, [addRequest, installationId]);
 
   if (!data) {
     return error ? <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p> : null;

@@ -102,7 +102,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 
 #### M3 · Tool tim & publik (F8, F9, F11)
 - [x] **F8** Slack via Incoming Webhook: new report, status, event filters
-- [ ] **F8** Slack OAuth channel picker
+- [x] **F8** Slack OAuth channel picker — "Add to Slack" (scope `incoming-webhook`, Slack's own channel picker), keeps events, paste URL still works. Needs `SLACK_CLIENT_ID`/`SLACK_CLIENT_SECRET` from a real Slack app before it shows
 - [x] **F8** Outbound Webhooks (HTTPS + HMAC)
 - [x] **F8** GitHub Issues one-way create from ticket (via GitHub App)
 - [x] **F8** Linear / Jira create (API key) + inbound webhook status → fixed
@@ -129,7 +129,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
 - [x] **F12** Audit log + export — sudah dibangun, disembunyikan sampai M6 bersama S-16
 - [ ] **F12** Docker / Helm self-host + license activation (S-17)
-- [ ] Session replay 30 hari (retensi Business; Studio 7 hari tetap jalan)
+- [x] Session replay 30 hari (retensi Business; Studio 7 hari tetap jalan) — udah ada: `ReplayRetentionDays` + purge di worker, dites `TestR_REPLAY_03`
 - [ ] Kuota laporan sesuai kontrak + harga mulai $149
 - [ ] Billing Business (kontrak / invoice tahunan, lisensi self-host)
 - [ ] Tampilkan lagi plan Business di landing, Billing, sidebar (balikkan D-22)
@@ -159,7 +159,7 @@ Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) 
 
 ## PRD Multi-repo per Project (Nov 19) — merged to dev Nov 20
 
-R1–R5 merged to dev on Nov 20 (migration `023_project_repos.sql`; old `repo_full_name` becomes the fallback repo). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR), and the GitHub App install flow still picks one repo first; extra repos are added from the Repositories section.
+R1–R5 merged to dev on Nov 20 (migration `023_project_repos.sql`; old `repo_full_name` becomes the fallback repo). Not done yet: the runner never actually returns `needs_reroute` (it is still the stub that opens a context PR). Connecting the GitHub App no longer picks one repo: a single-repo install is added for you, otherwise the Add repository modal opens (Nov 20).
 
 | ID | Item | Milestone | Story |
 | --- | --- | --- | --- |
@@ -211,7 +211,7 @@ Fase B · pricing di backend
 - [x] D-09 `MaxReposPerProject` + `usage.repos`
 - [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
 
-Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri), connect GitHub App masih pilih 1 repo di awal.
+Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri) Connect GitHub App udah gak maksa pilih 1 repo lagi (20 Nov).
 - [x] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`. — `023_project_repos.sql` + migrasi repo lama jadi fallback
 - [x] D-12 S-13 v2 Repositories (`ho9Yy`, `dmcSk`). — S-13 Repositories section, counter, limit copy, read-access toggle
 - [x] D-13 Add repository modal + `PLATFORM_CONFLICT` (`DMYRO`). — modal Add repository + `PLATFORM_CONFLICT` / `REPO_LIMIT`
@@ -251,7 +251,7 @@ Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete and validated on Bear Budget Web. Free MCP gate reverted (Pricing P1, D-07) |
 | M2 | F3 F7 mobile + Multi-repo R1–R3 | Todo |
-| M3 | F8 F9 F11 | Done except Slack OAuth channel picker. Plan gating for integrations and board shipped (D-08) |
+| M3 | F8 F9 F11 | Done (Slack OAuth needs the Slack app credentials in env). Plan gating for integrations and board shipped (D-08) |
 | M4 | F10 | GitHub App + stub runner done; real runner open |
 | M5 | Billing + public beta + Pricing update | Todo (manual plans only). Free, Indie, Studio only |
 | M6 | F12 Business: SSO, audit log, self-host, replay 30d, contract quota | Audit log built; rest todo. Business plan hidden until here |

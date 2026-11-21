@@ -7,6 +7,16 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-20",
+    title: "Add to Slack",
+    body: "Connect Slack by picking a workspace and channel in Slack itself instead of pasting a webhook URL. Saidloop shows which channel it posts to, and changing the channel keeps your event choices. Pasting an Incoming Webhook URL still works.",
+  },
+  {
+    date: "2026-11-20",
+    title: "Connect GitHub once, add as many repos as your plan allows",
+    body: "Connecting the GitHub App no longer asks you to pick a single repo. If the install covers one repo it is added for you; otherwise Add repository opens so you can choose each repo and which platform it serves. GitHub issues for tickets with no repo yet go to your fallback repo.",
+  },
+  {
+    date: "2026-11-20",
     title: "Android, iOS, Flutter and React Native SDKs",
     body: "Native report sheets for Android and iOS, plus a Flutter package that wraps them: users shake the phone or you call Saidloop.show(), the current screen is attached with sensitive views hidden, and reports made offline are sent as soon as the connection returns.",
   },

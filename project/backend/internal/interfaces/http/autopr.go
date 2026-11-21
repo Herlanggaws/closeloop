@@ -102,7 +102,9 @@ func (s *Server) completeGitHubApp(c *gin.Context) {
 	}
 	if repo == "" {
 		if client, err := s.githubAppClient(); err == nil {
-			if repos, err := client.ListInstallationRepos(c.Request.Context(), body.InstallationID); err == nil && len(repos) > 0 {
+			// Multi-repo: only a single-repo install is added for the builder; with more
+			// repos they pick them (and their platform routes) in Repositories.
+			if repos, err := client.ListInstallationRepos(c.Request.Context(), body.InstallationID); err == nil && len(repos) == 1 {
 				repo = repos[0].FullName
 				if repos[0].DefaultBranch != "" {
 					branch = repos[0].DefaultBranch
@@ -125,6 +127,7 @@ func (s *Server) completeGitHubApp(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	_ = s.Store.SyncLegacyGitHubRepo(c.Request.Context(), projectID, item.Config)
 	c.JSON(200, gin.H{"integration": item})
 }
 
@@ -214,22 +217,26 @@ func (s *Server) handleGitHubInstallationEvent(c *gin.Context, body []byte) {
 		return
 	}
 
+	// Keep the repo already on the connection; only a single-repo install fills it in.
+	// Other repos are picked in Repositories (multi-repo), never "the first one".
 	repo := ""
 	branch := "main"
-	if len(payload.RepositoriesAdded) > 0 {
-		repo = payload.RepositoriesAdded[0].FullName
-		if payload.RepositoriesAdded[0].DefaultBranch != "" {
-			branch = payload.RepositoriesAdded[0].DefaultBranch
-		}
-	} else if len(payload.Repositories) > 0 {
-		repo = payload.Repositories[0].FullName
-		if payload.Repositories[0].DefaultBranch != "" {
-			branch = payload.Repositories[0].DefaultBranch
-		}
-	} else if raw, err := s.Store.GetIntegrationConfig(c.Request.Context(), projectID, "github_app"); err == nil {
-		if cfg, err := application.ParseGitHubAppConfig(raw); err == nil {
+	if raw, err := s.Store.GetIntegrationConfig(c.Request.Context(), projectID, "github_app"); err == nil {
+		if cfg, err := application.ParseGitHubAppConfig(raw); err == nil && cfg.RepoFullName != "" {
 			repo = cfg.RepoFullName
 			branch = cfg.DefaultBranch
+		}
+	}
+	if repo == "" {
+		single := payload.Repositories
+		if len(single) == 0 {
+			single = payload.RepositoriesAdded
+		}
+		if len(single) == 1 {
+			repo = single[0].FullName
+			if single[0].DefaultBranch != "" {
+				branch = single[0].DefaultBranch
+			}
 		}
 	}
 	_, _ = s.Store.UpsertIntegration(c.Request.Context(), projectID, "github_app", map[string]any{
