@@ -58,8 +58,8 @@ export function RepositoriesSection({
   }, [load, installationId]);
 
   useEffect(() => {
-    if (addRequest > 0 && installationId) setAdding(true);
-  }, [addRequest, installationId]);
+    if (addRequest > 0 && (installationId || gitlabConnected)) setAdding(true);
+  }, [addRequest, installationId, gitlabConnected]);
 
   if (!data) {
     return error ? <p className="font-ds-ui text-sm text-[#DA314A]">{error}</p> : null;
@@ -128,8 +128,8 @@ export function RepositoriesSection({
             <span className="font-ds-mono text-[12px] text-[#737373]">{repoCounter(used, limit)}</span>
             <button
               type="button"
-              disabled={full || !installationId}
-              title={!installationId ? "Connect the GitHub App first" : undefined}
+              disabled={full || (!installationId && !gitlabConnected)}
+              title={!installationId && !gitlabConnected ? "Connect GitHub App or GitLab first" : undefined}
               onClick={() => setAdding(true)}
               className="inline-flex h-8 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -155,9 +155,9 @@ export function RepositoriesSection({
 
         {data.repos.length === 0 ? (
           <p className="px-5 py-6 font-ds-ui text-[13px] text-[#737373]">
-            {installationId
+            {installationId || gitlabConnected
               ? "No repos yet. Add one so reports reach the right codebase."
-              : "Connect the GitHub App below, then add the repos this project ships from."}
+              : "Connect GitHub App or GitLab below, then add the repos this project ships from."}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -438,7 +438,7 @@ function AddRepositoryModal({
               Add a repository
             </h3>
             <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-              Pick a repo from your GitHub App installations, then choose the platforms it serves.{" "}
+              Pick a repo from your connected GitHub or GitLab account, then choose the platforms it serves.{" "}
               {repoCounter(data.usage.used, data.usage.limit).replace(" repos", " repos used")}.
             </p>
           </div>
