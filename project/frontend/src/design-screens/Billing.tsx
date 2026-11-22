@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -23,6 +24,12 @@ import {
   type OrgUsage,
 } from "@/lib/usage";
 
+const POLL_MS = 2000;
+/** After this many polls (30s) the confirmation counts as late and polling slows down. */
+const LATE_AFTER_POLLS = 15;
+/** Stop after 10 minutes. */
+const MAX_POLLS = 300;
+
 export function Billing() {
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -33,6 +40,7 @@ export function Billing() {
   const [saving, setSaving] = useState(false);
   const [interval, setBillingInterval] = useState<BillingInterval>("month");
   const [checkoutDone, setCheckoutDone] = useState(false);
+  const [confirmationLate, setConfirmationLate] = useState(false);
 
   useEffect(() => {
     setCheckoutDone(new URLSearchParams(window.location.search).get("checkout") === "success");
@@ -49,7 +57,9 @@ export function Billing() {
     const projectId = localStorage.getItem("closeloop_project") || "";
     let tries = 0;
     const timer = window.setInterval(async () => {
-      if (++tries > 15) return window.clearInterval(timer);
+      if (++tries > MAX_POLLS) return window.clearInterval(timer);
+      if (tries >= LATE_AFTER_POLLS) setConfirmationLate(true);
+      if (tries > LATE_AFTER_POLLS && tries % 5 !== 0) return;
       try {
         const res = await api<MeResponse>(`/api/me?project_id=${encodeURIComponent(projectId)}`);
         setMe(res);
@@ -57,9 +67,15 @@ export function Billing() {
       } catch {
         // A failed refresh is retried on the next tick; the page already shows the last known plan.
       }
-    }, 2000);
+    }, POLL_MS);
     return () => window.clearInterval(timer);
   }, [waitingForPlan]);
+
+  // Drop ?checkout=success once confirmed, so a later refresh does not claim another payment.
+  const paymentConfirmed = checkoutDone && Boolean(usage?.subscribed);
+  useEffect(() => {
+    if (paymentConfirmed) window.history.replaceState(null, "", window.location.pathname);
+  }, [paymentConfirmed]);
 
   useEffect(() => {
     const projectId = localStorage.getItem("closeloop_project");
@@ -193,9 +209,20 @@ export function Billing() {
               )}
               {checkoutDone && (
                 <p role="status" className="font-ds-ui text-[13px] text-[#737373]">
-                  {subscribed
-                    ? "You're subscribed."
-                    : "Payment received. Your plan updates in a moment."}
+                  {subscribed ? (
+                    "You're subscribed."
+                  ) : confirmationLate ? (
+                    <>
+                      We haven&apos;t received your payment confirmation yet. Don&apos;t pay again.
+                      Your plan switches on when it arrives. If it doesn&apos;t,{" "}
+                      <Link href="/contact" className="underline underline-offset-2">
+                        contact support
+                      </Link>
+                      .
+                    </>
+                  ) : (
+                    "Payment received. Your plan updates in a moment."
+                  )}
                 </p>
               )}
 

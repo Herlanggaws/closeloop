@@ -136,6 +136,25 @@ test.describe("Billing", () => {
     );
     await expect(page.getByRole("status")).toHaveText("You're subscribed.");
     await expect(page.getByText("$150 / year")).toBeVisible();
+    // Otherwise a refresh after the subscription ends would claim a new payment and lock the cards.
+    await expect(page).toHaveURL(/\/app\/settings\/billing$/);
+  });
+
+  test("says so when payment confirmation does not arrive", async ({ page }) => {
+    await page.clock.install();
+    await openBilling(page, { query: "?checkout=success" });
+    await expect(page.getByRole("status")).toHaveText(
+      "Payment received. Your plan updates in a moment.",
+    );
+    await page.clock.runFor(32_000);
+    await expect(page.getByRole("status")).toContainText(
+      "We haven't received your payment confirmation yet. Don't pay again.",
+    );
+    await expect(page.getByRole("link", { name: "contact support" })).toHaveAttribute(
+      "href",
+      "/contact",
+    );
+    await expect(page.locator('[data-plan="indie"]')).toBeDisabled();
   });
 
   test("members cannot change the plan", async ({ page }) => {

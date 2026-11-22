@@ -131,6 +131,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
   - [ ] Putusin org yang sudah Indie/Studio manual: tetap gratis atau harus subscribe
 - [x] Billing, bug dari tes sandbox 22 Nov:
   - [x] Email akun yang ditolak provider (domain tanpa mail server) bikin checkout 502: sekarang checkout tetap kebuka, email diisi di sana
+  - [x] "Payment received" nyangkut selamanya kalau webhook gak dateng: setelah 30 detik bilang jangan bayar lagi + contact support, terus ngecek sampai 10 menit, dan `?checkout=success` dibuang setelah plan nyala
 - [ ] Billing, batasan yang diketahui:
   - [ ] Satu email untuk dua workspace: checkout kedua ditolak provider, dan portal tidak bisa dibuka untuk workspace yang customer-nya milik workspace lain
   - [ ] Kirim ulang invite yang expired tidak cek batas seat (bug lama, makin relevan dengan seat berbayar)
