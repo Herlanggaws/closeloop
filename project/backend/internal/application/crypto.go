@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 const (
@@ -24,15 +25,29 @@ const (
 
 // integrationSecretFields lists JSON keys inside integrations.config that hold
 // sensitive credentials and must be encrypted at rest and redacted in list responses.
-var integrationSecretFields = []string{"token", "api_key", "api_token", "webhook_secret"}
+var integrationSecretFields = []string{"token", "api_key", "api_token", "webhook_secret", "secret"}
+
+var (
+	ephemeralKeyOnce sync.Once
+	ephemeralKey     []byte
+)
 
 func integrationMasterSecret() []byte {
 	secret := strings.TrimSpace(os.Getenv("INTEGRATION_ENCRYPTION_KEY"))
 	if secret == "" {
 		secret = strings.TrimSpace(os.Getenv("JWT_SECRET"))
 	}
-	if secret == "" {
-		secret = "dev-jwt-secret-change-me-in-production"
+	if secret == "" || secret == "dev-jwt-secret-change-me-in-production" {
+		if os.Getenv("GIN_MODE") == "release" || os.Getenv("APP_ENV") == "production" {
+			ephemeralKeyOnce.Do(func() {
+				ephemeralKey = make([]byte, 32)
+				_, _ = io.ReadFull(rand.Reader, ephemeralKey)
+			})
+			return ephemeralKey
+		}
+		if secret == "" {
+			secret = "dev-jwt-secret-change-me-in-production"
+		}
 	}
 	return []byte(secret)
 }
@@ -80,8 +95,8 @@ func EncryptSecret(plaintext string) (string, error) {
 // DecryptSecret decrypts an "enc:v2:..." (salted) or "enc:v1:..." credential.
 // Plaintext values without the prefix are returned as-is for backward compatibility.
 func DecryptSecret(value string) (string, error) {
-	if strings.HasPrefix(value, encPrefix) {
-		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, encPrefix))
+	if encoded, ok := strings.CutPrefix(value, encPrefix); ok {
+		raw, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
 			return "", fmt.Errorf("decode encrypted secret: %w", err)
 		}
@@ -110,8 +125,8 @@ func DecryptSecret(value string) (string, error) {
 		return string(plain), nil
 	}
 
-	if strings.HasPrefix(value, encPrefixV1) {
-		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, encPrefixV1))
+	if encoded, ok := strings.CutPrefix(value, encPrefixV1); ok {
+		raw, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
 			return "", fmt.Errorf("decode encrypted secret: %w", err)
 		}

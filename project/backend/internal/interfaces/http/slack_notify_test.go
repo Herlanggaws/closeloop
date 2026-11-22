@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -25,9 +26,7 @@ func (r *recordingSlackPoster) PostWebhook(_ context.Context, webhookURL string,
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	copied := map[string]any{}
-	for k, v := range body {
-		copied[k] = v
-	}
+	maps.Copy(copied, body)
 	r.posts = append(r.posts, recordedSlackPost{URL: webhookURL, Body: copied})
 	return nil
 }

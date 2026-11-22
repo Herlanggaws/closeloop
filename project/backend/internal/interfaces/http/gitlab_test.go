@@ -17,9 +17,10 @@ func TestR_GITLAB_01_ConnectAndWebhookCloses(t *testing.T) {
 	// 1. Connect GitLab integration
 	code, body := h.do(http.MethodPut, "/api/projects/"+seed.ProjectID+"/integrations/gitlab", map[string]any{
 		"config": map[string]any{
-			"token":    "glpat-sample-token",
-			"base_url": "https://gitlab.com",
-			"username": "alex",
+			"token":          "glpat-sample-token",
+			"base_url":       "https://gitlab.com",
+			"username":       "alex",
+			"webhook_secret": "gl-webhook-secret-test",
 		},
 	}, h.authHeaders(seed.AccessToken))
 	if code != 200 {
@@ -73,8 +74,8 @@ func TestR_GITLAB_01_ConnectAndWebhookCloses(t *testing.T) {
 		t.Fatalf("update run: %v", err)
 	}
 
-	// 5. GitLab Webhook sends Merge Request merged event
-	whCode, _ := h.do(http.MethodPost, "/webhooks/gitlab", map[string]any{
+	// 5. GitLab Webhook rejects unauthenticated request and accepts valid X-Gitlab-Token
+	unauthCode, _ := h.do(http.MethodPost, "/webhooks/gitlab", map[string]any{
 		"object_kind": "merge_request",
 		"project": map[string]any{
 			"path_with_namespace": "alex/web-app",
@@ -87,6 +88,23 @@ func TestR_GITLAB_01_ConnectAndWebhookCloses(t *testing.T) {
 			"url":    "https://gitlab.com/alex/web-app/-/merge_requests/14",
 		},
 	}, nil)
+	if unauthCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unauthenticated gitlab webhook, got %d", unauthCode)
+	}
+
+	whCode, _ := h.do(http.MethodPost, "/webhooks/gitlab", map[string]any{
+		"object_kind": "merge_request",
+		"project": map[string]any{
+			"path_with_namespace": "alex/web-app",
+			"web_url":             "https://gitlab.com/alex/web-app",
+		},
+		"object_attributes": map[string]any{
+			"iid":    14,
+			"action": "merge",
+			"state":  "merged",
+			"url":    "https://gitlab.com/alex/web-app/-/merge_requests/14",
+		},
+	}, map[string]string{"X-Gitlab-Token": "gl-webhook-secret-test"})
 	if whCode != 200 {
 		t.Fatalf("gitlab webhook: %d", whCode)
 	}

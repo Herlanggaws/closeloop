@@ -249,7 +249,7 @@ Agent dipicu saat:
 ### 6.2 Loop
 
 ```text
-1. Ensure branch = dev; pull origin/dev
+1. Ensure on a feature branch off dev (never push directly to dev or main)
 2. Start stack: db migrate + backend + (frontend jika L3)
 3. Run scripts/test-reports.sh
 4. If PASS → write docs/reports/latest.md (PASS) → stop
@@ -259,7 +259,7 @@ Agent dipicu saat:
    c. Patch minimal fix (no drive-by refactors)
    d. Re-run failing case → then full suite
    e. If still fail after 2 fix attempts → mark ESCALATE in report, stop that case
-6. Commit + push origin/dev (Closeloop finish rule) dengan message yang jelasin bug yang difix
+6. Commit + push to feature branch origin/<feature-branch> (never directly to dev/main) dengan message yang jelasin bug yang difix
 7. Append docs/reports/YYYY-MM-DD-HHMM.md + update latest.md
 ```
 

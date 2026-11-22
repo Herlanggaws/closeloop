@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -13,10 +14,10 @@ const (
 )
 
 type TrackerIssue struct {
-	ID         string `json:"id"`
-	Key        string `json:"key"`
-	URL        string `json:"url"`
-	Provider   string `json:"provider"`
+	ID       string `json:"id"`
+	Key      string `json:"key"`
+	URL      string `json:"url"`
+	Provider string `json:"provider"`
 }
 
 type TrackerIssueResult struct {
@@ -37,8 +38,8 @@ func (s *Store) ExistingTrackerIssue(ctx context.Context, ticketID, kind string)
 	if err != nil {
 		return TrackerIssue{}, false, err
 	}
-	for i := len(events) - 1; i >= 0; i-- {
-		if events[i].Kind != kind {
+	for _, ev := range slices.Backward(events) {
+		if ev.Kind != kind {
 			continue
 		}
 		var payload struct {
@@ -46,7 +47,7 @@ func (s *Store) ExistingTrackerIssue(ctx context.Context, ticketID, kind string)
 			Key string `json:"key"`
 			URL string `json:"url"`
 		}
-		if err := json.Unmarshal(events[i].Payload, &payload); err != nil {
+		if err := json.Unmarshal(ev.Payload, &payload); err != nil {
 			continue
 		}
 		if payload.URL == "" {

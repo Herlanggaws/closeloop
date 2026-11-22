@@ -95,10 +95,6 @@ function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-function projectInitial(name: string) {
-  return (name.trim()[0] || "P").toUpperCase();
-}
-
 export function Inbox() {
   const router = useRouter();
   const [project, setProject] = useState<ProjectInfo | null>(null);

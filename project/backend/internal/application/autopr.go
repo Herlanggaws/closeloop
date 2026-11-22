@@ -68,7 +68,7 @@ func ParseGitHubAppConfig(raw json.RawMessage) (GitHubAppConfig, error) {
 				cfg.InstallationID = int64(v)
 			case string:
 				var n int64
-				fmt.Sscan(v, &n)
+				_, _ = fmt.Sscan(v, &n)
 				cfg.InstallationID = n
 			}
 			if s, ok := m["account_login"].(string); ok {

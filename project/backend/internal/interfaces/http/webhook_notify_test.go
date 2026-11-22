@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"sync"
 	"testing"
@@ -25,9 +26,7 @@ func (r *recordingWebhookPoster) PostSigned(_ context.Context, url, secret strin
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	copied := map[string]any{}
-	for k, v := range body {
-		copied[k] = v
-	}
+	maps.Copy(copied, body)
 	r.posts = append(r.posts, recordedWebhookPost{URL: url, Secret: secret, Body: copied})
 	return nil
 }

@@ -10,8 +10,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  lint-and-security:
+    name: Lint & Vulnerability Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: project/frontend/pnpm-lock.yaml
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: project/backend/go.mod
+          cache-dependency-path: project/backend/go.sum
+
+      - name: Frontend ESLint & pnpm audit
+        working-directory: project/frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm audit --audit-level=moderate
+
+      - name: Backend golangci-lint & govulncheck
+        working-directory: project/backend
+        env:
+          GOTOOLCHAIN: auto
+        run: |
+          go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
   build-and-push:
     name: Build & Push Images to GHCR (xervproject-cloud)
+    needs: lint-and-security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

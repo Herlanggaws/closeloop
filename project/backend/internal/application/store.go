@@ -1046,11 +1046,9 @@ func (s *Store) ListTicketsFiltered(ctx context.Context, projectID string, f Tic
 	case f.Repo != "" && f.RepoOrNone:
 		q += fmt.Sprintf(" AND (repo_id=$%d OR repo_id IS NULL)", i)
 		args = append(args, f.Repo)
-		i++
 	case f.Repo != "":
 		q += fmt.Sprintf(" AND repo_id=$%d", i)
 		args = append(args, f.Repo)
-		i++
 	}
 	q += " ORDER BY created_at DESC LIMIT 100"
 	rows, err := s.DB.QueryContext(ctx, q, args...)
@@ -1497,10 +1495,8 @@ func (s *Store) EnqueueOutboundWebhook(ctx context.Context, projectID string, ev
 		return nil
 	}
 	var raw json.RawMessage
-	err := s.DB.QueryRowContext(ctx, `
-		SELECT config FROM integrations
-		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
+	raw, err := s.GetIntegrationConfig(ctx, projectID, "webhooks")
+	if errors.Is(err, ErrNotFound) {
 		return nil
 	}
 	if err != nil {
@@ -1535,11 +1531,8 @@ func (s *Store) EnqueueOutboundWebhook(ctx context.Context, projectID string, ev
 }
 
 func (s *Store) OutboundWebhookConfig(ctx context.Context, projectID string) (url, secret string, err error) {
-	var raw json.RawMessage
-	err = s.DB.QueryRowContext(ctx, `
-		SELECT config FROM integrations
-		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
+	raw, err := s.GetIntegrationConfig(ctx, projectID, "webhooks")
+	if errors.Is(err, ErrNotFound) {
 		return "", "", nil
 	}
 	if err != nil {
@@ -1591,6 +1584,9 @@ func (s *Store) ClaimJobs(ctx context.Context, limit int) ([]struct {
 		}
 		jobs = append(jobs, j)
 		ids = append(ids, j.ID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	for _, id := range ids {
 		if _, err := tx.ExecContext(ctx, `UPDATE jobs SET status='running', attempts=attempts+1, updated_at=now() WHERE id=$1`, id); err != nil {
@@ -1902,22 +1898,8 @@ func generateWebhookSecret() (string, error) {
 }
 
 func (s *Store) existingWebhookSecret(ctx context.Context, projectID string) (string, error) {
-	var raw json.RawMessage
-	err := s.DB.QueryRowContext(ctx, `
-		SELECT config FROM integrations
-		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-	var cfg map[string]any
-	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return "", err
-	}
-	secret, _ := cfg["secret"].(string)
-	return strings.TrimSpace(secret), nil
+	_, secret, err := s.OutboundWebhookConfig(ctx, projectID)
+	return secret, err
 }
 
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
@@ -1972,7 +1954,7 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		}
 		secret, _ := cleaned["secret"].(string)
 		secret = strings.TrimSpace(secret)
-		if secret == "" {
+		if secret == "" || secret == RedactedToken {
 			existing, err := s.existingWebhookSecret(ctx, projectID)
 			if err != nil {
 				return Integration{}, err
@@ -2029,6 +2011,24 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		baseURL = strings.TrimRight(baseURL, "/")
 		username, _ := cleaned["username"].(string)
 		webhookSecret, _ := cleaned["webhook_secret"].(string)
+		webhookSecret = strings.TrimSpace(webhookSecret)
+		if webhookSecret == "" || webhookSecret == RedactedToken {
+			if existingRaw, gErr := s.GetIntegrationConfig(ctx, projectID, "gitlab"); gErr == nil {
+				var existingMap map[string]any
+				if json.Unmarshal(existingRaw, &existingMap) == nil {
+					if prev, ok := existingMap["webhook_secret"].(string); ok {
+						webhookSecret = strings.TrimSpace(prev)
+					}
+				}
+			}
+		}
+		if webhookSecret == "" {
+			var err error
+			webhookSecret, err = generateWebhookSecret()
+			if err != nil {
+				return Integration{}, err
+			}
+		}
 		cleaned = map[string]any{
 			"token":          token,
 			"base_url":       baseURL,
@@ -2071,6 +2071,8 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 	}
 	if len(item.Config) == 0 {
 		item.Config = json.RawMessage(`{}`)
+	} else if provider == "webhooks" {
+		item.Config = decryptConfigJSON(item.Config)
 	} else {
 		item.Config = redactConfigJSON(item.Config)
 	}
@@ -2279,7 +2281,7 @@ func normalizeGitHubAppConfig(cleaned map[string]any) (map[string]any, error) {
 	case int:
 		installationID = int64(v)
 	case string:
-		fmt.Sscan(strings.TrimSpace(v), &installationID)
+		_, _ = fmt.Sscan(strings.TrimSpace(v), &installationID)
 	case json.Number:
 		n, _ := v.Int64()
 		installationID = n

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "next dev",
     "dev:widget": "pnpm --filter @closeloop/widget dev",
     "build": "pnpm --filter @closeloop/widget build && next build",
@@ -15,8 +16,8 @@
     "test:e2e:ui": "playwright test e2e/reports.spec.ts --ui"
   },
   "dependencies": {
-    "@next/third-parties": "^15.5.28",
-    "next": "15.5.28",
+    "@next/third-parties": "^15.5.29",
+    "next": "15.5.29",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "rrweb-player": "2.0.0-alpha.20"
@@ -29,7 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.28",
+    "eslint-config-next": "15.5.29",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
@@ -40,7 +41,9 @@
   },
   "pnpm": {
     "overrides": {
-      "magic-string": "0.30.17"
+      "magic-string": "0.30.17",
+      "postcss": ">=8.5.23",
+      "minimatch@>=7.0.0 <11.0.1": ">=11.0.1"
     }
   }
 }
