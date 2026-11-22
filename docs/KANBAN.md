@@ -247,7 +247,7 @@ Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih
 
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
 Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5).
-- [x] D-20 Badge "Powered by Saidloop" cuma di Free (`s67yG`): `/v1/ingest/config` kirim `badge` + `badge_url` (UTM `utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`), widget tampilkan di launcher (tooltip hover), form, sent, banner, dicek ulang tiap 1 menit; email pelapor/voter/comment/suggest footer `Powered by Saidloop` di Free, hilang di plan berbayar. Diputusin Herlangga 19 Nov
+- [x] D-20 Badge "Powered by Saidloop" di form/sent/banner/email cuma di Free (`s67yG`), sedangkan animasi hover `"Feedback by Saidloop"` di tombol launcher widget (`button.fab`) **selalu ditampilkan di semua plan** (Free, Indie, Studio, Business): `/v1/ingest/config` kirim `badge` + `badge_url` (UTM `utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`), widget tampilkan footer `Powered by Saidloop` di form, sent, banner pada Free (dicek ulang tiap 1 menit), tapi hover `"Feedback by Saidloop"` di tombol launcher selalu aktif di semua tier. Diputusin Herlangga 22 Nov
 - [x] D-21 Seat Indie = 2 sejak 22 Nov (awalnya 1, detail berikut dari 19 Nov) + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
 - [x] D-23 Landing full-width di layar lebar (22 Nov): banner, nav, background section dan footer full-bleed, konten tetap max 1280px di tengah; tombol hero `Join the waitlist` nggak abu-abu/disabled lagi waktu email kosong (validasi pakai `required` + `type=email`). Belum di-deploy ke prod.
 
@@ -260,7 +260,7 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 - [ ] Domain final (code and snippets still use `closeloop.dev`)
 - [x] Seat Indie: 2, harga $15 (diputusin 22 Nov; sebelumnya 1 seat dan $12)
 - [ ] `closeloop.pen` belum ikut: S-01 pricing, S-06 checklist, S-14 v2, S-15 masih $12 / 1 seat
-- [x] Badge "Powered by Saidloop" cuma di Free (disetujui 19 Nov; ditegasin lagi 22 Nov: hover launcher dari PR #37 dibalikin ke Free saja, dijaga `R-UI-24`)
+- [x] Badge "Powered by Saidloop" di form/sent/banner/email cuma di Free, sedangkan animasi hover `"Feedback by Saidloop"` di tombol launcher widget (`button.fab`) **selalu tampil di semua plan** termasuk Indie/Studio/Business (diputusin Herlangga 22 Nov; dijaga `R-UI-24`)
 - [ ] Kuota Free tetap 50?
 - [ ] Angka repo per project (3 / 5 / 10) — validate in M0 interviews
 - [ ] Basis repo: fork pola Bear Budget Go vs clean (current: new repo)
