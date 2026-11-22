@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/closeloop/api/internal/application"
 	"github.com/closeloop/api/internal/config"
@@ -81,11 +84,18 @@ func main() {
 
 	srv := httpapi.New(cfg, store, files, mailer)
 	r := srv.Router()
+	httpServer := &http.Server{
+		Addr:    cfg.APIAddr,
+		Handler: r,
+	}
 	log.Printf("api listening on %s", cfg.APIAddr)
 	go func() {
-		if err := r.Run(cfg.APIAddr); err != nil {
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}
 	}()
 	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = httpServer.Shutdown(shutdownCtx)
 }

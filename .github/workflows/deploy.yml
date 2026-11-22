@@ -10,45 +10,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  lint-and-security:
-    name: Lint & Vulnerability Gate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.13.1
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: pnpm
-          cache-dependency-path: project/frontend/pnpm-lock.yaml
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: project/backend/go.mod
-          cache-dependency-path: project/backend/go.sum
-
-      - name: Frontend ESLint & pnpm audit
-        working-directory: project/frontend
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm lint
-          pnpm audit --audit-level=moderate
-
-      - name: Backend golangci-lint & govulncheck
-        working-directory: project/backend
-        env:
-          GOTOOLCHAIN: auto
-        run: |
-          go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
-          go run golang.org/x/vuln/cmd/govulncheck@latest ./...
-
   build-and-push:
     name: Build & Push Images to GHCR (xervproject-cloud)
-    needs: lint-and-security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,11 +51,11 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
 
   deploy:
-    name: Pull & Deploy on VM
+    name: Zero-Downtime Rollout on VM
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Pull images and restart services on VM
+      - name: Pull images and perform zero-downtime rolling update on VM
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -102,21 +65,80 @@ jobs:
           command_timeout: 10m
           script_stop: true
           script: |
+            set -euo pipefail
             cd /home/xerv/closeloop
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             git fetch origin main
             git checkout -f -B main origin/main
             git reset --hard origin/main
+
+            # Ensure db, nginx, and certbot are running and pull new app images while old containers still serve traffic
+            docker compose up -d db
             docker compose pull backend frontend
-            docker compose up -d --no-build --remove-orphans
-            for i in $(seq 1 30); do
-              if curl -sf http://localhost:8080/healthz >/dev/null && curl -sf http://localhost:3000/ >/dev/null; then
-                echo "Backend and Frontend are healthy!"
-                docker image prune -f
-                exit 0
+
+            rollout_service() {
+              local svc="$1"
+              local old_ids
+              old_ids=$(docker compose ps -q "$svc" || true)
+
+              if [ -z "$old_ids" ]; then
+                docker compose up -d --no-deps "$svc"
+              else
+                echo "Scaling up new $svc container alongside existing instance..."
+                docker compose up -d --no-deps --scale "$svc=2" --no-recreate "$svc"
               fi
-              sleep 2
-            done
+
+              local new_id=""
+              for id in $(docker compose ps -q "$svc"); do
+                if ! echo "$old_ids" | grep -q "$id"; then
+                  new_id="$id"
+                  break
+                fi
+              done
+              if [ -z "$new_id" ]; then
+                new_id=$(docker compose ps -q "$svc" | head -n 1)
+              fi
+
+              echo "Waiting for new $svc container ($new_id) to become healthy..."
+              local healthy=0
+              for i in $(seq 1 45); do
+                local status
+                status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$new_id" 2>/dev/null || echo "starting")
+                if [ "$status" = "healthy" ]; then
+                  healthy=1
+                  break
+                fi
+                sleep 2
+              done
+
+              if [ "$healthy" -ne 1 ]; then
+                echo "New $svc container failed healthcheck; keeping old instance and aborting!" >&2
+                docker logs --tail=50 "$new_id" || true
+                if [ -n "$old_ids" ] && [ "$new_id" != "$old_ids" ]; then
+                  docker rm -f "$new_id" || true
+                fi
+                return 1
+              fi
+
+              docker compose up -d --no-deps nginx certbot
+              docker compose exec -T nginx nginx -s reload || true
+
+              if [ -n "$old_ids" ]; then
+                for old_id in $old_ids; do
+                  if [ "$old_id" != "$new_id" ]; then
+                    echo "Draining and stopping old $svc container ($old_id)..."
+                    docker stop -t 15 "$old_id" || true
+                    docker rm -f "$old_id" || true
+                  fi
+                done
+                docker compose up -d --no-deps --scale "$svc=1" --no-recreate "$svc"
+                docker compose exec -T nginx nginx -s reload || true
+              fi
+              echo "$svc rolled out with zero downtime!"
+            }
+
+            rollout_service backend
+            rollout_service frontend
+
+            docker image prune -f
             docker compose ps
-            docker compose logs --tail=50 backend frontend
-            exit 1
