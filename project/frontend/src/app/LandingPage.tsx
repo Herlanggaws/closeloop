@@ -357,7 +357,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
         <WaitlistForm variant="hero" />
         <div
           data-pencil-name="Meta"
-          className="box-border w-full max-w-[640px] h-fit shrink-0 flex flex-col sm:flex-row gap-3 sm:gap-[20px] justify-center sm:justify-start items-center flex-wrap"
+          className="box-border w-full max-w-[640px] h-fit shrink-0 flex flex-col sm:flex-row gap-3 sm:gap-[20px] justify-center items-center flex-wrap"
         >
           <div
             data-pencil-name="Free plan, no card"
