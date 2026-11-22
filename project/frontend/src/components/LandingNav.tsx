@@ -38,7 +38,7 @@ export function LandingNav({ onJoinWaitlist }: Props) {
       id="nav"
       data-pencil-name="Nav"
       aria-label="Primary"
-      className="box-border relative z-40 flex h-[60px] w-full shrink-0 items-center justify-between border-b border-solid border-[#17171714] bg-white px-5 sm:h-[67.5px] sm:px-10 lg:px-20"
+      className="box-border relative z-40 flex h-[60px] w-full shrink-0 items-center justify-between border-b border-solid border-[#17171714] bg-white px-5 sm:h-[67.5px] sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))]"
     >
       <SaidloopLogo height={22} />
 

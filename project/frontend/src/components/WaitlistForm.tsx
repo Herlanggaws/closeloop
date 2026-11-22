@@ -132,7 +132,7 @@ export function WaitlistForm({ variant = "hero", source }: Props) {
         </label>
         <button
           type="submit"
-          disabled={status === "loading" || !email.trim()}
+          disabled={status === "loading"}
           className={
             isFooter
               ? "box-border flex h-11 w-full shrink-0 cursor-pointer flex-row items-center justify-center gap-2 rounded-[6px] bg-white px-4 shadow-[0px_4px_4px_#1717170A] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:w-fit"

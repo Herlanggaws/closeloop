@@ -13,7 +13,7 @@ export function MarketingFooter() {
     <footer
       id="footer"
       data-pencil-name="Footer"
-      className="box-border flex w-full shrink-0 flex-col items-start justify-start gap-[48px] bg-[#0A0A0A] px-6 pb-8 pt-16 sm:px-12 lg:px-20"
+      className="box-border flex w-full shrink-0 flex-col items-start justify-start gap-[48px] bg-[#0A0A0A] px-6 pb-8 pt-16 sm:px-12 lg:px-[max(80px,calc((100%-1280px)/2))]"
     >
       <div
         data-pencil-name="Top"

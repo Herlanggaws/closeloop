@@ -283,7 +283,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
     <>
 <div
       data-pencil-name="S-01 Landing Page"
-      className="box-border mx-auto flex h-fit w-full max-w-[1440px] flex-col items-start justify-start gap-0 overflow-x-hidden bg-[#F7F7F7]"
+      className="box-border flex h-fit w-full flex-col items-start justify-start gap-0 overflow-x-hidden bg-[#F7F7F7]"
     >
       <button type="button" onClick={openWaitlist} id="announcement" data-pencil-name="Announcement" className="cursor-pointer border-0 no-underline transition-opacity duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:opacity-90 block w-full box-border min-h-[36px] h-auto shrink-0 flex flex-row gap-[8px] justify-center items-center bg-[#0A0A0A] px-4 py-2">
         <div
@@ -311,7 +311,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="hero" data-pencil-name="Hero"
         aria-labelledby="hero-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-col gap-[28px] px-5 pt-12 sm:px-10 sm:pt-16 lg:px-20 lg:pt-[88px] justify-start items-center bg-[#FFFFFF]"
+        className="box-border w-full h-fit shrink-0 flex flex-col gap-[28px] px-5 pt-12 sm:px-10 sm:pt-16 lg:px-[max(80px,calc((100%-1280px)/2))] lg:pt-[88px] justify-start items-center bg-[#FFFFFF]"
       >
         <div
           data-pencil-name="Beta Pill"
@@ -1157,7 +1157,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="platforms" data-pencil-name="Platforms"
         aria-labelledby="platforms-heading"
-        className="box-border w-full h-auto min-h-[104px] shrink-0 flex flex-col md:flex-row flex-wrap gap-6 md:gap-[48px] px-5 py-8 sm:px-10 lg:px-20 lg:py-10 justify-center items-center bg-[#FFFFFF] [border-width:1px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_-0.5px_0px]"
+        className="box-border w-full h-auto min-h-[104px] shrink-0 flex flex-col md:flex-row flex-wrap gap-6 md:gap-[48px] px-5 py-8 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-10 justify-center items-center bg-[#FFFFFF] [border-width:1px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_-0.5px_0px]"
       >
         <h2 id="platforms-heading" className="sr-only">
           Platforms
@@ -1417,7 +1417,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="how" data-pencil-name="How It Works"
         aria-labelledby="how-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-col gap-[56px] px-5 py-16 sm:px-10 lg:px-20 lg:py-[112px] justify-start items-start"
+        className="box-border w-full h-fit shrink-0 flex flex-col gap-[56px] px-5 py-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-[112px] justify-start items-start"
       >
         <div
           data-pencil-name="Section Header"
@@ -1861,7 +1861,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="features" data-pencil-name="Features"
         aria-labelledby="features-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-col gap-[56px] px-5 py-16 sm:px-10 lg:px-20 lg:py-[112px] justify-start items-start bg-[#FFFFFF] [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
+        className="box-border w-full h-fit shrink-0 flex flex-col gap-[56px] px-5 py-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-[112px] justify-start items-start bg-[#FFFFFF] [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
       >
         <div
           data-pencil-name="Section Header"
@@ -2749,7 +2749,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="mcp" data-pencil-name="MCP Section"
         aria-labelledby="mcp-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-col lg:flex-row gap-10 lg:gap-[80px] px-5 py-16 sm:px-10 lg:px-20 lg:py-[112px] justify-start items-start bg-[#0A0A0A]"
+        className="box-border w-full h-fit shrink-0 flex flex-col lg:flex-row gap-10 lg:gap-[80px] px-5 py-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-[112px] justify-start items-start bg-[#0A0A0A]"
       >
         <div
           data-pencil-name="Left"
@@ -3062,7 +3062,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="before-after" data-pencil-name="Before After"
         aria-labelledby="before-after-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-col gap-[48px] px-5 py-16 sm:px-10 lg:px-20 lg:py-[112px] justify-start items-start"
+        className="box-border w-full h-fit shrink-0 flex flex-col gap-[48px] px-5 py-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-[112px] justify-start items-start"
       >
         <div
           data-pencil-name="Header"
@@ -3405,7 +3405,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="pricing" data-pencil-name="Pricing"
         aria-labelledby="pricing-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-col gap-[48px] px-5 py-16 sm:px-10 lg:px-20 lg:py-[112px] justify-start items-start bg-[#FFFFFF] [border-width:1px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_-0.5px_0px]"
+        className="box-border w-full h-fit shrink-0 flex flex-col gap-[48px] px-5 py-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-[112px] justify-start items-start bg-[#FFFFFF] [border-width:1px_0px_1px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_-0.5px_0px]"
       >
         <div
           data-pencil-name="Header"
@@ -3571,7 +3571,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="faq" data-pencil-name="FAQ"
         aria-labelledby="faq-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-col lg:flex-row gap-10 lg:gap-[80px] px-5 py-16 sm:px-10 lg:px-20 lg:py-[112px] justify-start items-start"
+        className="box-border w-full h-fit shrink-0 flex flex-col lg:flex-row gap-10 lg:gap-[80px] px-5 py-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-[112px] justify-start items-start"
       >
         <div
           data-pencil-name="Left"
@@ -3596,7 +3596,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="cta" data-pencil-name="CTA"
         aria-labelledby="cta-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-row gap-0 px-5 pb-16 sm:px-10 lg:px-20 lg:pb-[112px] justify-start items-start"
+        className="box-border w-full h-fit shrink-0 flex flex-row gap-0 px-5 pb-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:pb-[112px] justify-start items-start"
       >
         <div
           data-pencil-name="CTA Card"
