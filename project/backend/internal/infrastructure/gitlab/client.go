@@ -26,6 +26,19 @@ type Client struct {
 	http    *http.Client
 }
 
+func isDisallowedIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	if ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
+		return true
+	}
+	if ip.IsLoopback() {
+		return os.Getenv("GIN_MODE") == "release" || os.Getenv("APP_ENV") == "production"
+	}
+	return false
+}
+
 func validateBaseURL(raw string) (string, error) {
 	base := strings.TrimSpace(raw)
 	if base == "" {
@@ -40,17 +53,14 @@ func validateBaseURL(raw string) (string, error) {
 		return "", fmt.Errorf("invalid gitlab base_url")
 	}
 	host := strings.ToLower(u.Hostname())
-	if host == "localhost" {
-		return "", fmt.Errorf("gitlab base_url cannot target localhost")
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".internal") {
+		return "", fmt.Errorf("gitlab base_url cannot target local or internal hosts")
 	}
 	if ip := net.ParseIP(host); ip != nil {
-		if ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
-			return "", fmt.Errorf("gitlab base_url cannot target private or link-local addresses")
+		if isDisallowedIP(ip) {
+			return "", fmt.Errorf("gitlab base_url cannot target private, loopback, or link-local addresses")
 		}
 		if ip.IsLoopback() {
-			if os.Getenv("GIN_MODE") == "release" || os.Getenv("APP_ENV") == "production" {
-				return "", fmt.Errorf("gitlab base_url cannot target loopback in production")
-			}
 			if u.Scheme != "http" && u.Scheme != "https" {
 				return "", fmt.Errorf("gitlab base_url must use https")
 			}
@@ -61,6 +71,38 @@ func validateBaseURL(raw string) (string, error) {
 		return "", fmt.Errorf("gitlab base_url must use https")
 	}
 	return base, nil
+}
+
+func newSafeHTTPClient() *http.Client {
+	dialer := &net.Dialer{Timeout: 10 * time.Second}
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil {
+				return nil, err
+			}
+			if len(ips) == 0 {
+				return nil, fmt.Errorf("no IP addresses found for host %q", host)
+			}
+			for _, ipAddr := range ips {
+				if isDisallowedIP(ipAddr.IP) {
+					return nil, fmt.Errorf("gitlab request blocked: host %q resolved to disallowed IP %s", host, ipAddr.IP.String())
+				}
+			}
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+		},
+	}
+	return &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: transport,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }
 
 func New(cfg Config) (*Client, error) {
@@ -75,7 +117,7 @@ func New(cfg Config) (*Client, error) {
 
 	httpClient := cfg.HTTP
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: 30 * time.Second}
+		httpClient = newSafeHTTPClient()
 	}
 
 	return &Client{

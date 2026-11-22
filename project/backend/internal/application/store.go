@@ -1495,10 +1495,8 @@ func (s *Store) EnqueueOutboundWebhook(ctx context.Context, projectID string, ev
 		return nil
 	}
 	var raw json.RawMessage
-	err := s.DB.QueryRowContext(ctx, `
-		SELECT config FROM integrations
-		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
+	raw, err := s.GetIntegrationConfig(ctx, projectID, "webhooks")
+	if errors.Is(err, ErrNotFound) {
 		return nil
 	}
 	if err != nil {
@@ -2013,6 +2011,24 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		baseURL = strings.TrimRight(baseURL, "/")
 		username, _ := cleaned["username"].(string)
 		webhookSecret, _ := cleaned["webhook_secret"].(string)
+		webhookSecret = strings.TrimSpace(webhookSecret)
+		if webhookSecret == "" || webhookSecret == RedactedToken {
+			if existingRaw, gErr := s.GetIntegrationConfig(ctx, projectID, "gitlab"); gErr == nil {
+				var existingMap map[string]any
+				if json.Unmarshal(existingRaw, &existingMap) == nil {
+					if prev, ok := existingMap["webhook_secret"].(string); ok {
+						webhookSecret = strings.TrimSpace(prev)
+					}
+				}
+			}
+		}
+		if webhookSecret == "" {
+			var err error
+			webhookSecret, err = generateWebhookSecret()
+			if err != nil {
+				return Integration{}, err
+			}
+		}
 		cleaned = map[string]any{
 			"token":          token,
 			"base_url":       baseURL,

@@ -102,7 +102,8 @@ func (s *Server) listGitLabRepos(c *gin.Context) {
 
 func (s *Server) gitlabWebhook(c *gin.Context) {
 	headerToken := strings.TrimSpace(c.GetHeader("X-Gitlab-Token"))
-	if envSecret := strings.TrimSpace(os.Getenv("GITLAB_WEBHOOK_SECRET")); envSecret != "" {
+	envSecret := strings.TrimSpace(os.Getenv("GITLAB_WEBHOOK_SECRET"))
+	if envSecret != "" {
 		if subtle.ConstantTimeCompare([]byte(headerToken), []byte(envSecret)) != 1 {
 			writeErr(c, http.StatusUnauthorized, "INVALID_SIGNATURE", "invalid gitlab webhook token")
 			return
@@ -145,15 +146,37 @@ func (s *Server) gitlabWebhook(c *gin.Context) {
 
 			run, err := s.Store.FindAutoprRunByPR(c.Request.Context(), repoPath, mrNumber)
 			if err == nil {
-				if raw, cfgErr := s.Store.GetIntegrationConfig(c.Request.Context(), run.ProjectID, "gitlab"); cfgErr == nil {
-					var glMap map[string]any
-					if json.Unmarshal(raw, &glMap) == nil {
-						if projSecret, _ := glMap["webhook_secret"].(string); strings.TrimSpace(projSecret) != "" {
-							if subtle.ConstantTimeCompare([]byte(headerToken), []byte(strings.TrimSpace(projSecret))) != 1 {
-								writeErr(c, http.StatusUnauthorized, "INVALID_SIGNATURE", "invalid gitlab webhook token")
-								return
-							}
-						}
+				repo, repoErr := s.Store.ProjectRepoByFullName(c.Request.Context(), run.ProjectID, repoPath)
+				if repoErr != nil || repo.Provider != "gitlab" {
+					writeErr(c, http.StatusBadRequest, "PROVIDER_MISMATCH", "repository is not configured for GitLab")
+					return
+				}
+				raw, cfgErr := s.Store.GetIntegrationConfig(c.Request.Context(), run.ProjectID, "gitlab")
+				if cfgErr != nil {
+					writeErr(c, http.StatusUnauthorized, "NOT_CONFIGURED", "gitlab integration is not configured")
+					return
+				}
+				var glMap map[string]any
+				if err := json.Unmarshal(raw, &glMap); err != nil {
+					writeErr(c, http.StatusUnauthorized, "NOT_CONFIGURED", "invalid gitlab integration config")
+					return
+				}
+				projSecret, _ := glMap["webhook_secret"].(string)
+				projSecret = strings.TrimSpace(projSecret)
+				if envSecret == "" && projSecret == "" {
+					writeErr(c, http.StatusUnauthorized, "WEBHOOK_SECRET_REQUIRED", "gitlab webhook secret is not configured")
+					return
+				}
+				if projSecret != "" && subtle.ConstantTimeCompare([]byte(headerToken), []byte(projSecret)) != 1 {
+					writeErr(c, http.StatusUnauthorized, "INVALID_SIGNATURE", "invalid gitlab webhook token")
+					return
+				}
+				if glCfg, pErr := application.ParseGitLabConfig(raw); pErr == nil && glCfg.BaseURL != "" {
+					expectedPrefix := strings.TrimRight(glCfg.BaseURL, "/") + "/"
+					if (mrURL != "" && !strings.HasPrefix(mrURL, expectedPrefix)) ||
+						(payload.Project.WebURL != "" && !strings.HasPrefix(payload.Project.WebURL, expectedPrefix)) {
+						writeErr(c, http.StatusBadRequest, "INSTANCE_MISMATCH", "gitlab webhook URL does not match configured GitLab instance")
+						return
 					}
 				}
 				run.Status = "succeeded"
