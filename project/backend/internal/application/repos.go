@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -32,12 +33,7 @@ func (e *PlatformConflictError) Error() string {
 var RepoPlatforms = []string{"web", "android", "ios", "backend", "shared"}
 
 func validRepoPlatform(p string) bool {
-	for _, x := range RepoPlatforms {
-		if x == p {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(RepoPlatforms, p)
 }
 
 func PlatformLabel(p string) string {
@@ -495,7 +491,7 @@ func (s *Store) TicketPlatforms(ctx context.Context, ticketID string) (map[strin
 	return byPlatform, err
 }
 
-// RepoPlatforms lists the platforms a repo serves. The fallback also covers platforms
+// RepoServesPlatforms lists the platforms a repo serves. The fallback also covers platforms
 // that have no route of their own.
 func (s *Store) RepoServesPlatforms(ctx context.Context, projectID, repoID string) (map[string]bool, error) {
 	repos, err := s.ListProjectRepos(ctx, projectID)

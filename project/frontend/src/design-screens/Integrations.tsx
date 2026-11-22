@@ -349,6 +349,7 @@ export function Integrations() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   function applyGitHubConfig(config: Record<string, string>) {

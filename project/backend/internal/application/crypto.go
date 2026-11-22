@@ -80,8 +80,8 @@ func EncryptSecret(plaintext string) (string, error) {
 // DecryptSecret decrypts an "enc:v2:..." (salted) or "enc:v1:..." credential.
 // Plaintext values without the prefix are returned as-is for backward compatibility.
 func DecryptSecret(value string) (string, error) {
-	if strings.HasPrefix(value, encPrefix) {
-		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, encPrefix))
+	if encoded, ok := strings.CutPrefix(value, encPrefix); ok {
+		raw, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
 			return "", fmt.Errorf("decode encrypted secret: %w", err)
 		}
@@ -110,8 +110,8 @@ func DecryptSecret(value string) (string, error) {
 		return string(plain), nil
 	}
 
-	if strings.HasPrefix(value, encPrefixV1) {
-		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, encPrefixV1))
+	if encoded, ok := strings.CutPrefix(value, encPrefixV1); ok {
+		raw, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
 			return "", fmt.Errorf("decode encrypted secret: %w", err)
 		}

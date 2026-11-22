@@ -1,14 +1,15 @@
 ---
-description: Trunk-based workflow — all development lands on the dev branch first
+description: Feature-branch workflow — never push directly to dev or main
 alwaysApply: true
 ---
 
-# Trunk-based development (`dev`)
+# Feature-branch development workflow
 
-- Integration trunk is **`dev`**. Do all feature work on `dev` (or a short-lived branch that merges into `dev` the same day).
-- Never push feature work straight to `main`. `main` is for stable / release promotion only.
-- Before coding, ensure the current branch is `dev` (or create/checkout `dev` from the latest remote `dev`/`main` as appropriate).
-- Push completed work to `origin/dev` with `-u` when the branch is new.
-- Keep branches short-lived; prefer direct commits on `dev` for small Closeloop tasks unless the user asks for a separate branch/PR.
-- Do not force-push `dev` or `main` unless the user explicitly requests it.
+- **Never commit or push directly to `dev` or `main`.**
+  - `main` is reserved for production releases (promoted from `dev` via PR).
+  - `dev` is the protected integration branch; changes land on `dev` only via Pull Requests from feature branches after CI lint and vulnerability checks pass.
+- Before coding, if the current branch is `dev` or `main`, create and switch to a descriptive feature branch off `dev` (`git checkout -b feat/<slug>`, `fix/<slug>`, or `chore/<slug>`).
+- Push completed work to `origin/<feature-branch>` (`git push -u origin HEAD`) and open a Pull Request targeting `dev`.
+- All Pull Requests must pass the **Lint & Vulnerability Check** (`Frontend (ESLint & pnpm audit)` and `Backend (golangci-lint & govulncheck)`) before merging.
+- Do not force-push `dev` or `main`.
 ---

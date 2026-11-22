@@ -1,0 +1,64 @@
+name: Lint & Vulnerability Check
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+concurrency:
+  group: lint-and-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (ESLint & pnpm audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: project/frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm lint
+
+      - name: Run dependency vulnerability audit
+        run: pnpm audit --audit-level=moderate
+
+  backend:
+    name: Backend (golangci-lint & govulncheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project/backend
+    env:
+      GOTOOLCHAIN: auto
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: project/backend/go.mod
+          cache-dependency-path: project/backend/go.sum
+
+      - name: Run golangci-lint
+        run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
+
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...

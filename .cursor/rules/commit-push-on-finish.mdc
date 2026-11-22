@@ -1,17 +1,18 @@
 ---
-description: After finishing a task, commit and push to origin/dev without waiting to be asked
+description: After finishing a task, commit and push to a feature branch (never directly to dev or main)
 alwaysApply: true
 ---
 
-# Commit and push when a task finishes
+# Commit and push to a feature branch when a task finishes
 
-When a coding task is complete (implementation done, related docs/kanban updated, checks you ran look good):
+When a coding task is complete (implementation done, related docs/kanban updated, lint and vulnerability checks pass):
 
-1. **Commit** all relevant changes on `dev` using the repo commit protocol (status, diff, log in parallel; HEREDOC message focused on why; never skip hooks; never commit secrets).
-2. **Push** immediately to `origin/dev` (`git push -u origin HEAD` if upstream is missing).
-3. Do this **without waiting** for the user to ask — finishing the task includes commit + push.
-4. If the working tree is clean, skip an empty commit and still confirm the branch is pushed/up to date.
-5. If push fails (auth/network), report the error and the unpushed commit SHA; do not silently drop the commit.
+1. **Ensure you are on a feature branch** (`feat/<slug>`, `fix/<slug>`, or `chore/<slug>`). **Never commit or push directly to `dev` or `main`.** If you are currently on `dev` or `main`, create and switch to a feature branch first (`git checkout -b <type>/<slug>`).
+2. **Verify locally before committing**: ensure ESLint (`pnpm lint`), `golangci-lint`, and vulnerability checks pass for the touched packages.
+3. **Commit** all relevant changes on the feature branch using the repo commit protocol (status, diff, log in parallel; clear commit message focused on why; never skip hooks; never commit secrets).
+4. **Push** the feature branch to `origin` (`git push -u origin HEAD`) — never push directly to `origin/dev` or `origin/main`.
+5. If the working tree is clean, skip an empty commit and confirm the feature branch is pushed/up to date.
+6. If push fails (auth/network), report the error and the unpushed commit SHA; do not silently drop the commit.
 
 This project rule overrides generic “only commit when asked” guidance for Closeloop work.
 ---

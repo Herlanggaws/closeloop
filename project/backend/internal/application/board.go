@@ -84,7 +84,7 @@ func SlugifyBoardName(name string) string {
 
 func (s *Store) allocateBoardSlug(ctx context.Context, tx *sql.Tx, name string) (string, error) {
 	base := SlugifyBoardName(name)
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		candidate := base
 		if i > 0 {
 			candidate = fmt.Sprintf("%s-%s", base, uuid.NewString()[:6])

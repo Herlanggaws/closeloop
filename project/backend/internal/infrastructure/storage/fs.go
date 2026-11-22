@@ -42,7 +42,7 @@ func (s *FSStore) SignedReadURL(key string, ttl time.Duration) (string, error) {
 	metaPath := filepath.Join(s.Root, ".tokens", token)
 	_ = os.MkdirAll(filepath.Dir(metaPath), 0o755)
 	expires := time.Now().Add(ttl).Unix()
-	if err := os.WriteFile(metaPath, []byte(fmt.Sprintf("%s\n%d", key, expires)), 0o600); err != nil {
+	if err := os.WriteFile(metaPath, fmt.Appendf(nil, "%s\n%d", key, expires), 0o600); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s/v1/files/%s", s.Base, token), nil
@@ -61,7 +61,7 @@ func (s *FSStore) ResolveReadToken(token string) (string, error) {
 			return "", fmt.Errorf("invalid token")
 		}
 		key = lines[0]
-		fmt.Sscanf(lines[1], "%d", &exp)
+		_, _ = fmt.Sscanf(lines[1], "%d", &exp)
 	}
 	if time.Now().Unix() > exp {
 		return "", fmt.Errorf("expired")

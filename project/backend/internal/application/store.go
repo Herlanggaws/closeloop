@@ -1046,11 +1046,9 @@ func (s *Store) ListTicketsFiltered(ctx context.Context, projectID string, f Tic
 	case f.Repo != "" && f.RepoOrNone:
 		q += fmt.Sprintf(" AND (repo_id=$%d OR repo_id IS NULL)", i)
 		args = append(args, f.Repo)
-		i++
 	case f.Repo != "":
 		q += fmt.Sprintf(" AND repo_id=$%d", i)
 		args = append(args, f.Repo)
-		i++
 	}
 	q += " ORDER BY created_at DESC LIMIT 100"
 	rows, err := s.DB.QueryContext(ctx, q, args...)
@@ -1591,6 +1589,9 @@ func (s *Store) ClaimJobs(ctx context.Context, limit int) ([]struct {
 		}
 		jobs = append(jobs, j)
 		ids = append(ids, j.ID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	for _, id := range ids {
 		if _, err := tx.ExecContext(ctx, `UPDATE jobs SET status='running', attempts=attempts+1, updated_at=now() WHERE id=$1`, id); err != nil {
@@ -2279,7 +2280,7 @@ func normalizeGitHubAppConfig(cleaned map[string]any) (map[string]any, error) {
 	case int:
 		installationID = int64(v)
 	case string:
-		fmt.Sscan(strings.TrimSpace(v), &installationID)
+		_, _ = fmt.Sscan(strings.TrimSpace(v), &installationID)
 	case json.Number:
 		n, _ := v.Int64()
 		installationID = n

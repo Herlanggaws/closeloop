@@ -1702,7 +1702,3 @@ func ternary[T any](cond bool, a, b T) T {
 	}
 	return b
 }
-
-func mustDecode(data []byte, v any) {
-	_ = json.Unmarshal(data, v)
-}

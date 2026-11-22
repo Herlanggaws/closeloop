@@ -11,15 +11,15 @@ const sentWithLine = `>Sent with Saidloop</p>`
 // a "Powered by Saidloop" link on Free, nothing on paid plans.
 func applyBadge(out, badgeURL string) string {
 	if badgeURL == "" {
-		i := strings.Index(out, sentWithLine)
-		if i < 0 {
+		before, after, ok := strings.Cut(out, sentWithLine)
+		if !ok {
 			return out
 		}
-		start := strings.LastIndex(out[:i], "<p ")
+		start := strings.LastIndex(before, "<p ")
 		if start < 0 {
 			return out
 		}
-		return out[:start] + out[i+len(sentWithLine):]
+		return before[:start] + after
 	}
 	link := `>Powered by <a href="` + html.EscapeString(badgeURL) + `" style="color:#737373;text-decoration:none;font-weight:500;">Saidloop</a></p>`
 	return strings.Replace(out, sentWithLine, link, 1)

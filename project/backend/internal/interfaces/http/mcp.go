@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -368,10 +369,5 @@ func mcpError(id any, code int, message string) map[string]any {
 }
 
 func contains(list []string, v string) bool {
-	for _, x := range list {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, v)
 }

@@ -93,12 +93,12 @@ type CreateIssueResult struct {
 	IID    int
 }
 
-func (c *Client) request(ctx context.Context, method, endpoint string, body any) (*http.Response, []byte, error) {
+func (c *Client) request(ctx context.Context, method, endpoint string, body any) (int, []byte, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
 		if err != nil {
-			return nil, nil, err
+			return 0, nil, err
 		}
 		bodyReader = bytes.NewReader(raw)
 	}
@@ -106,7 +106,7 @@ func (c *Client) request(ctx context.Context, method, endpoint string, body any)
 	fullURL := fmt.Sprintf("%s/api/v4%s", c.baseURL, endpoint)
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 
 	req.Header.Set("PRIVATE-TOKEN", c.token)
@@ -116,26 +116,26 @@ func (c *Client) request(ctx context.Context, method, endpoint string, body any)
 
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 	defer res.Body.Close()
 
 	respBytes, err := io.ReadAll(io.LimitReader(res.Body, 4<<20))
 	if err != nil {
-		return res, nil, err
+		return res.StatusCode, nil, err
 	}
 
-	return res, respBytes, nil
+	return res.StatusCode, respBytes, nil
 }
 
 // Validate checks token validity and returns user information.
 func (c *Client) Validate(ctx context.Context) (User, error) {
-	res, body, err := c.request(ctx, http.MethodGet, "/user", nil)
+	statusCode, body, err := c.request(ctx, http.MethodGet, "/user", nil)
 	if err != nil {
 		return User{}, err
 	}
-	if res.StatusCode >= 300 {
-		return User{}, fmt.Errorf("gitlab auth status %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
+	if statusCode >= 300 {
+		return User{}, fmt.Errorf("gitlab auth status %d: %s", statusCode, strings.TrimSpace(string(body)))
 	}
 	var u User
 	if err := json.Unmarshal(body, &u); err != nil {
@@ -147,12 +147,12 @@ func (c *Client) Validate(ctx context.Context) (User, error) {
 // ListProjects lists projects accessible by the authenticated token.
 func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
 	endpoint := "/projects?membership=true&simple=true&per_page=100&order_by=last_activity_at"
-	res, body, err := c.request(ctx, http.MethodGet, endpoint, nil)
+	statusCode, body, err := c.request(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode >= 300 {
-		return nil, fmt.Errorf("gitlab list projects status %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
+	if statusCode >= 300 {
+		return nil, fmt.Errorf("gitlab list projects status %d: %s", statusCode, strings.TrimSpace(string(body)))
 	}
 	var list []Project
 	if err := json.Unmarshal(body, &list); err != nil {
@@ -183,12 +183,12 @@ func (c *Client) CreateMergeRequest(ctx context.Context, in CreateMRInput) (Crea
 		"branch": headBranch,
 		"ref":    baseBranch,
 	}
-	res, bBody, err := c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/repository/branches", encodedPath), branchBody)
+	statusCode, bBody, err := c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/repository/branches", encodedPath), branchBody)
 	if err != nil {
 		return CreateMRResult{}, fmt.Errorf("create branch: %w", err)
 	}
-	if res.StatusCode >= 300 && res.StatusCode != http.StatusBadRequest { // ignore if branch already exists
-		return CreateMRResult{}, fmt.Errorf("gitlab create branch %d: %s", res.StatusCode, strings.TrimSpace(string(bBody)))
+	if statusCode >= 300 && statusCode != http.StatusBadRequest { // ignore if branch already exists
+		return CreateMRResult{}, fmt.Errorf("gitlab create branch %d: %s", statusCode, strings.TrimSpace(string(bBody)))
 	}
 
 	// 2. Commit files
@@ -215,23 +215,23 @@ func (c *Client) CreateMergeRequest(ctx context.Context, in CreateMRInput) (Crea
 			"commit_message": commitMsg,
 			"actions":        actions,
 		}
-		cRes, cBody, err := c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/repository/commits", encodedPath), commitPayload)
+		cStatus, cBody, err := c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/repository/commits", encodedPath), commitPayload)
 		if err != nil {
 			return CreateMRResult{}, fmt.Errorf("commit files: %w", err)
 		}
-		if cRes.StatusCode >= 300 {
+		if cStatus >= 300 {
 			// If file already exists, retry with action: "update"
 			if strings.Contains(string(cBody), "already exists") {
 				for i := range actions {
 					actions[i].Action = "update"
 				}
 				commitPayload["actions"] = actions
-				cRes, cBody, err = c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/repository/commits", encodedPath), commitPayload)
-				if err != nil || cRes.StatusCode >= 300 {
-					return CreateMRResult{}, fmt.Errorf("gitlab commit retry %d: %s", cRes.StatusCode, strings.TrimSpace(string(cBody)))
+				cStatus, cBody, err = c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/repository/commits", encodedPath), commitPayload)
+				if err != nil || cStatus >= 300 {
+					return CreateMRResult{}, fmt.Errorf("gitlab commit retry %d: %s", cStatus, strings.TrimSpace(string(cBody)))
 				}
 			} else {
-				return CreateMRResult{}, fmt.Errorf("gitlab commit %d: %s", cRes.StatusCode, strings.TrimSpace(string(cBody)))
+				return CreateMRResult{}, fmt.Errorf("gitlab commit %d: %s", cStatus, strings.TrimSpace(string(cBody)))
 			}
 		}
 	}
@@ -244,12 +244,12 @@ func (c *Client) CreateMergeRequest(ctx context.Context, in CreateMRInput) (Crea
 		"description":          in.MRBody,
 		"remove_source_branch": true,
 	}
-	mrRes, mrBody, err := c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/merge_requests", encodedPath), mrPayload)
+	mrStatus, mrBody, err := c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/merge_requests", encodedPath), mrPayload)
 	if err != nil {
 		return CreateMRResult{}, fmt.Errorf("create merge request: %w", err)
 	}
-	if mrRes.StatusCode >= 300 {
-		return CreateMRResult{}, fmt.Errorf("gitlab merge request %d: %s", mrRes.StatusCode, strings.TrimSpace(string(mrBody)))
+	if mrStatus >= 300 {
+		return CreateMRResult{}, fmt.Errorf("gitlab merge request %d: %s", mrStatus, strings.TrimSpace(string(mrBody)))
 	}
 
 	var mr struct {
@@ -279,12 +279,12 @@ func (c *Client) CreateIssue(ctx context.Context, in CreateIssueInput) (CreateIs
 		"title":       in.Title,
 		"description": in.Description,
 	}
-	res, body, err := c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/issues", encodedPath), payload)
+	statusCode, body, err := c.request(ctx, http.MethodPost, fmt.Sprintf("/projects/%s/issues", encodedPath), payload)
 	if err != nil {
 		return CreateIssueResult{}, err
 	}
-	if res.StatusCode >= 300 {
-		return CreateIssueResult{}, fmt.Errorf("gitlab issue %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
+	if statusCode >= 300 {
+		return CreateIssueResult{}, fmt.Errorf("gitlab issue %d: %s", statusCode, strings.TrimSpace(string(body)))
 	}
 
 	var issue struct {

@@ -340,19 +340,19 @@ func (s *Store) AcceptInvite(ctx context.Context, rawToken, userID, userEmail st
 	if err != nil {
 		return Org{}, "", err
 	}
+	defer rows.Close()
 	var emptyOrgs []string
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			rows.Close()
 			return Org{}, "", err
 		}
 		emptyOrgs = append(emptyOrgs, id)
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
 		return Org{}, "", err
 	}
+	_ = rows.Close()
 	for _, id := range emptyOrgs {
 		var members, projects int
 		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM memberships WHERE org_id=$1`, id).Scan(&members); err != nil {
