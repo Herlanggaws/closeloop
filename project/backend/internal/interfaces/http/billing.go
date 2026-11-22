@@ -38,6 +38,10 @@ func writeBillingNotConfigured(c *gin.Context) {
 	writeErr(c, 503, "BILLING_NOT_CONFIGURED", "Billing not configured on this server.")
 }
 
+func writeAlreadySubscribed(c *gin.Context) {
+	writeErr(c, 409, "ALREADY_SUBSCRIBED", "You're already subscribed. Use Manage subscription to change or cancel your plan.")
+}
+
 func (s *Server) createBillingCheckout(c *gin.Context) {
 	org, ok := s.requireOrgOwner(c)
 	if !ok {
@@ -62,6 +66,15 @@ func (s *Server) createBillingCheckout(c *gin.Context) {
 	}
 	if application.NormalizePlan(org.Plan) == "business" {
 		writeErr(c, 409, "CONFLICT", "Business billing is handled by support. Contact us to change plans.")
+		return
+	}
+	subscribed, err := s.Store.OrgSubscribed(c.Request.Context(), org.ID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	if subscribed {
+		writeAlreadySubscribed(c)
 		return
 	}
 	checkoutURL, err := s.billingClient().CreateCheckout(c.Request.Context(), polar.Checkout{

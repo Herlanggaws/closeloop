@@ -2,10 +2,16 @@ import { test, expect, type Page } from "@playwright/test";
 
 // S-15 Billing with the API mocked: needs only the web app.
 
-type Setup = { plan?: string; role?: string; subscribed?: boolean; configured?: boolean };
+type Setup = {
+  plan?: string;
+  role?: string;
+  subscribed?: boolean;
+  configured?: boolean;
+  query?: string;
+};
 
 async function openBilling(page: Page, setup: Setup = {}) {
-  const { plan = "free", role = "owner", subscribed = false, configured = true } = setup;
+  const { plan = "free", role = "owner", subscribed = false, configured = true, query = "" } = setup;
   const posts: { path: string; body: unknown }[] = [];
   await page.addInitScript(() => {
     localStorage.setItem("closeloop_access", "e2e-token");
@@ -61,7 +67,7 @@ async function openBilling(page: Page, setup: Setup = {}) {
     }
     return json(200, {});
   });
-  await page.goto("/app/settings/billing");
+  await page.goto(`/app/settings/billing${query}`);
   await expect(page.getByTestId("change-plan-grid")).toBeVisible();
   return posts;
 }
@@ -93,6 +99,43 @@ test.describe("Billing", () => {
     await page.locator('[data-plan="studio"]').click();
     await expect(page).toHaveURL("https://billing.test/hosted/portal");
     expect(posts.map((p) => p.path)).toEqual(["/api/billing/portal"]);
+  });
+
+  test("after checkout, plans lock until the webhook lands, then the page updates", async ({
+    page,
+  }) => {
+    const setup: Setup = { query: "?checkout=success" };
+    await openBilling(page, setup);
+    await expect(page.getByRole("status")).toHaveText(
+      "Payment received. Your plan updates in a moment.",
+    );
+    await expect(page.locator('[data-plan="indie"]')).toBeDisabled();
+
+    await page.unrouteAll({ behavior: "wait" });
+    await page.route(/\/api\/me/, (route) =>
+      route.fulfill({
+        headers: {
+          "Access-Control-Allow-Origin": route.request().headers()["origin"] || "*",
+          "Access-Control-Allow-Credentials": "true",
+          "Access-Control-Allow-Headers": "Authorization, Content-Type",
+        },
+        json: {
+          user: { id: "e2e-user", email: "owner@example.com" },
+          org: { id: "e2e-org", name: "Workspace", plan: "indie" },
+          role: "owner",
+          usage: {
+            plan: "indie",
+            subscribed: true,
+            billing_interval: "year",
+            projects: { used: 1, limit: 3 },
+            reports: { used: 4, limit: 1000 },
+            period_start: "2026-11-01T00:00:00Z",
+          },
+        },
+      }),
+    );
+    await expect(page.getByRole("status")).toHaveText("You're subscribed.");
+    await expect(page.getByText("$150 / year")).toBeVisible();
   });
 
   test("members cannot change the plan", async ({ page }) => {

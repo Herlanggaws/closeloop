@@ -31,6 +31,13 @@ export function planActionLabel(current: string, target: PlanId, action: PlanAct
   }
 }
 
+/** Price under "Current plan": the annual total for yearly subscribers. */
+export function currentPriceLabel(plan: PlanInfo | undefined, interval?: BillingInterval) {
+  if (!plan) return "$0 / month";
+  if (interval === "year" && plan.yearlyPrice) return `${plan.yearlyPrice} / year`;
+  return `${plan.price} / month`;
+}
+
 export function planPriceLabel(plan: PlanInfo, interval: BillingInterval) {
   if (interval === "year" && plan.yearlyPrice) return `${plan.yearlyPrice} / year`;
   return plan.price;

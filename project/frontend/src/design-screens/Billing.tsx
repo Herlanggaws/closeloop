@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { api } from "@/lib/api";
 import {
+  currentPriceLabel,
   planAction,
   planActionLabel,
   planPriceLabel,
@@ -213,7 +214,7 @@ export function Billing() {
                       {planLabel(plan)}
                     </span>
                     <span className="pb-1 font-ds-ui text-[13px] text-white/70">
-                      {current?.price || "$0"} / month
+                      {currentPriceLabel(current, usage?.billing_interval)}
                     </span>
                   </div>
                   <p className="font-ds-ui text-[13px] text-white/70">{current?.blurb}</p>
@@ -358,7 +359,7 @@ export function Billing() {
                         key={p.id}
                         type="button"
                         data-plan={p.id}
-                        disabled={saving || !isOwner || action === "none"}
+                        disabled={saving || waitingForPlan || !isOwner || action === "none"}
                         onClick={() => selectPlan(p.id, action)}
                         className={`flex cursor-pointer flex-col gap-1 rounded-[12px] border p-4 text-left transition disabled:cursor-default ${
                           isCurrent
@@ -383,7 +384,7 @@ export function Billing() {
                             Current plan
                           </span>
                         )}
-                        {isOwner && action !== "none" && (
+                        {isOwner && !waitingForPlan && action !== "none" && (
                           <span className="mt-2 font-ds-ui text-[11px] font-medium text-[#171717] underline underline-offset-2">
                             {planActionLabel(plan, p.id, action)}
                           </span>

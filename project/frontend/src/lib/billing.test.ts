@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { planAction, planActionLabel, planPriceLabel } from "./billing.ts";
+import { currentPriceLabel, planAction, planActionLabel, planPriceLabel } from "./billing.ts";
 import { planInfo } from "./plans.ts";
 
 describe("Billing change plan (M5)", () => {
@@ -31,6 +31,12 @@ describe("Billing change plan (M5)", () => {
     assert.equal(planActionLabel("free", "indie", "checkout"), "Upgrade");
     assert.equal(planActionLabel("indie", "indie", "checkout"), "Subscribe");
     assert.equal(planActionLabel("studio", "free", "portal"), "Cancel subscription");
+  });
+
+  it("shows what a subscriber pays", () => {
+    assert.equal(currentPriceLabel(planInfo("indie"), "year"), "$150 / year");
+    assert.equal(currentPriceLabel(planInfo("indie"), "month"), "$15 / month");
+    assert.equal(currentPriceLabel(undefined), "$0 / month");
   });
 
   it("shows the annual total on Yearly", () => {

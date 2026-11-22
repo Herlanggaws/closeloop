@@ -2126,6 +2126,8 @@ type OrgUsage struct {
 	AutoPRCredits        int           `json:"auto_pr_credits"`
 	AutoPRCreditsGranted int           `json:"auto_pr_credits_granted"`
 	PeriodStart          time.Time     `json:"period_start"`
+	Subscribed           bool          `json:"subscribed"`                 // live paid subscription (D-10)
+	BillingInterval      string        `json:"billing_interval,omitempty"` // month | year, when subscribed
 }
 
 func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
@@ -2170,8 +2172,15 @@ func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
 		return OrgUsage{}, err
 	}
 
+	subscribedPlan, interval, err := liveSubscription(ctx, s.DB, orgID)
+	if err != nil {
+		return OrgUsage{}, err
+	}
+
 	return OrgUsage{
 		Plan:          plan,
+		Subscribed:      subscribedPlan != "",
+		BillingInterval: interval,
 		Projects:      UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
 		Reports:       UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
 		Seats:         UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},
@@ -2230,25 +2239,33 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 		return Org{}, ErrBusinessNotAvailable
 	}
 
-	var org Org
-	err = tx.QueryRowContext(ctx, `
-		UPDATE organizations SET plan=$2 WHERE id=$1
-		RETURNING id, name, plan`, orgID, plan).
-		Scan(&org.ID, &org.Name, &org.Plan)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Org{}, ErrNotFound
+	if err := setOrgPlan(ctx, tx, orgID, plan, prevPlan, prevCredits); err != nil {
+		return Org{}, err
 	}
-	if err != nil {
+	var org Org
+	if err := tx.QueryRowContext(ctx, `SELECT id, name, plan FROM organizations WHERE id=$1`, orgID).
+		Scan(&org.ID, &org.Name, &org.Plan); err != nil {
 		return Org{}, err
 	}
 
+	if err := tx.Commit(); err != nil {
+		return Org{}, err
+	}
+	return org, nil
+}
+
+// setOrgPlan is what every plan change does, manual or from billing.
+func setOrgPlan(ctx context.Context, tx *sql.Tx, orgID, plan, prevPlan string, prevCredits int) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE organizations SET plan=$2 WHERE id=$1`, orgID, plan); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE reports r
 		SET quota_locked = false
 		FROM tickets t
 		JOIN projects p ON p.id = t.project_id
 		WHERE r.ticket_id = t.id AND p.org_id = $1 AND r.quota_locked = true`, orgID); err != nil {
-		return Org{}, err
+		return err
 	}
 
 	// Seed starter Auto PR credits once when moving free → paid with empty balance.
@@ -2256,19 +2273,15 @@ func (s *Store) UpdateOrgPlan(ctx context.Context, orgID, plan, role string) (Or
 	if seed > 0 && NormalizePlan(prevPlan) == "free" && prevCredits == 0 {
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE organizations SET auto_pr_credits = $2 WHERE id=$1`, orgID, seed); err != nil {
-			return Org{}, err
+			return err
 		}
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO credit_ledger(org_id, delta, reason) VALUES ($1,$2,'plan_upgrade_seed')`,
 			orgID, seed); err != nil {
-			return Org{}, err
+			return err
 		}
 	}
-
-	if err := tx.Commit(); err != nil {
-		return Org{}, err
-	}
-	return org, nil
+	return nil
 }
 
 func normalizeGitHubAppConfig(cleaned map[string]any) (map[string]any, error) {

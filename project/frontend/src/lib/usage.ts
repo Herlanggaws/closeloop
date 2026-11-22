@@ -13,6 +13,8 @@ export type OrgUsage = {
   period_start: string;
   // Set by the backend once the org has a paid subscription with the billing provider.
   subscribed?: boolean;
+  /** Set when subscribed. */
+  billing_interval?: "month" | "year";
 };
 
 export type MeResponse = {

@@ -8,7 +8,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-22",
     title: "Indie with 2 seats, monthly or yearly billing",
-    body: "Indie is $15 a month or $150 a year and now has room for you and one teammate; Studio stays $39 a month or $390 a year with 5 seats. Workspace owners can pick monthly or yearly in Billing and pay on a secure checkout.",
+    body: "Indie is $15 a month or $150 a year and now has room for you and one teammate; Studio stays $39 a month or $390 a year with 5 seats. Workspace owners can pick monthly or yearly in Billing and pay on a secure checkout. The plan switches on once payment is confirmed, and canceling keeps it until the end of the paid period.",
   },
   {
     date: "2026-11-20",
