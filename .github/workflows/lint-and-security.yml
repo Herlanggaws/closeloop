@@ -3,9 +3,6 @@ name: Lint & Vulnerability Check
 on:
   pull_request:
     branches: [main, dev]
-  push:
-    branches:
-      - "**"
   workflow_dispatch:
 
 concurrency:

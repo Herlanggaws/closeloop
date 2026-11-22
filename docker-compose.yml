@@ -26,8 +26,6 @@ services:
         condition: service_healthy
     expose:
       - "8080"
-    ports:
-      - "${BACKEND_PORT:-8080}:8080"
     env_file:
       - path: ./project/.env
         required: false
@@ -40,6 +38,12 @@ services:
     volumes:
       - uploads_data:/data/uploads
       - ./project/backend/saidloop-auto-pr.2026-11-18.private-key.pem:/app/saidloop.pem
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   frontend:
     image: ghcr.io/xervproject-cloud/closeloop-frontend:latest
@@ -48,8 +52,6 @@ services:
       - backend
     expose:
       - "3000"
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
     env_file:
       - path: ./project/.env
         required: false
@@ -59,6 +61,12 @@ services:
         required: false
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.saidloop.com}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   nginx:
     image: nginx:alpine
