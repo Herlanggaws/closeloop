@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Must stay registered: WebKit miscomputes atan2() on cqw unless it resolves to px first. */
+@property --fit-width {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 :root {
   --neutral-0: #ffffff;
   --neutral-50: #fafafa;

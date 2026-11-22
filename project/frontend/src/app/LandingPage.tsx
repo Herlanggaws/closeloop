@@ -437,13 +437,14 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
         </div>
         <div
           data-pencil-name="Product Visual"
-          className="box-border relative w-full h-[280px] sm:h-[400px] lg:h-[600px] shrink-0 overflow-hidden"
+          className="@container box-border relative w-full max-w-[1280px] aspect-[780/1128] sm:aspect-[1280/600] shrink-0 overflow-hidden"
         >
-          <div className="absolute left-1/2 top-0 origin-top -translate-x-1/2 scale-[0.32] sm:scale-[0.48] lg:left-0 lg:translate-x-0 lg:scale-100 lg:relative lg:w-full lg:h-full" style={{ width: 1280, height: 600 }}>
+          {/* Fixed-size canvas scaled to its container (tan(atan2()) turns the length ratio into a number); panels stack on phones. */}
+          <div className="absolute left-0 top-0 origin-top-left [--fit-width:100cqw] w-[780px] h-[1128px] [scale:tan(atan2(var(--fit-width),780px))] sm:w-[1280px] sm:h-[600px] sm:[scale:min(1,tan(atan2(var(--fit-width),1280px)))]">
             <div className="relative h-full w-full">
           <div
             data-pencil-name="App Window"
-            className="box-border w-[780px] h-[540px] [box-shadow:0px_24px_60px_#17171714] absolute left-0 top-[48px] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px_16px_0px_0px] overflow-hidden [z-index:0]"
+            className="box-border w-[780px] h-[540px] [box-shadow:0px_24px_60px_#17171714] absolute left-0 top-0 sm:top-[48px] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px_16px_0px_0px] overflow-hidden [z-index:0]"
           >
             <div
               data-pencil-name="Window Bar"
@@ -929,7 +930,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Agent Terminal"
-            className="box-border w-[540px] h-fit [box-shadow:0px_24px_60px_#17171740] absolute left-[740px] top-[24px] flex flex-col gap-0 justify-start items-start bg-[#0A0A0A] [outline:1px_solid_#FFFFFF1A] [outline-offset:-0.5px] rounded-[16px] overflow-hidden [z-index:1]"
+            className="box-border w-[540px] h-fit [box-shadow:0px_24px_60px_#17171740] absolute left-0 top-[564px] origin-top-left scale-[1.4444] sm:left-[740px] sm:top-[24px] sm:[scale:none] flex flex-col gap-0 justify-start items-start bg-[#0A0A0A] [outline:1px_solid_#FFFFFF1A] [outline-offset:-0.5px] rounded-[16px] overflow-hidden [z-index:1]"
           >
             <div
               data-pencil-name="Terminal Bar"
@@ -1100,7 +1101,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Reporter Notified"
-            className="box-border w-[340px] h-fit [box-shadow:0px_16px_40px_#1717171F,_0px_4px_8px_#1717170F] absolute left-[40px] top-[430px] flex flex-col gap-[10px] p-[16px] justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[12px] [z-index:2]"
+            className="box-border w-[340px] h-fit [box-shadow:0px_16px_40px_#1717171F,_0px_4px_8px_#1717170F] absolute left-[40px] top-[382px] sm:top-[430px] flex flex-col gap-[10px] p-[16px] justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[12px] [z-index:2]"
           >
             <div
               data-pencil-name="Head"
@@ -2749,11 +2750,11 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
       <section
         id="mcp" data-pencil-name="MCP Section"
         aria-labelledby="mcp-heading"
-        className="box-border w-full h-fit shrink-0 flex flex-col lg:flex-row gap-10 lg:gap-[80px] px-5 py-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-[112px] justify-start items-start bg-[#0A0A0A]"
+        className="box-border w-full h-fit shrink-0 flex flex-col xl:flex-row gap-10 xl:gap-[80px] px-5 py-16 sm:px-10 lg:px-[max(80px,calc((100%-1280px)/2))] lg:py-[112px] justify-start items-start bg-[#0A0A0A]"
       >
         <div
           data-pencil-name="Left"
-          className="box-border [flex:1_1_0] h-fit flex flex-col gap-[28px] justify-start items-start"
+          className="box-border w-full xl:w-auto [flex:1_1_0] h-fit flex flex-col gap-[28px] justify-start items-start"
         >
           <div
             data-pencil-name="Eyebrow Dark"
@@ -2873,7 +2874,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
         </div>
         <div
           data-pencil-name="Tools"
-          className="box-border w-full max-w-[560px] shrink-0 h-fit flex flex-col gap-0 justify-start items-start bg-[#171717] [outline:1px_solid_#FFFFFF1A] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
+          className="box-border w-full shrink-0 xl:max-w-[560px] xl:shrink h-fit flex flex-col gap-0 justify-start items-start bg-[#171717] [outline:1px_solid_#FFFFFF1A] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
         >
           <div
             data-pencil-name="Head"
