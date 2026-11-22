@@ -116,7 +116,7 @@ func (c Client) CreateCheckout(ctx context.Context, in Checkout) (string, error)
 	var out struct {
 		URL string `json:"url"`
 	}
-	err := c.post(ctx, "/v1/checkouts/", map[string]any{
+	body := map[string]any{
 		"products":             []string{in.ProductID},
 		"customer_email":       in.Email,
 		"external_customer_id": in.OrgID,
@@ -125,7 +125,15 @@ func (c Client) CreateCheckout(ctx context.Context, in Checkout) (string, error)
 		"metadata":    map[string]string{MetadataOrgID: in.OrgID},
 		"success_url": in.SuccessURL,
 		"return_url":  in.ReturnURL,
-	}, &out)
+	}
+	const path = "/v1/checkouts/"
+	err := c.post(ctx, path, body, &out)
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.rejected("customer_email") {
+		// Undeliverable addresses are refused. Open checkout without one and the buyer types it there.
+		delete(body, "customer_email")
+		err = c.post(ctx, path, body, &out)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -173,11 +181,16 @@ func (e *APIError) customerMissing() bool {
 	if e.Status == http.StatusNotFound {
 		return true
 	}
+	return e.rejected("external_customer_id")
+}
+
+// rejected reports whether validation refused the given request field.
+func (e *APIError) rejected(field string) bool {
 	if e.Status != http.StatusUnprocessableEntity {
 		return false
 	}
 	for _, f := range e.Fields {
-		if strings.HasSuffix(f, "external_customer_id") {
+		if f == field || strings.HasSuffix(f, "."+field) {
 			return true
 		}
 	}

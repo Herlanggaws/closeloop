@@ -129,6 +129,8 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
   - [ ] Tes beli, ganti plan, cancel, revoke di sandbox asli. Sejauh ini baru dites dengan API palsu dan webhook yang ditandatangani lokal
   - [ ] Ulang untuk production (token, secret dan product ID beda; `POLAR_SERVER=production`). Selama token kosong, owner masih bisa pindah ke plan berbayar gratis lewat `PATCH /api/org/plan`
   - [ ] Putusin org yang sudah Indie/Studio manual: tetap gratis atau harus subscribe
+- [x] Billing, bug dari tes sandbox 22 Nov:
+  - [x] Email akun yang ditolak provider (domain tanpa mail server) bikin checkout 502: sekarang checkout tetap kebuka, email diisi di sana
 - [ ] Billing, batasan yang diketahui:
   - [ ] Satu email untuk dua workspace: checkout kedua ditolak provider, dan portal tidak bisa dibuka untuk workspace yang customer-nya milik workspace lain
   - [ ] Kirim ulang invite yang expired tidak cek batas seat (bug lama, makin relevan dengan seat berbayar)

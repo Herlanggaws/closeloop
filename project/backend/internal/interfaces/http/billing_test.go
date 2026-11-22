@@ -175,6 +175,41 @@ func TestBilling_ProviderErrors(t *testing.T) {
 	}
 }
 
+// An address the provider will not take must not block paying: checkout asks for one instead.
+func TestBilling_CheckoutSurvivesRejectedEmail(t *testing.T) {
+	h := newReportHarness(t)
+	h.configureBilling(201, `{}`)
+	var sent []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		sent = append(sent, body)
+		status, response := 201, `{"url":"https://checkout.test/session"}`
+		if _, ok := body["customer_email"]; ok {
+			status = 422
+			response = `{"error":"RequestValidationError","detail":[{"loc":["body","CheckoutProductsCreate","customer_email"],"msg":"not deliverable"},{"loc":["body","CheckoutProductCreate","product_id"],"msg":"required"}]}`
+		}
+		w.WriteHeader(status)
+		if _, err := fmt.Fprint(w, response); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+	h.server.Cfg.PolarAPIBase = srv.URL
+
+	seed := h.seedUserProject("free")
+	code, body := h.do(http.MethodPost, "/api/billing/checkout",
+		map[string]any{"plan": "indie", "interval": "month"}, h.authHeaders(seed.AccessToken))
+	if code != 200 || body["url"] != "https://checkout.test/session" || len(sent) != 2 {
+		t.Fatalf("checkout = %d %v after %d calls", code, body, len(sent))
+	}
+	if sent[1]["external_customer_id"] != seed.OrgID || sent[1]["metadata"].(map[string]any)["org_id"] != seed.OrgID {
+		t.Fatalf("the retry must still identify the workspace: %v", sent[1])
+	}
+}
+
 // The manual switch must not hand out paid plans once billing is live.
 func TestBilling_ManualUpgradeClosedWhenConfigured(t *testing.T) {
 	h := newReportHarness(t)
