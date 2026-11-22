@@ -215,6 +215,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-16 | Suggest idea | Open public board | Suggest modal → confirm token | Private idea in inbox; not on public list | S-24 moderated |
 | R-UI-17 | Inbox coach tour | Clean storage + report in inbox | Open `/app/inbox` → Next → Done | Tour shows; reload does not reappear | `data-tour` + tour store |
 | R-UI-18 | Inbox coach Esc | Clean storage + report | Open inbox → Esc | Tour closes and stays seen | Esc marks seen |
+| R-UI-24 | Launcher badge | Free, Indie, Studio | Open demo → hover launcher | "Feedback by Saidloop" on Free only | D-20 |
 
 ---
 

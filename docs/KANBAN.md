@@ -260,7 +260,7 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 - [ ] Domain final (code and snippets still use `closeloop.dev`)
 - [x] Seat Indie: 2, harga $15 (diputusin 22 Nov; sebelumnya 1 seat dan $12)
 - [ ] `closeloop.pen` belum ikut: S-01 pricing, S-06 checklist, S-14 v2, S-15 masih $12 / 1 seat
-- [x] Badge "Powered by Saidloop" cuma di Free (disetujui 19 Nov)
+- [x] Badge "Powered by Saidloop" cuma di Free (disetujui 19 Nov; ditegasin lagi 22 Nov: hover launcher dari PR #37 dibalikin ke Free saja, dijaga `R-UI-24`)
 - [ ] Kuota Free tetap 50?
 - [ ] Angka repo per project (3 / 5 / 10) — validate in M0 interviews
 - [ ] Basis repo: fork pola Bear Budget Go vs clean (current: new repo)
