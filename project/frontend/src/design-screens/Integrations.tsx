@@ -24,7 +24,7 @@ type IntegrationRow = {
   config: Record<string, unknown> | string;
 };
 
-type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks" | "github_app" | "linear" | "jira";
+type WiredProvider = "sentry" | "posthog" | "slack" | "webhooks" | "github_app" | "linear" | "jira" | "gitlab";
 
 type CatalogItem = {
   id: string;
@@ -108,6 +108,15 @@ const DEBUG_CATALOG: CatalogItem[] = [
     iconBg: "#171717",
     action: "configure",
     wired: "github_app",
+  },
+  {
+    id: "gitlab",
+    name: "GitLab",
+    description: "Repository access for multi-repo routing and Auto PR merge requests",
+    icon: "GL",
+    iconBg: "#FC6D26",
+    action: "configure",
+    wired: "gitlab",
   },
   {
     id: "webhooks",
@@ -208,6 +217,9 @@ export function Integrations() {
   });
   const [githubInstallationId, setGithubInstallationId] = useState("");
   const [githubAccount, setGithubAccount] = useState("");
+  const [gitlabToken, setGitlabToken] = useState("");
+  const [gitlabHost, setGitlabHost] = useState("https://gitlab.com");
+  const [gitlabUsername, setGitlabUsername] = useState("");
   const [repoAddRequest, setRepoAddRequest] = useState(0);
   const [linearAPIKey, setLinearAPIKey] = useState("");
   const [linearTeamID, setLinearTeamID] = useState("");
@@ -275,6 +287,12 @@ export function Integrations() {
         const gh = list.find((i) => i.provider === "github_app");
         if (gh) {
           applyGitHubConfig(gh.config);
+        }
+        const gl = list.find((i) => i.provider === "gitlab");
+        if (gl) {
+          setGitlabToken(gl.config.token || gl.config.api_token || "");
+          setGitlabHost(gl.config.base_url || "https://gitlab.com");
+          setGitlabUsername(gl.config.username || "");
         }
         const linear = list.find((i) => i.provider === "linear");
         if (linear) {
@@ -444,6 +462,44 @@ export function Integrations() {
     }
   }
 
+  async function testAndSaveGitLab() {
+    if (!gitlabToken.trim()) {
+      setError("GitLab Personal Access Token is required");
+      return;
+    }
+    setSaving("gitlab");
+    setError("");
+    try {
+      let verifiedUsername = gitlabUsername.trim();
+      if (gitlabToken.trim() !== "••••••••") {
+        const testRes = await api<{ ok: boolean; username: string }>(
+          `/api/projects/${projectId}/integrations/gitlab/test`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              token: gitlabToken.trim(),
+              base_url: gitlabHost.trim() || "https://gitlab.com",
+            }),
+          },
+        );
+        if (testRes.username) {
+          verifiedUsername = testRes.username;
+          setGitlabUsername(testRes.username);
+        }
+      }
+      await saveProvider("gitlab", {
+        token: gitlabToken.trim(),
+        base_url: gitlabHost.trim() || "https://gitlab.com",
+        username: verifiedUsername,
+      });
+      setConfigureModal(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "GitLab authentication failed");
+    } finally {
+      setSaving(null);
+    }
+  }
+
   async function clearProvider(provider: WiredProvider) {
     if (!projectId) return;
     setSaving(provider);
@@ -472,6 +528,9 @@ export function Integrations() {
       } else if (provider === "github_app") {
         setGithubInstallationId("");
         setGithubAccount("");
+      } else if (provider === "gitlab") {
+        setGitlabToken("");
+        setGitlabUsername("");
       } else if (provider === "linear") {
         setLinearAPIKey("");
         setLinearTeamID("");
@@ -495,6 +554,7 @@ export function Integrations() {
   const slackConnected = Boolean(slackWebhook.trim());
   const webhooksConnected = Boolean(webhookURL.trim());
   const githubConnected = Boolean(githubInstallationId.trim());
+  const gitlabConnected = Boolean(gitlabToken.trim());
   const linearConnected = Boolean(linearAPIKey.trim() && linearTeamID.trim());
   const jiraConnected = Boolean(
     jiraEmail.trim() && jiraToken.trim() && jiraSite.trim() && jiraProjectKey.trim(),
@@ -507,6 +567,7 @@ export function Integrations() {
     if (item.wired === "slack") return slackConnected ? "connected" : "none";
     if (item.wired === "webhooks") return webhooksConnected ? "connected" : "none";
     if (item.wired === "github_app") return githubConnected ? "connected" : "none";
+    if (item.wired === "gitlab") return gitlabConnected ? "connected" : "none";
     if (item.wired === "linear") return linearConnected ? "connected" : "none";
     if (item.wired === "jira") return jiraConnected ? "connected" : "none";
     if (item.id === "github_issues") return githubConnected ? "connected" : "none";
@@ -568,6 +629,7 @@ export function Integrations() {
     if (item.action === "coming_soon") return "Coming soon";
     if (item.id === "github_issues") return githubConnected ? "Configure" : "Connect";
     if (item.wired === "github_app") return githubConnected ? "Configure" : "Connect";
+    if (item.wired === "gitlab") return gitlabConnected ? "Configure" : "Connect";
     return "Configure";
   }
 
@@ -617,6 +679,8 @@ export function Integrations() {
                 projectName={projectName}
                 installationId={Number(githubInstallationId) || 0}
                 accountLogin={githubAccount}
+                gitlabConnected={gitlabConnected}
+                gitlabUsername={gitlabUsername}
                 addRequest={repoAddRequest}
               />
 
@@ -1179,6 +1243,99 @@ export function Integrations() {
                       </>
                     ) : null}
 
+                    {configureModal === "gitlab" ? (
+                      <>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3
+                              id={configureTitleId}
+                              className="font-ds-sans text-[18px] font-semibold text-[#171717]"
+                            >
+                              GitLab
+                            </h3>
+                            <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
+                              Connect GitLab with a Personal Access Token or Project Token with{" "}
+                              <code className="font-ds-mono text-xs text-[#171717]">api</code> and{" "}
+                              <code className="font-ds-mono text-xs text-[#171717]">write_repository</code> scopes.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setConfigureModal(null)}
+                            className="cursor-pointer font-ds-ui text-lg leading-none text-[#A3A3A3] hover:text-[#171717]"
+                          >
+                            ×
+                          </button>
+                        </div>
+
+                        <div className="mt-4 flex flex-col gap-3">
+                          <div>
+                            <label className="font-ds-ui text-[12px] font-medium text-[#171717]">
+                              GitLab Host URL
+                            </label>
+                            <input
+                              type="text"
+                              value={gitlabHost}
+                              onChange={(e) => setGitlabHost(e.target.value)}
+                              placeholder="https://gitlab.com"
+                              className="mt-1 w-full rounded-md border border-[#1717171F] px-3 py-2 font-ds-ui text-[13px] text-[#171717] outline-none focus:border-[#171717]"
+                            />
+                            <p className="mt-1 font-ds-ui text-[11px] text-[#737373]">
+                              Leave as https://gitlab.com or enter your self-hosted GitLab URL.
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="font-ds-ui text-[12px] font-medium text-[#171717]">
+                              Access Token
+                            </label>
+                            <input
+                              type="password"
+                              value={gitlabToken}
+                              onChange={(e) => setGitlabToken(e.target.value)}
+                              placeholder="glpat-..."
+                              className="mt-1 w-full rounded-md border border-[#1717171F] px-3 py-2 font-ds-ui text-[13px] text-[#171717] outline-none focus:border-[#171717]"
+                            />
+                          </div>
+
+                          {gitlabConnected && (
+                            <div className="flex items-center justify-between rounded-md bg-[#FAFAFA] px-3 py-2 border border-[#1717170F]">
+                              <span className="font-ds-ui text-xs text-[#171717]">
+                                Connected{gitlabUsername ? ` as @${gitlabUsername}` : ""}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={saving === "gitlab"}
+                                onClick={() => void clearProvider("gitlab")}
+                                className="cursor-pointer font-ds-ui text-xs text-[#DA314A] hover:underline"
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-5 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigureModal(null)}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving === "gitlab"}
+                            onClick={() => void testAndSaveGitLab()}
+                            className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white disabled:opacity-50"
+                          >
+                            {saving === "gitlab" ? "Connecting…" : gitlabConnected ? "Save" : "Connect"}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+
                     {configureModal === "github_issues" ? (
                       <>
                         <div className="flex items-start justify-between gap-4">
@@ -1431,7 +1588,7 @@ function IntegrationCard({
           className="flex h-8 w-8 items-center justify-center rounded-lg font-ds-sans text-[11px] font-semibold text-white"
           style={{ background: item.iconBg }}
         >
-          {item.icon}
+          <IntegrationIcon id={item.id} fallback={item.icon} />
         </div>
         <div className="flex items-center gap-2">
           {item.badge ? (
@@ -1492,4 +1649,66 @@ function Field({
       />
     </label>
   );
+}
+
+function IntegrationIcon({ id, fallback }: { id: string; fallback: string }) {
+  const cls = "h-4 w-4 text-white";
+  switch (id) {
+    case "slack":
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="currentColor" aria-hidden>
+          <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+        </svg>
+      );
+    case "github_issues":
+    case "github_app":
+      return (
+        <svg viewBox="0 0 16 16" className={cls} fill="currentColor" aria-hidden>
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+        </svg>
+      );
+    case "gitlab":
+      return (
+        <svg viewBox="0 0 16 16" className={cls} fill="currentColor" aria-hidden>
+          <path d="M15.97 9.058l-.8-2.464a.54.54 0 00-.206-.276.545.545 0 00-.342-.08.542.542 0 00-.327.126.548.548 0 00-.174.298L12.9 10.42H3.102L1.878 6.662a.544.544 0 00-.174-.298.546.546 0 00-.328-.126.547.547 0 00-.342.08.543.543 0 00-.206.276l-.8 2.464a.81.81 0 00.294.898l7.444 5.408a.542.542 0 00.64 0l7.444-5.408a.81.81 0 00.294-.898z" />
+        </svg>
+      );
+    case "linear":
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="currentColor" aria-hidden>
+          <path d="M2.886 14.376a9.985 9.985 0 0 0 6.738 6.738L2.886 14.376zm-.77-2.752 10.26 10.26a10.02 10.02 0 0 1-2.063-.412L2.528 13.687a10.02 10.02 0 0 1-.412-2.063zm.88-3.09 12.47 12.47a9.97 9.97 0 0 1-1.577.743L2.253 10.111a9.97 9.97 0 0 1 .743-1.577zm1.98-2.61 13.1 13.1A9.974 9.974 0 0 0 22 12c0-5.523-4.477-10-10-10a9.974 9.974 0 0 0-7.024 3.924z" />
+        </svg>
+      );
+    case "jira":
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="currentColor" aria-hidden>
+          <path d="M11.53 2c0 2.4 1.97 4.35 4.35 4.35h1.78v1.7c0 2.4 1.94 4.34 4.34 4.35V2.84a.84.84 0 0 0-.84-.84H11.53zM6.77 6.8a4.362 4.362 0 0 0 4.34 4.34h1.8v1.72a4.362 4.362 0 0 0 4.34 4.34V7.63a.84.84 0 0 0-.83-.83H6.77zM2 11.6c0 2.4 1.95 4.34 4.35 4.34h1.78v1.72A4.354 4.354 0 0 0 12.47 22v-9.57a.84.84 0 0 0-.84-.83H2z" />
+        </svg>
+      );
+    case "sentry":
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="currentColor" aria-hidden>
+          <path d="M13.91 2.26a2.19 2.19 0 0 0-3.82 0L2.31 15.74A2.19 2.19 0 0 0 4.22 19h2.29v-2H4.22a.19.19 0 0 1-.17-.29l3.18-5.52a7.5 7.5 0 0 1 5.04 6.81h2a9.5 9.5 0 0 0-6.11-8.88l1.69-2.93 5.95 10.31A.19.19 0 0 1 15.63 17H13.5v2h2.13a2.19 2.19 0 0 0 1.91-3.28L13.91 2.26zM7.75 19a2.5 2.5 0 0 1 4.5 0H7.75z" />
+        </svg>
+      );
+    case "posthog":
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M3 3v18h18" />
+          <path d="M7 16v-4" />
+          <path d="M12 16V8" />
+          <path d="M17 16v-6" />
+        </svg>
+      );
+    case "webhooks":
+      return (
+        <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2" />
+          <path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06" />
+          <path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8" />
+        </svg>
+      );
+    default:
+      return <>{fallback}</>;
+  }
 }

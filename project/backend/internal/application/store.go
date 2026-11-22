@@ -1780,7 +1780,7 @@ func (s *Store) GetIntegrationConfig(ctx context.Context, projectID, provider st
 	if len(raw) == 0 {
 		raw = json.RawMessage(`{}`)
 	}
-	return raw, nil
+	return decryptConfigJSON(raw), nil
 }
 
 func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integration, error) {
@@ -1799,6 +1799,8 @@ func (s *Store) ListIntegrations(ctx context.Context, projectID string) ([]Integ
 		}
 		if len(item.Config) == 0 {
 			item.Config = json.RawMessage(`{}`)
+		} else {
+			item.Config = redactConfigJSON(item.Config)
 		}
 		out = append(out, item)
 	}
@@ -1921,7 +1923,7 @@ func (s *Store) existingWebhookSecret(ctx context.Context, projectID string) (st
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	if provider != "sentry" && provider != "posthog" && provider != "slack" && provider != "webhooks" &&
-		provider != "github_app" && provider != "linear" && provider != "jira" {
+		provider != "github_app" && provider != "linear" && provider != "jira" && provider != "gitlab" {
 		return Integration{}, ErrInvalidInput
 	}
 	if config == nil {
@@ -2012,6 +2014,44 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 			"email": email, "api_token": token, "site": site, "project_key": projectKey,
 		}
 	}
+	if provider == "gitlab" {
+		token, _ := cleaned["token"].(string)
+		if token == "" {
+			token, _ = cleaned["api_token"].(string)
+		}
+		if token == "" {
+			return Integration{}, ErrInvalidInput
+		}
+		baseURL, _ := cleaned["base_url"].(string)
+		if baseURL == "" {
+			baseURL = "https://gitlab.com"
+		}
+		baseURL = strings.TrimRight(baseURL, "/")
+		username, _ := cleaned["username"].(string)
+		webhookSecret, _ := cleaned["webhook_secret"].(string)
+		cleaned = map[string]any{
+			"token":          token,
+			"base_url":       baseURL,
+			"username":       username,
+			"webhook_secret": webhookSecret,
+		}
+	}
+	for _, field := range integrationSecretFields {
+		if v, ok := cleaned[field].(string); ok && v == RedactedToken {
+			var existingRaw json.RawMessage
+			if qErr := s.DB.QueryRowContext(ctx, `SELECT config FROM integrations WHERE project_id=$1 AND provider=$2`, projectID, provider).Scan(&existingRaw); qErr == nil && len(existingRaw) > 0 {
+				var existingMap map[string]any
+				if jErr := json.Unmarshal(existingRaw, &existingMap); jErr == nil {
+					if prev, ok := existingMap[field].(string); ok && prev != "" {
+						cleaned[field] = prev
+					}
+				}
+			}
+		}
+	}
+	if err := encryptConfigSecrets(cleaned); err != nil {
+		return Integration{}, err
+	}
 	body, err := json.Marshal(cleaned)
 	if err != nil {
 		return Integration{}, err
@@ -2031,6 +2071,8 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 	}
 	if len(item.Config) == 0 {
 		item.Config = json.RawMessage(`{}`)
+	} else {
+		item.Config = redactConfigJSON(item.Config)
 	}
 	return item, nil
 }

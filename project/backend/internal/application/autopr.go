@@ -216,12 +216,27 @@ func (s *Store) StartAutoprRun(ctx context.Context, projectID, ticketID, actorRo
 	if repoName == "" {
 		return AutoprRun{}, fmt.Errorf("%w: Pick a repo for this ticket first. Auto PR runs in the ticket's repo.", ErrInvalidInput)
 	}
-	var ghConnected bool
+	var repoProvider string
+	if repo, rerr := s.ProjectRepoByFullName(ctx, projectID, repoName); rerr == nil && repo.Provider != "" {
+		repoProvider = repo.Provider
+	} else {
+		repoProvider = "github"
+	}
+
+	requiredProvider := "github_app"
+	if repoProvider == "gitlab" {
+		requiredProvider = "gitlab"
+	}
+
+	var providerConnected bool
 	if err := tx.QueryRowContext(ctx, `
-		SELECT EXISTS(SELECT 1 FROM integrations WHERE project_id=$1 AND provider='github_app')`, projectID).Scan(&ghConnected); err != nil {
+		SELECT EXISTS(SELECT 1 FROM integrations WHERE project_id=$1 AND provider=$2)`, projectID, requiredProvider).Scan(&providerConnected); err != nil {
 		return AutoprRun{}, err
 	}
-	if !ghConnected {
+	if !providerConnected {
+		if requiredProvider == "gitlab" {
+			return AutoprRun{}, fmt.Errorf("%w: connect GitLab first", ErrInvalidInput)
+		}
 		return AutoprRun{}, fmt.Errorf("%w: connect GitHub App first", ErrInvalidInput)
 	}
 
