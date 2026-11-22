@@ -116,6 +116,8 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 
 #### M5 · Beta publik
 - [ ] Polar billing (Indie / Studio) + set `usage.subscribed` from Polar
+  - [x] Checkout + customer portal (`POST /api/billing/checkout`, `/portal`), toggle Monthly/Yearly di Billing, switch manual ke plan berbayar ketutup begitu `POLAR_ACCESS_TOKEN` diisi (22 Nov)
+  - [ ] Webhook → plan org + `usage.subscribed`
 - [ ] Polar credit packs (buy credits is a stub)
 - [ ] Annual pricing, early-access Indie 3 months
 - [x] Quota soft-block when over plan

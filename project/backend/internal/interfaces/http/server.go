@@ -52,6 +52,8 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/auth/logout", s.logout)
 		api.GET("/me", s.authRequired(), s.me)
 		api.PATCH("/org/plan", s.authRequired(), s.patchOrgPlan)
+		api.POST("/billing/checkout", s.authRequired(), s.createBillingCheckout)
+		api.POST("/billing/portal", s.authRequired(), s.createBillingPortal)
 		api.GET("/org/audit-logs", s.authRequired(), s.listAuditLogs)
 		api.GET("/org/audit-logs/export", s.authRequired(), s.exportAuditLogs)
 		api.GET("/org/members", s.authRequired(), s.listOrgMembers)
@@ -721,6 +723,10 @@ func (s *Server) patchOrgPlan(c *gin.Context) {
 	org, role, err := s.Store.PrimaryOrg(c.Request.Context(), c.GetString("userID"))
 	if err != nil {
 		mapErr(c, err)
+		return
+	}
+	if role == "owner" && s.paidPlanNeedsCheckout(org.Plan, body.Plan) {
+		writeErr(c, 402, "BILLING_REQUIRED", "Subscribe from Billing to move to a paid plan.")
 		return
 	}
 	updated, err := s.Store.UpdateOrgPlan(c.Request.Context(), org.ID, body.Plan, role)

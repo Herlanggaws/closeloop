@@ -3,6 +3,9 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/closeloop/api/internal/infrastructure/polar"
 )
 
 type Config struct {
@@ -25,6 +28,10 @@ type Config struct {
 	SlackClientID           string
 	SlackClientSecret       string
 	SlackAPIBase            string // https://slack.com unless overridden (tests)
+	PolarAccessToken        string
+	PolarWebhookSecret      string
+	PolarAPIBase            string // from POLAR_SERVER; empty when that value is invalid
+	PolarProducts           polar.Products
 }
 
 func Load() Config {
@@ -54,7 +61,20 @@ func Load() Config {
 		SlackClientSecret:       os.Getenv("SLACK_CLIENT_SECRET"),
 		SlackAPIBase:            env("SLACK_API_BASE", "https://slack.com"),
 		AnthropicAPIKey:         os.Getenv("ANTHROPIC_API_KEY"),
+		PolarAccessToken:        trimmedEnv("POLAR_ACCESS_TOKEN"),
+		PolarWebhookSecret:      trimmedEnv("POLAR_WEBHOOK_SECRET"),
+		PolarAPIBase:            polar.BaseURL(os.Getenv("POLAR_SERVER")),
+		PolarProducts: polar.Products{
+			IndieMonthly:  trimmedEnv("POLAR_PRODUCT_INDIE_MONTHLY"),
+			IndieYearly:   trimmedEnv("POLAR_PRODUCT_INDIE_YEARLY"),
+			StudioMonthly: trimmedEnv("POLAR_PRODUCT_STUDIO_MONTHLY"),
+			StudioYearly:  trimmedEnv("POLAR_PRODUCT_STUDIO_YEARLY"),
+		},
 	}
+}
+
+func trimmedEnv(key string) string {
+	return strings.TrimSpace(os.Getenv(key))
 }
 
 func env(key, fallback string) string {
