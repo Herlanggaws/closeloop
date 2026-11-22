@@ -363,11 +363,11 @@ func (s *Store) AcceptInvite(ctx context.Context, rawToken, userID, userEmail st
 			return Org{}, "", err
 		}
 		// Deleting a paid org would cascade away the subscription while it keeps charging.
-		paidPlan, _, err := liveSubscription(ctx, tx, id)
+		live, err := liveSubscription(ctx, tx, id)
 		if err != nil {
 			return Org{}, "", err
 		}
-		if members == 1 && projects == 0 && paidPlan == "" {
+		if members == 1 && projects == 0 && live.Plan == "" {
 			if _, err := tx.ExecContext(ctx, `DELETE FROM memberships WHERE org_id=$1`, id); err != nil {
 				return Org{}, "", err
 			}

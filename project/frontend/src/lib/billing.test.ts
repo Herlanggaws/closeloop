@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { currentPriceLabel, planAction, planActionLabel, planPriceLabel } from "./billing.ts";
+import { currentPriceLabel, endsOnLabel, planAction, planActionLabel, planPriceLabel } from "./billing.ts";
 import { planInfo } from "./plans.ts";
 
 describe("Billing change plan (M5)", () => {
@@ -20,6 +20,12 @@ describe("Billing change plan (M5)", () => {
   it("only moves to Free without a payment", () => {
     assert.equal(planAction("indie", "free", false), "manual");
     assert.equal(planAction("free", "free", false), "none");
+  });
+
+  it("shows when a canceled plan ends and does not offer to cancel again", () => {
+    assert.equal(endsOnLabel("2026-12-22T21:27:02+07:00"), "Ends on Dec 22, 2026");
+    assert.equal(planAction("studio", "free", true, true), "none");
+    assert.equal(planAction("studio", "indie", true, true), "portal");
   });
 
   it("never sells or replaces Business", () => {

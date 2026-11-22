@@ -2128,6 +2128,7 @@ type OrgUsage struct {
 	PeriodStart          time.Time     `json:"period_start"`
 	Subscribed           bool          `json:"subscribed"`                 // live paid subscription (D-10)
 	BillingInterval      string        `json:"billing_interval,omitempty"` // month | year, when subscribed
+	BillingEndsAt        *time.Time    `json:"billing_ends_at,omitempty"`  // when canceled at period end
 }
 
 func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
@@ -2172,15 +2173,16 @@ func (s *Store) OrgUsage(ctx context.Context, orgID string) (OrgUsage, error) {
 		return OrgUsage{}, err
 	}
 
-	subscribedPlan, interval, err := liveSubscription(ctx, s.DB, orgID)
+	live, err := liveSubscription(ctx, s.DB, orgID)
 	if err != nil {
 		return OrgUsage{}, err
 	}
 
 	return OrgUsage{
 		Plan:          plan,
-		Subscribed:      subscribedPlan != "",
-		BillingInterval: interval,
+		Subscribed:      live.Plan != "",
+		BillingInterval: live.Interval,
+		BillingEndsAt:   live.EndsAt,
 		Projects:      UsageCounter{Used: projectsUsed, Limit: limits.MaxProjects},
 		Reports:       UsageCounter{Used: reportsUsed, Limit: limits.ReportsPerMonth},
 		Seats:         UsageCounter{Used: seatsUsed, Limit: limits.MaxSeats},

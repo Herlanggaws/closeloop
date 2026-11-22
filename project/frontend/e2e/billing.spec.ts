@@ -7,11 +7,12 @@ type Setup = {
   role?: string;
   subscribed?: boolean;
   configured?: boolean;
+  endsAt?: string;
   query?: string;
 };
 
 async function openBilling(page: Page, setup: Setup = {}) {
-  const { plan = "free", role = "owner", subscribed = false, configured = true, query = "" } = setup;
+  const { plan = "free", role = "owner", subscribed = false, configured = true, endsAt, query = "" } = setup;
   const posts: { path: string; body: unknown }[] = [];
   await page.addInitScript(() => {
     localStorage.setItem("closeloop_access", "e2e-token");
@@ -52,6 +53,7 @@ async function openBilling(page: Page, setup: Setup = {}) {
         usage: {
           plan,
           subscribed,
+          billing_ends_at: endsAt,
           projects: { used: 1, limit: 3 },
           reports: { used: 4, limit: 1000 },
           seats: { used: 1, limit: 2 },
@@ -99,6 +101,15 @@ test.describe("Billing", () => {
     await page.locator('[data-plan="studio"]').click();
     await expect(page).toHaveURL("https://billing.test/hosted/portal");
     expect(posts.map((p) => p.path)).toEqual(["/api/billing/portal"]);
+  });
+
+  test("a canceled plan shows when it ends", async ({ page }) => {
+    await openBilling(page, { plan: "studio", subscribed: true, endsAt: "2026-12-22T14:27:02Z" });
+    await expect(
+      page.getByText("Ends on Dec 22, 2026. Then this workspace moves to Free."),
+    ).toBeVisible();
+    await expect(page.locator('[data-plan="free"]')).toBeDisabled();
+    await expect(page.getByText("Cancel subscription")).toHaveCount(0);
   });
 
   test("after checkout, plans lock until the webhook lands, then the page updates", async ({

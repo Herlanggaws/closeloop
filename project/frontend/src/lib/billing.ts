@@ -10,8 +10,14 @@ export type BillingInterval = "month" | "year";
  */
 export type PlanAction = "checkout" | "portal" | "manual" | "none";
 
-export function planAction(current: string, target: PlanId, subscribed: boolean): PlanAction {
+export function planAction(
+  current: string,
+  target: PlanId,
+  subscribed: boolean,
+  ending = false,
+): PlanAction {
   if (current === "business" || target === "business") return "none";
+  if (ending && target === "free") return "none"; // already canceled
   if (subscribed) return target === current ? "none" : "portal";
   if (target === "free") return current === "free" ? "none" : "manual";
   // Also covers a plan that was switched manually and is not paid for yet.
@@ -29,6 +35,17 @@ export function planActionLabel(current: string, target: PlanId, action: PlanAct
     default:
       return "";
   }
+}
+
+/** Shown after a cancel. UTC, like the usage reset date. */
+export function endsOnLabel(endsAt: string) {
+  const date = new Date(endsAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  return `Ends on ${date}`;
 }
 
 /** Price under "Current plan": the annual total for yearly subscribers. */

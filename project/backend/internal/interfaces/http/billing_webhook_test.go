@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -158,7 +159,11 @@ func TestBillingWebhook_CancelKeepsPlanThenRevokedDowngrades(t *testing.T) {
 
 	e.typ, e.cancelAtEnd, e.at = "subscription.canceled", true, billingT0.Add(time.Minute)
 	h.deliver(e)
-	h.wantBilling(seed, "studio", true)
+	canceled := h.wantBilling(seed, "studio", true)
+	ends, err := time.Parse(time.RFC3339, fmt.Sprint(canceled["billing_ends_at"]))
+	if err != nil || !ends.Equal(billingT0.AddDate(0, 1, 0)) {
+		t.Fatalf("billing_ends_at = %v (%v)", canceled["billing_ends_at"], err)
+	}
 	if h.count(`SELECT COUNT(*) FROM billing_subscriptions WHERE org_id=$1 AND cancel_at_period_end
 		AND current_period_end IS NOT NULL AND customer_id='cus-1'`, seed.OrgID) != 1 {
 		t.Fatal("cancel at period end was not stored")
@@ -166,7 +171,9 @@ func TestBillingWebhook_CancelKeepsPlanThenRevokedDowngrades(t *testing.T) {
 
 	e.typ, e.cancelAtEnd, e.at = "subscription.uncanceled", false, billingT0.Add(2*time.Minute)
 	h.deliver(e)
-	h.wantBilling(seed, "studio", true)
+	if _, ok := h.wantBilling(seed, "studio", true)["billing_ends_at"]; ok {
+		t.Fatal("uncanceled must clear billing_ends_at")
+	}
 
 	e.typ, e.status, e.at = "subscription.revoked", "canceled", billingT0.Add(3*time.Minute)
 	h.deliver(e)

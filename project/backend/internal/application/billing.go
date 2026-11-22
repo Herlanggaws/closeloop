@@ -200,10 +200,11 @@ func (s *Store) ApplySubscriptionUpdate(ctx context.Context, u SubscriptionUpdat
 	}
 	result.Applied = true
 
-	plan, _, err := liveSubscription(ctx, tx, orgID)
+	live, err := liveSubscription(ctx, tx, orgID)
 	if err != nil {
 		return result, err
 	}
+	plan := live.Plan
 	if plan == "" {
 		// Only the end of a subscription that granted access downgrades. An abandoned
 		// first payment must not take away a plan that was switched on by hand.
@@ -228,21 +229,30 @@ type rowQuerier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// liveSubscription returns the best plan an org is paying for, or "" when it is not subscribed.
-func liveSubscription(ctx context.Context, q rowQuerier, orgID string) (plan, interval string, err error) {
-	err = q.QueryRowContext(ctx, `
-		SELECT plan, billing_interval FROM billing_subscriptions
+// paidPlan is the subscription an org's plan comes from. The zero value means not subscribed.
+type paidPlan struct {
+	Plan     string
+	Interval string
+	EndsAt   *time.Time // set once canceled at period end
+}
+
+// liveSubscription returns the best plan an org is paying for.
+func liveSubscription(ctx context.Context, q rowQuerier, orgID string) (paidPlan, error) {
+	var live paidPlan
+	err := q.QueryRowContext(ctx, `
+		SELECT plan, billing_interval, CASE WHEN cancel_at_period_end THEN current_period_end END
+		FROM billing_subscriptions
 		WHERE org_id=$1 AND `+entitledSQL+`
 		ORDER BY plan='studio' DESC, source_updated_at DESC
-		LIMIT 1`, orgID).Scan(&plan, &interval)
+		LIMIT 1`, orgID).Scan(&live.Plan, &live.Interval, &live.EndsAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", "", nil
+		return paidPlan{}, nil
 	}
-	return plan, interval, err
+	return live, err
 }
 
 // OrgSubscribed reports whether an org has a live subscription.
 func (s *Store) OrgSubscribed(ctx context.Context, orgID string) (bool, error) {
-	plan, _, err := liveSubscription(ctx, s.DB, orgID)
-	return plan != "", err
+	live, err := liveSubscription(ctx, s.DB, orgID)
+	return live.Plan != "", err
 }

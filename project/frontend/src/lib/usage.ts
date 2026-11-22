@@ -15,6 +15,8 @@ export type OrgUsage = {
   subscribed?: boolean;
   /** Set when subscribed. */
   billing_interval?: "month" | "year";
+  /** Set when canceled: the plan stays until then. */
+  billing_ends_at?: string;
 };
 
 export type MeResponse = {

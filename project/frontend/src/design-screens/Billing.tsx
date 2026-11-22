@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { api } from "@/lib/api";
 import {
   currentPriceLabel,
+  endsOnLabel,
   planAction,
   planActionLabel,
   planPriceLabel,
@@ -172,6 +173,7 @@ export function Billing() {
   const creditsUsed = creditsGranted - credits;
   const current = planInfo(plan);
   const subscribed = Boolean(usage?.subscribed);
+  const endsAt = subscribed ? usage?.billing_ends_at : undefined;
   const isOwner = me?.role === "owner";
   // Business stays hidden until M6, but an org already on it still sees its own card.
   const changePlans = visiblePlans().concat(
@@ -245,6 +247,11 @@ export function Billing() {
                     </span>
                   </div>
                   <p className="font-ds-ui text-[13px] text-white/70">{current?.blurb}</p>
+                  {endsAt && (
+                    <p className="font-ds-ui text-[13px] font-medium text-white">
+                      {endsOnLabel(endsAt)}. Then this workspace moves to Free.
+                    </p>
+                  )}
                   {subscribed && isOwner && (
                     <button
                       type="button"
@@ -380,7 +387,7 @@ export function Billing() {
                 >
                   {changePlans.map((p) => {
                     const isCurrent = p.id === plan;
-                    const action = planAction(plan, p.id, subscribed);
+                    const action = planAction(plan, p.id, subscribed, Boolean(endsAt));
                     return (
                       <button
                         key={p.id}
