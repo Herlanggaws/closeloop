@@ -119,7 +119,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] Polar credit packs (buy credits is a stub)
 - [ ] Annual pricing, early-access Indie 3 months
 - [x] Quota soft-block when over plan
-- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 1 (D-21) dan badge cuma di Free (D-20) done
+- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 2 (D-21, diubah 22 Nov) dan badge cuma di Free (D-20) done
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
 
 #### M6 · Business (F12)
@@ -151,7 +151,7 @@ Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) 
 | P2 | Public board requires Indie | **Done** publishing an idea (`is_public: true`) needs Indie; unpublish always allowed; already-public ideas stay | US-69 |
 | P2 | Badge "Powered by Saidloop" only on Free | **Done** Nov 19 (D-20), Herlangga approved | US-65, US-66 |
 | P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts `project_repos`, D-11) | US-68 |
-| P3 | Indie seats: `MaxSeats: 3` → 1 | **Done** Nov 19, Herlangga picked 1 seat (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
+| P3 | Indie seats: `MaxSeats: 3` → 1 → 2 | **Done** Nov 22: 2 seats and $15 (competitor check). Was 1 seat from Nov 19 (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
 | UI | Billing Change plan cards with limit line | **Done** (D-05) | US-68 |
 | UI | Landing pricing cards | **Done** (D-06), 3 cards until M6 | US-68 |
 | UI | Remove "read-only / mark_fixed needs Indie" copy | **Done** (D-01, D-02) | US-60 |
@@ -225,7 +225,7 @@ Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
 Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
 - [x] D-20 Badge "Powered by Saidloop" cuma di Free (`s67yG`): `/v1/ingest/config` kirim `badge` + `badge_url` (UTM `utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`), widget tampilkan di launcher (tooltip hover), form, sent, banner, dicek ulang tiap 1 menit; email pelapor/voter/comment/suggest footer `Powered by Saidloop` di Free, hilang di plan berbayar. Diputusin Herlangga 19 Nov
-- [x] D-21 Seat Indie = 1 + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
+- [x] D-21 Seat Indie = 2 sejak 22 Nov (awalnya 1, detail berikut dari 19 Nov) + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
 
 ---
 
@@ -234,7 +234,8 @@ Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
 - [x] Nama final: Saidloop (domain TBD)
 - [x] MoR: Polar (https://polar.sh/) — bukan Lemon Squeezy / Paddle
 - [ ] Domain final (code and snippets still use `closeloop.dev`)
-- [x] Seat Indie: 1 (diputusin 19 Nov)
+- [x] Seat Indie: 2, harga $15 (diputusin 22 Nov; sebelumnya 1 seat dan $12)
+- [ ] `closeloop.pen` belum ikut: S-01 pricing, S-06 checklist, S-14 v2, S-15 masih $12 / 1 seat
 - [x] Badge "Powered by Saidloop" cuma di Free (disetujui 19 Nov)
 - [ ] Kuota Free tetap 50?
 - [ ] Angka repo per project (3 / 5 / 10) — validate in M0 interviews

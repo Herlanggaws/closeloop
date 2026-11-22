@@ -111,10 +111,11 @@ function FaqList() {
 
 type BillingPeriod = "monthly" | "yearly";
 
+// Per month. Yearly is the annual total (plans.ts yearlyPrice) divided by 12, unrounded.
 const PLAN_PRICES = {
-  indie: { monthly: 12, yearly: 10 },
-  studio: { monthly: 39, yearly: 33 },
-  business: { monthly: 149, yearly: 124 },
+  indie: { monthly: "15", yearly: "12.50" },
+  studio: { monthly: "39", yearly: "32.50" },
+  business: { monthly: "149", yearly: "124" },
 } as const;
 
 const PRICING_CHECK_PATH =
@@ -201,6 +202,9 @@ function PricingCard({
           }`}
         >
           {copy.period}
+          {billingPeriod === "yearly" && plan.yearlyPrice && (
+            <span className="block">{plan.yearlyPrice} / year</span>
+          )}
         </div>
       </div>
       <div className="box-border w-full flex flex-col gap-[8px]">

@@ -26,20 +26,25 @@ describe("S-06 empty inbox checklist (D-02)", () => {
     assert.ok(widget.done && agent.done);
   });
 
-  it("Free upsells Studio seats and Indie Slack", () => {
+  it("Free upsells Indie seats and Slack", () => {
     const items = onboardingChecklist(base);
     const invite = items.find((i) => i.id === "invite")!;
     const slack = items.find((i) => i.id === "slack")!;
-    assert.equal(invite.subtitle, "Team seats come with Studio (5 seats)");
-    assert.equal(invite.action?.label, "Upgrade to Studio");
+    assert.equal(invite.subtitle, "Team seats start with Indie (2 seats)");
+    assert.equal(invite.action?.label, "Upgrade to Indie");
     assert.equal(slack.subtitle, "Slack comes with Indie");
     assert.equal(slack.action?.label, "Upgrade to Indie");
   });
 
-  it("Indie connects Slack but still upsells seats", () => {
+  it("Indie connects Slack and invites a second seat", () => {
     const items = onboardingChecklist({ ...base, plan: "indie" });
     assert.equal(items.find((i) => i.id === "slack")!.action?.label, "Connect");
-    assert.equal(items.find((i) => i.id === "invite")!.action?.label, "Upgrade to Studio");
+    assert.equal(items.find((i) => i.id === "invite")!.action?.label, "Invite");
+  });
+
+  it("Indie marks the invite step done with a teammate", () => {
+    const items = onboardingChecklist({ ...base, plan: "indie", teammates: 2 });
+    assert.ok(items.find((i) => i.id === "invite")!.done);
   });
 
   it("Studio invites", () => {

@@ -12,8 +12,10 @@ export type PlanId = "free" | "indie" | "studio" | "business";
 export type PlanInfo = {
   id: PlanId;
   name: string;
-  /** Monthly price label used in Billing, e.g. "$12" or "From $149". */
+  /** Monthly price label used in Billing, e.g. "$15" or "From $149". */
   price: string;
+  /** Total billed once a year, for self-serve paid plans. */
+  yearlyPrice?: string;
   /** Short feature line in Billing's Change plan card. */
   blurb: string;
   /** Secondary limit line in Billing's Change plan card. */
@@ -48,12 +50,13 @@ export const PLANS: PlanInfo[] = [
   {
     id: "indie",
     name: "Indie",
-    price: "$12",
+    price: "$15",
+    yearlyPrice: "$150",
     blurb: "Slack & GitHub Issues, public board, no badge",
-    billingLimits: "3 projects · 1,000 reports / mo · 5 repos / project · 1 seat",
+    billingLimits: "3 projects · 1,000 reports / mo · 5 repos / project · 2 seats",
     landing: {
       desc: "For solo builders shipping with AI.",
-      limits: "3 projects · 1,000 reports / mo · 5 repos / project · 1 seat",
+      limits: "3 projects · 1,000 reports / mo · 5 repos / project · 2 seats",
       features: [
         "Everything in Free",
         "Slack and GitHub Issues",
@@ -67,6 +70,7 @@ export const PLANS: PlanInfo[] = [
     id: "studio",
     name: "Studio",
     price: "$39",
+    yearlyPrice: "$390",
     blurb: "5 seats, branding, Linear & Jira, replay 7d",
     billingLimits: "Unlimited projects · 10,000 reports / mo · 10 repos / project · 5 seats",
     landing: {

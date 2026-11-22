@@ -75,6 +75,15 @@ func TestMaxReposPerProject(t *testing.T) {
 	}
 }
 
+func TestMaxSeats(t *testing.T) {
+	cases := map[string]int{"free": 1, "indie": 2, "studio": 5, "business": 0}
+	for plan, want := range cases {
+		if got := LimitsForPlan(plan).MaxSeats; got != want {
+			t.Fatalf("MaxSeats(%s)=%d want %d", plan, got, want)
+		}
+	}
+}
+
 func TestSelfServePlanAllowedHidesBusiness(t *testing.T) {
 	for _, p := range []string{"free", "indie", "studio"} {
 		if !SelfServePlanAllowed(p) {
