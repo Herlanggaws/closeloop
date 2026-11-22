@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 const (
@@ -24,15 +25,29 @@ const (
 
 // integrationSecretFields lists JSON keys inside integrations.config that hold
 // sensitive credentials and must be encrypted at rest and redacted in list responses.
-var integrationSecretFields = []string{"token", "api_key", "api_token", "webhook_secret"}
+var integrationSecretFields = []string{"token", "api_key", "api_token", "webhook_secret", "secret"}
+
+var (
+	ephemeralKeyOnce sync.Once
+	ephemeralKey     []byte
+)
 
 func integrationMasterSecret() []byte {
 	secret := strings.TrimSpace(os.Getenv("INTEGRATION_ENCRYPTION_KEY"))
 	if secret == "" {
 		secret = strings.TrimSpace(os.Getenv("JWT_SECRET"))
 	}
-	if secret == "" {
-		secret = "dev-jwt-secret-change-me-in-production"
+	if secret == "" || secret == "dev-jwt-secret-change-me-in-production" {
+		if os.Getenv("GIN_MODE") == "release" || os.Getenv("APP_ENV") == "production" {
+			ephemeralKeyOnce.Do(func() {
+				ephemeralKey = make([]byte, 32)
+				_, _ = io.ReadFull(rand.Reader, ephemeralKey)
+			})
+			return ephemeralKey
+		}
+		if secret == "" {
+			secret = "dev-jwt-secret-change-me-in-production"
+		}
 	}
 	return []byte(secret)
 }

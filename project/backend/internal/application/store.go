@@ -1533,11 +1533,8 @@ func (s *Store) EnqueueOutboundWebhook(ctx context.Context, projectID string, ev
 }
 
 func (s *Store) OutboundWebhookConfig(ctx context.Context, projectID string) (url, secret string, err error) {
-	var raw json.RawMessage
-	err = s.DB.QueryRowContext(ctx, `
-		SELECT config FROM integrations
-		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
+	raw, err := s.GetIntegrationConfig(ctx, projectID, "webhooks")
+	if errors.Is(err, ErrNotFound) {
 		return "", "", nil
 	}
 	if err != nil {
@@ -1903,22 +1900,8 @@ func generateWebhookSecret() (string, error) {
 }
 
 func (s *Store) existingWebhookSecret(ctx context.Context, projectID string) (string, error) {
-	var raw json.RawMessage
-	err := s.DB.QueryRowContext(ctx, `
-		SELECT config FROM integrations
-		WHERE project_id=$1 AND provider='webhooks'`, projectID).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-	var cfg map[string]any
-	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return "", err
-	}
-	secret, _ := cfg["secret"].(string)
-	return strings.TrimSpace(secret), nil
+	_, secret, err := s.OutboundWebhookConfig(ctx, projectID)
+	return secret, err
 }
 
 func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider string, config map[string]any) (Integration, error) {
@@ -1973,7 +1956,7 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 		}
 		secret, _ := cleaned["secret"].(string)
 		secret = strings.TrimSpace(secret)
-		if secret == "" {
+		if secret == "" || secret == RedactedToken {
 			existing, err := s.existingWebhookSecret(ctx, projectID)
 			if err != nil {
 				return Integration{}, err
@@ -2072,6 +2055,8 @@ func (s *Store) UpsertIntegration(ctx context.Context, projectID, provider strin
 	}
 	if len(item.Config) == 0 {
 		item.Config = json.RawMessage(`{}`)
+	} else if provider == "webhooks" {
+		item.Config = decryptConfigJSON(item.Config)
 	} else {
 		item.Config = redactConfigJSON(item.Config)
 	}

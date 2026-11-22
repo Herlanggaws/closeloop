@@ -1,9 +1,11 @@
 package httpapi
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/closeloop/api/internal/application"
@@ -12,6 +14,10 @@ import (
 )
 
 func (s *Server) testGitLabIntegration(c *gin.Context) {
+	projectID := c.Param("id")
+	if !s.requireProjectAccess(c, projectID) {
+		return
+	}
 	var body struct {
 		Token   string `json:"token"`
 		BaseURL string `json:"base_url"`
@@ -95,6 +101,14 @@ func (s *Server) listGitLabRepos(c *gin.Context) {
 }
 
 func (s *Server) gitlabWebhook(c *gin.Context) {
+	headerToken := strings.TrimSpace(c.GetHeader("X-Gitlab-Token"))
+	if envSecret := strings.TrimSpace(os.Getenv("GITLAB_WEBHOOK_SECRET")); envSecret != "" {
+		if subtle.ConstantTimeCompare([]byte(headerToken), []byte(envSecret)) != 1 {
+			writeErr(c, http.StatusUnauthorized, "INVALID_SIGNATURE", "invalid gitlab webhook token")
+			return
+		}
+	}
+
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, 1<<20))
 	if err != nil {
 		c.Status(http.StatusBadRequest)
@@ -131,6 +145,17 @@ func (s *Server) gitlabWebhook(c *gin.Context) {
 
 			run, err := s.Store.FindAutoprRunByPR(c.Request.Context(), repoPath, mrNumber)
 			if err == nil {
+				if raw, cfgErr := s.Store.GetIntegrationConfig(c.Request.Context(), run.ProjectID, "gitlab"); cfgErr == nil {
+					var glMap map[string]any
+					if json.Unmarshal(raw, &glMap) == nil {
+						if projSecret, _ := glMap["webhook_secret"].(string); strings.TrimSpace(projSecret) != "" {
+							if subtle.ConstantTimeCompare([]byte(headerToken), []byte(strings.TrimSpace(projSecret))) != 1 {
+								writeErr(c, http.StatusUnauthorized, "INVALID_SIGNATURE", "invalid gitlab webhook token")
+								return
+							}
+						}
+					}
+				}
 				run.Status = "succeeded"
 				if run.PRURL == "" {
 					run.PRURL = mrURL

@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -24,16 +26,52 @@ type Client struct {
 	http    *http.Client
 }
 
+func validateBaseURL(raw string) (string, error) {
+	base := strings.TrimSpace(raw)
+	if base == "" {
+		base = "https://gitlab.com"
+	}
+	base = strings.TrimRight(base, "/")
+	u, err := url.Parse(base)
+	if err != nil || u.Host == "" {
+		return "", fmt.Errorf("invalid gitlab base_url")
+	}
+	if u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return "", fmt.Errorf("invalid gitlab base_url")
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "localhost" {
+		return "", fmt.Errorf("gitlab base_url cannot target localhost")
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return "", fmt.Errorf("gitlab base_url cannot target private or link-local addresses")
+		}
+		if ip.IsLoopback() {
+			if os.Getenv("GIN_MODE") == "release" || os.Getenv("APP_ENV") == "production" {
+				return "", fmt.Errorf("gitlab base_url cannot target loopback in production")
+			}
+			if u.Scheme != "http" && u.Scheme != "https" {
+				return "", fmt.Errorf("gitlab base_url must use https")
+			}
+			return base, nil
+		}
+	}
+	if u.Scheme != "https" {
+		return "", fmt.Errorf("gitlab base_url must use https")
+	}
+	return base, nil
+}
+
 func New(cfg Config) (*Client, error) {
 	token := strings.TrimSpace(cfg.Token)
 	if token == "" {
 		return nil, fmt.Errorf("gitlab token required")
 	}
-	base := strings.TrimSpace(cfg.BaseURL)
-	if base == "" {
-		base = "https://gitlab.com"
+	base, err := validateBaseURL(cfg.BaseURL)
+	if err != nil {
+		return nil, err
 	}
-	base = strings.TrimRight(base, "/")
 
 	httpClient := cfg.HTTP
 	if httpClient == nil {
@@ -144,21 +182,30 @@ func (c *Client) Validate(ctx context.Context) (User, error) {
 	return u, nil
 }
 
-// ListProjects lists projects accessible by the authenticated token.
+// ListProjects lists projects accessible by the authenticated token across pages.
 func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
-	endpoint := "/projects?membership=true&simple=true&per_page=100&order_by=last_activity_at"
-	statusCode, body, err := c.request(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
+	const perPage = 100
+	const maxPages = 5
+	var all []Project
+	for page := 1; page <= maxPages; page++ {
+		endpoint := fmt.Sprintf("/projects?membership=true&simple=true&per_page=%d&page=%d&order_by=last_activity_at", perPage, page)
+		statusCode, body, err := c.request(ctx, http.MethodGet, endpoint, nil)
+		if err != nil {
+			return nil, err
+		}
+		if statusCode >= 300 {
+			return nil, fmt.Errorf("gitlab list projects status %d: %s", statusCode, strings.TrimSpace(string(body)))
+		}
+		var list []Project
+		if err := json.Unmarshal(body, &list); err != nil {
+			return nil, err
+		}
+		all = append(all, list...)
+		if len(list) < perPage {
+			break
+		}
 	}
-	if statusCode >= 300 {
-		return nil, fmt.Errorf("gitlab list projects status %d: %s", statusCode, strings.TrimSpace(string(body)))
-	}
-	var list []Project
-	if err := json.Unmarshal(body, &list); err != nil {
-		return nil, err
-	}
-	return list, nil
+	return all, nil
 }
 
 // CreateMergeRequest creates a branch, commits changes, and opens a Merge Request.
