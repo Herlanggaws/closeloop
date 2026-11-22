@@ -6,6 +6,11 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-11-22",
+    title: "Landing page fills wide screens",
+    body: "On wide monitors the landing page no longer sits in a boxed column: the banner, navigation, sections and footer now span the full width while the content stays centred. The hero Join the waitlist button is no longer greyed out before you type an email.",
+  },
+  {
     date: "2026-11-20",
     title: "Add to Slack",
     body: "Connect Slack by picking a workspace and channel in Slack itself instead of pasting a webhook URL. Saidloop shows which channel it posts to, and changing the channel keeps your event choices. Pasting an Incoming Webhook URL still works.",

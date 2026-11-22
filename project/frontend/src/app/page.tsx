@@ -34,7 +34,7 @@ export default function LandingPage() {
     <main className="min-h-screen overflow-x-hidden bg-[var(--bg-page)]">
       <LandingJsonLd />
       <GoogleOneTap />
-      <div className="mx-auto w-full max-w-[1440px]">
+      <div className="w-full">
         <Suspense fallback={null}>
           <LandingShell />
         </Suspense>
