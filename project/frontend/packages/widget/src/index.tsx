@@ -721,6 +721,7 @@ function Widget({ cfg }: { cfg: Config }) {
     .btn {
       background-color:#171717; color:#fff; border:0; border-radius:8px;
       padding:10px 14px; cursor:pointer; font-size:13px; font-weight:500;
+      translate: 0 0; scale: 1;
       transition: background-color 150ms ease-out, background-image 150ms ease-out, box-shadow 150ms ease-out, translate 150ms ease-out, scale 150ms ease-out;
     }
     .btn:hover:not(:disabled) {
@@ -739,6 +740,7 @@ function Widget({ cfg }: { cfg: Config }) {
       padding:11px 16px; cursor:pointer; font-size:13px; font-weight:500;
       box-shadow:0 8px 24px rgba(0,0,0,.18), 0 0 0 1px rgba(255,255,255,.06) inset;
       overflow:hidden;
+      translate: 0 0; scale: 1;
       transition: background-color 180ms ease-out, background-image 180ms ease-out, box-shadow 180ms ease-out, translate 180ms cubic-bezier(0.22, 1, 0.36, 1), scale 150ms ease-out;
     }
     .fab svg {
@@ -762,6 +764,7 @@ function Widget({ cfg }: { cfg: Config }) {
       justify-content:center;
       gap:8px;
       white-space:nowrap;
+      translate: 0 0;
       transition: opacity 220ms cubic-bezier(0.22, 1, 0.36, 1), translate 240ms cubic-bezier(0.22, 1, 0.36, 1);
     }
     .fab-primary {

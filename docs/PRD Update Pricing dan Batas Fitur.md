@@ -6,7 +6,9 @@ Turunan dari [PRD Closeloop MVP](PRD%20Closeloop%20MVP.md) (bagian Pricing dan b
 
 ## Ringkasan
 
-Tiga perubahan, harga tetap sama:
+> **Update 22 Nov 2026: Indie jadi $15 / bulan ($150 / tahun) dan 2 seat.** Diputusin Herlangga berdasarkan cek kompetitor. Ini menggantikan Indie $12 dan usulan 1 seat di bawah. Studio tetap $39 / bulan ($390 / tahun).
+
+Tiga perubahan di usulan awal 19 Nov (waktu itu harga tetap sama):
 
 1. **Free dapat loop penuh.** Semua tools MCP, termasuk `update_status`, `add_note` dan `mark_fixed`, plus notifikasi ke pelapor. Rem Free tetap kuota 50 laporan per bulan dan 1 project.
 2. **Batas repo per project** dari PRD Multi-repo masuk tabel pricing, tampil di baris sekunder kartu plan.
@@ -26,14 +28,14 @@ Yang berubah ditandai **tebal**.
 | Plan | Harga | Project | Repo per project | Seat | Laporan per bulan | Isi utama |
 | --- | --- | --- | --- | --- | --- | --- |
 | Free | $0 | 1 | **3** | 1 | 50 | Widget dan SDK, inbox, **semua tools MCP, notifikasi pelapor**, badge "Powered by Saidloop" |
-| Indie | $12 / bulan | 3 | **5** | **1** | 1.000 | Slack dan GitHub Issues, board publik, **tanpa badge**, kredit starter auto PR |
-| Studio | $39 / bulan | Tanpa batas | **10** | 5 | 10.000 | Branding sendiri, Linear dan Jira, session replay 7 hari |
+| Indie | **$15 / bulan, $150 / tahun** | 3 | **5** | **2** | 1.000 | Slack dan GitHub Issues, board publik, **tanpa badge**, kredit starter auto PR |
+| Studio | $39 / bulan, $390 / tahun | Tanpa batas | **10** | 5 | 10.000 | Branding sendiri, Linear dan Jira, session replay 7 hari |
 | Business | Mulai $149 / bulan | Tanpa batas | **Tanpa batas** | Tanpa batas | Sesuai kontrak | SSO, audit log, session replay 30 hari, opsi self-hosting |
 | Add-on AI auto PR | Per kredit | Semua plan berbayar | | | Sesuai kredit | Tidak berubah |
 
 **Update 19 Nov: plan Business disembunyikan sampai M6.** Semua isi Business di tabel ini (SSO, audit log, replay 30 hari, self-host, kuota kontrak, repo tanpa batas) baru dirilis di M6. Sampai itu, kartu plan di landing dan Billing hanya Free, Indie, Studio. Detail kerja: D-22 di [Brief Penyesuaian Kode ke Desain](Brief%20Penyesuaian%20Kode%20ke%20Desain.md).
 
-Yang tidak berubah: harga, tahunan bayar 10 dapat 12, early access 50 builder pertama, perilaku lewat kuota (laporan tetap diterima, baru bisa dibaca setelah upgrade atau bulan berganti).
+Yang tidak berubah: tahunan bayar 10 dapat 12, early access 50 builder pertama, perilaku lewat kuota (laporan tetap diterima, baru bisa dibaca setelah upgrade atau bulan berganti).
 
 ## Detail perubahan
 
@@ -56,13 +58,15 @@ Isi kartu plan harus sama dengan gating di backend. Yang perlu ditambahkan:
 
 ### P3. Seat Indie
 
+**Diputusin 22 Nov: Indie 2 seat** (`MaxSeats: 2`), berdasarkan cek kompetitor. Analisis di bawah adalah usulan 19 Nov yang sudah digantikan.
+
 Usulan: **Indie 1 seat**, ubah `MaxSeats: 3` jadi `1`.
 
 - Persona Indie adalah solo builder. Seat adalah alasan utama naik ke Studio; memberi 3 seat di $12 memotong alasan itu.
 - PRD, kartu plan dan landing sudah konsisten dengan "seat hanya di Studio"; yang perlu diubah cukup satu baris kode.
 - Kalau sudah ada org Indie dengan lebih dari 1 anggota, anggota yang ada tidak dikeluarkan, tapi undangan baru ditolak sampai di bawah batas.
 
-Alternatif: Indie 2 seat (builder plus satu partner). Lebih ramah untuk tim 2 orang yang disebut di persona "1 sampai 3 orang", tapi harus ditulis di kartu plan dan landing. Ini masih keputusan terbuka (lihat bawah).
+Alternatif: Indie 2 seat (builder plus satu partner). Lebih ramah untuk tim 2 orang yang disebut di persona "1 sampai 3 orang", tapi harus ditulis di kartu plan dan landing. Alternatif ini yang dipilih 22 Nov.
 
 ### P4. Tiket lintas platform
 
@@ -111,7 +115,7 @@ Melanjutkan penomoran setelah PRD Multi-repo (US-45 sampai US-59). Story yang be
 
 | Tempat | Perubahan |
 | --- | --- |
-| `entitlements.go` | Tambah `MaxReposPerProject` (3, 5, 10, 0), `BadgeRequired(plan)`, `IntegrationAllowed(plan, provider)`; Indie `MaxSeats: 1` |
+| `entitlements.go` | Tambah `MaxReposPerProject` (3, 5, 10, 0), `BadgeRequired(plan)`, `IntegrationAllowed(plan, provider)`; Indie `MaxSeats: 2` |
 | `mcp.go`, `server.go` | Hapus syarat `plan != "free"` untuk scope `write`; migrasi scope token Free yang aktif |
 | Handler Slack dan GitHub Issues | Tolak Free dengan `PREMIUM_REQUIRED` |
 | Widget, SDK, email, banner | Badge "Powered by Saidloop" untuk Free |
@@ -140,7 +144,7 @@ Angka usulan awal.
 | Badge di email notifikasi bisa terasa mengganggu bagi builder | Builder enggan memasang di app produksi | Badge kecil dan sopan; dihapus cukup dengan Indie |
 | Mengubah token lama lewat migrasi | Token Free tiba-tiba punya hak tulis | Wajar, karena ini perluasan hak yang diinginkan; catat di audit log dan changelog |
 
-- [ ] **Seat Indie: 1 atau 2?** Rekomendasi 1 (ubah kode). Kalau 2, kartu plan dan landing harus menyebutnya.
+- [x] **Seat Indie: 2**, diputusin 22 Nov berdasarkan cek kompetitor. Kartu plan dan landing menyebutnya.
 - [ ] Apakah badge "Powered by Saidloop" di Free disetujui? Ini rem tambahan yang saya usulkan sendiri, bukan bagian dari keputusan sebelumnya.
 - [ ] Apakah kuota Free tetap 50, atau diturunkan sekarang karena alasan di tabel risiko? Rekomendasi: tetap 50 sampai ada data, putuskan ulang 60 hari setelah beta publik.
 - [ ] Angka repo per project (3, 5, 10) masih tebakan; validasi di interview M0.

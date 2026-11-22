@@ -362,7 +362,12 @@ func (s *Store) AcceptInvite(ctx context.Context, rawToken, userID, userEmail st
 			SELECT COUNT(*) FROM projects WHERE org_id=$1 AND deleted_at IS NULL`, id).Scan(&projects); err != nil {
 			return Org{}, "", err
 		}
-		if members == 1 && projects == 0 {
+		// Deleting a paid org would cascade away the subscription while it keeps charging.
+		live, err := liveSubscription(ctx, tx, id)
+		if err != nil {
+			return Org{}, "", err
+		}
+		if members == 1 && projects == 0 && live.Plan == "" {
 			if _, err := tx.ExecContext(ctx, `DELETE FROM memberships WHERE org_id=$1`, id); err != nil {
 				return Org{}, "", err
 			}

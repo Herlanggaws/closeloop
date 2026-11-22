@@ -13,6 +13,10 @@ export type OrgUsage = {
   period_start: string;
   // Set by the backend once the org has a paid subscription with the billing provider.
   subscribed?: boolean;
+  /** Set when subscribed. */
+  billing_interval?: "month" | "year";
+  /** Set when canceled: the plan stays until then. */
+  billing_ends_at?: string;
 };
 
 export type MeResponse = {

@@ -49,7 +49,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-12 Project settings | `/app/settings` | **Partial** name, platforms, notify kill switches, public key, mask text inputs, soft-delete live. Widget section live (Nov 20): button label + position (Bottom right / Bottom left / Hidden) on every plan, accent colour on Studio (`PATCH /api/projects/:id/widget`, migration `024`). Board custom domain still "Coming soon" |
 | S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section live (D-12) |
 | S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan (`SEAT_LIMIT`) |
-| S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage (Reports, Projects, Auto PR credits, Seats, Repos) + credit balance. Change plan: Free/Indie/Studio cards with limit line from `lib/plans.ts` (D-05). Plan change is manual (`PATCH /api/org/plan`, Business rejected until M6); "Manual until Subscribed" pill hides once `usage.subscribed` is true. Buy credits is a stub. No invoices list yet |
+| S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage (Reports, Projects, Auto PR credits, Seats, Repos) + credit balance. Change plan: Free/Indie/Studio cards with limit line from `lib/plans.ts` (D-05). Monthly/Yearly toggle → hosted checkout; subscribers change or cancel in the customer portal; plan follows the billing webhook (Nov 22, needs env, see "Billing go-live"). Manual `PATCH /api/org/plan` can only reach paid plans while no billing token is set. Buy credits is a stub. No invoices list in the app (portal only) |
 | S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only. **Hidden until M6** (D-22) |
 | S-17 Self-host license | `/app/settings/self-host` | **UI only** route redirects to inbox; stays hidden until M6 |
 | S-18…S-20 Widget UX | `/preview/widget/*` + widget package | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet |
@@ -69,7 +69,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [x] S-28 Join Waitlist modal
 - [ ] Interview 5–10 builders; log “mau coba minggu ini”
 - [x] Final name: Saidloop (domain TBD)
-- [x] MoR: [Polar](https://polar.sh/) (billing still manual `plan` until M5)
+- [x] MoR: [Polar](https://polar.sh/) (code done Nov 22; not live until env + webhook are set up)
 
 #### M1 · Inti web (F1, F2, F4, F5, F6)
 - [x] **F1** Google OAuth
@@ -115,11 +115,34 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] **F10** Real agent runner (Agent SDK / Fly sandbox)
 
 #### M5 · Beta publik
-- [ ] Polar billing (Indie / Studio) + set `usage.subscribed` from Polar
+- [x] Polar billing code (Indie / Studio) + set `usage.subscribed` from Polar (22 Nov, di branch `claude/project-thread-kpbfoy`, belum merge ke dev)
+  - [x] Checkout + customer portal (`POST /api/billing/checkout`, `/portal`), toggle Monthly/Yearly di Billing, switch manual ke plan berbayar ketutup begitu `POLAR_ACCESS_TOKEN` diisi (22 Nov)
+  - [x] Webhook `POST /api/webhooks/billing` → plan org + `usage.subscribed` (migrasi `026_billing_subscriptions.sql`, 22 Nov)
 - [ ] Polar credit packs (buy credits is a stub)
-- [ ] Annual pricing, early-access Indie 3 months
+- [x] Annual pricing: Indie $150, Studio $390 (22 Nov)
+- [ ] Early-access Indie 3 months (landing sudah menjanjikan; belum ada discount/trial di checkout)
+- [ ] **Billing go-live**: sandbox lolos 22 Nov, production belum:
+  - [ ] Review + merge branch ke `dev` lewat PR (ada migrasi `026`)
+  - [x] Isi env backend di sandbox: `POLAR_ACCESS_TOKEN` (scope `checkouts:write`, `customer_sessions:write`), `POLAR_WEBHOOK_SECRET`, `POLAR_SERVER`, `POLAR_PRODUCT_INDIE_MONTHLY`, `POLAR_PRODUCT_INDIE_YEARLY`, `POLAR_PRODUCT_STUDIO_MONTHLY`, `POLAR_PRODUCT_STUDIO_YEARLY`
+  - [x] Daftarin webhook sandbox `<API_URL>/api/webhooks/billing` (format Raw, API version 2026-10), event `subscription.created`, `.active`, `.updated`, `.uncanceled`, `.canceled`, `.revoked`
+  - [ ] Di dashboard Polar: nyalain Customer Portal "Enable subscription plan changes" (tanpa ini Switch plan buntu); biarin "Allow multiple subscriptions" mati
+  - [x] Tes di sandbox asli 22 Nov: beli Indie, ganti ke Studio, cancel (plan tetap), uncancel, revoke (balik Free). Keempat produk dicek harga + interval-nya lewat checkout
+  - [ ] Production: reset secret webhook (sempat ke-screenshot), API version 2026-10, cek interval produk Yearly
+  - [ ] Setting provider, sandbox + production: proration "Prorate and charge now" (sekarang selisih upgrade baru ditagih periode berikutnya)
+  - [ ] Putusin tax behavior: default location-based bikin harga udah termasuk pajak di luar US/Canada/India
+  - [ ] Sebelum April 2027: pindah webhook ke API version 2027-01 dan tes ulang
+  - [ ] Ulang untuk production (token, secret dan product ID beda; `POLAR_SERVER=production`), taroh di `project/backend/.env` server karena `project/.env` ikut kebaca container frontend. Selama token kosong, owner masih bisa pindah ke plan berbayar gratis lewat `PATCH /api/org/plan`
+  - [ ] Putusin org yang sudah Indie/Studio manual: tetap gratis atau harus subscribe
+- [x] Billing, bug dari tes sandbox 22 Nov:
+  - [x] Email akun yang ditolak provider (domain tanpa mail server) bikin checkout 502: sekarang checkout tetap kebuka, email diisi di sana
+  - [x] "Payment received" nyangkut selamanya kalau webhook gak dateng: setelah 30 detik bilang jangan bayar lagi + contact support, terus ngecek sampai 10 menit, dan `?checkout=success` dibuang setelah plan nyala
+  - [x] Setelah cancel, Billing nunjukin "Ends on <tanggal>" (`usage.billing_ends_at`) dan gak nawarin cancel lagi
+- [ ] Billing, batasan yang diketahui:
+  - [ ] Satu email untuk dua workspace: checkout kedua ditolak provider, dan portal tidak bisa dibuka untuk workspace yang customer-nya milik workspace lain
+  - [ ] Kirim ulang invite yang expired tidak cek batas seat (bug lama, makin relevan dengan seat berbayar)
+  - [ ] Copy S-15 "Plans are switched manually until you're subscribed." dan pill "Manual until Subscribed" sudah tidak akurat; perlu copy baru di pen
 - [x] Quota soft-block when over plan
-- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 1 (D-21) dan badge cuma di Free (D-20) done
+- [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 2 (D-21, diubah 22 Nov) dan badge cuma di Free (D-20) done
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
 
 #### M6 · Business (F12)
@@ -138,7 +161,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 
 ## PRD Update Pricing dan Batas Fitur (Nov 19)
 
-Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) are done. Only Polar (`usage.subscribed`, D-10) are left.
+Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) are done. D-10 (`usage.subscribed`) done Nov 22; billing go-live is open, see M5.
 
 | ID | Item | Status | Story |
 | --- | --- | --- | --- |
@@ -151,7 +174,7 @@ Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) 
 | P2 | Public board requires Indie | **Done** publishing an idea (`is_public: true`) needs Indie; unpublish always allowed; already-public ideas stay | US-69 |
 | P2 | Badge "Powered by Saidloop" only on Free | **Done** Nov 19 (D-20), Herlangga approved | US-65, US-66 |
 | P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts `project_repos`, D-11) | US-68 |
-| P3 | Indie seats: `MaxSeats: 3` → 1 | **Done** Nov 19, Herlangga picked 1 seat (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
+| P3 | Indie seats: `MaxSeats: 3` → 1 → 2 | **Done** Nov 22: 2 seats and $15 (competitor check). Was 1 seat from Nov 19 (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
 | UI | Billing Change plan cards with limit line | **Done** (D-05) | US-68 |
 | UI | Landing pricing cards | **Done** (D-06), 3 cards until M6 | US-68 |
 | UI | Remove "read-only / mark_fixed needs Indie" copy | **Done** (D-01, D-02) | US-60 |
@@ -209,7 +232,7 @@ Fase B · pricing di backend
 - [x] D-07 Free dapat semua tools MCP + migrasi token + `QUOTA_LOCKED` (US-60, US-61, US-63)
 - [x] D-08 Gating Slack / GitHub Issues → Indie, Linear / Jira → Studio, board → Indie + UI `dmcSk` (US-64, US-69)
 - [x] D-09 `MaxReposPerProject` + `usage.repos`
-- [ ] D-10 `usage.subscribed` dari penyedia pembayaran (bareng M5). Field belum dikirim; Billing sudah siap membacanya
+- [x] D-10 `usage.subscribed` dari penyedia pembayaran (22 Nov): `/api/me` kirim `subscribed` + `billing_interval` dari subscription aktif. Butuh env asli + webhook terdaftar, lihat Billing go-live di M5
 
 Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih kurang: runner auto PR masih stub (gak pernah balikin `needs_reroute` sendiri) Connect GitHub App udah gak maksa pilih 1 repo lagi (20 Nov).
 - [x] D-11 Tabel `project_repos` / `project_repo_routes`, kolom tiket, migrasi `repo_full_name`. — `023_project_repos.sql` + migrasi repo lama jadi fallback
@@ -223,9 +246,10 @@ Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih
 - [x] D-19 Auto PR `needs_reroute` + refund (`aHJCX`). — auto PR pakai repo tiket, `needs_reroute` + refund, kartu Run in <repo> di S-10
 
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
-Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
+Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5).
 - [x] D-20 Badge "Powered by Saidloop" cuma di Free (`s67yG`): `/v1/ingest/config` kirim `badge` + `badge_url` (UTM `utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`), widget tampilkan di launcher (tooltip hover), form, sent, banner, dicek ulang tiap 1 menit; email pelapor/voter/comment/suggest footer `Powered by Saidloop` di Free, hilang di plan berbayar. Diputusin Herlangga 19 Nov
-- [x] D-21 Seat Indie = 1 + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
+- [x] D-21 Seat Indie = 2 sejak 22 Nov (awalnya 1, detail berikut dari 19 Nov) + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
+- [x] D-23 Landing full-width di layar lebar (22 Nov): banner, nav, background section dan footer full-bleed, konten tetap max 1280px di tengah; tombol hero `Join the waitlist` nggak abu-abu/disabled lagi waktu email kosong (validasi pakai `required` + `type=email`). Belum di-deploy ke prod.
 
 ---
 
@@ -234,8 +258,9 @@ Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
 - [x] Nama final: Saidloop (domain TBD)
 - [x] MoR: Polar (https://polar.sh/) — bukan Lemon Squeezy / Paddle
 - [ ] Domain final (code and snippets still use `closeloop.dev`)
-- [x] Seat Indie: 1 (diputusin 19 Nov)
-- [x] Badge "Powered by Saidloop" cuma di Free (disetujui 19 Nov)
+- [x] Seat Indie: 2, harga $15 (diputusin 22 Nov; sebelumnya 1 seat dan $12)
+- [ ] `closeloop.pen` belum ikut: S-01 pricing, S-06 checklist, S-14 v2, S-15 masih $12 / 1 seat
+- [x] Badge "Powered by Saidloop" cuma di Free (disetujui 19 Nov; ditegasin lagi 22 Nov: hover launcher dari PR #37 dibalikin ke Free saja, dijaga `R-UI-24`)
 - [ ] Kuota Free tetap 50?
 - [ ] Angka repo per project (3 / 5 / 10) — validate in M0 interviews
 - [ ] Basis repo: fork pola Bear Budget Go vs clean (current: new repo)
@@ -253,7 +278,7 @@ Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
 | M2 | F3 F7 mobile + Multi-repo R1–R3 | Todo |
 | M3 | F8 F9 F11 | Done (Slack OAuth needs the Slack app credentials in env). Plan gating for integrations and board shipped (D-08) |
 | M4 | F10 | GitHub App + stub runner done; real runner open |
-| M5 | Billing + public beta + Pricing update | Todo (manual plans only). Free, Indie, Studio only |
+| M5 | Billing + public beta + Pricing update | Billing code and pricing done Nov 22; go-live, credit packs and public beta open. Free, Indie, Studio only |
 | M6 | F12 Business: SSO, audit log, self-host, replay 30d, contract quota | Audit log built; rest todo. Business plan hidden until here |
 
 ---
@@ -274,7 +299,7 @@ Status Nov 19: D-20 dan D-21 done. D-10 belum (nunggu Polar M5).
 | Status | Stories |
 | --- | --- |
 | Done (wired) | US-01…US-11, US-15…US-26, US-29…US-35, US-37, US-39, US-40 |
-| Partial | US-36 (stub runner, no label rules), US-38 (credit balance only, no purchase), US-44 (manual plan change, no Polar) |
+| Partial | US-36 (stub runner, no label rules), US-38 (credit balance only, no purchase), US-44 (billing coded, not live yet) |
 | Not started | US-12…US-14, US-27, US-28 (mobile) |
 | M6 · Business (hidden until then) | US-41 (SSO), US-43 (self-host) not started; US-42 (audit log) built but hidden |
 | Not started (Multi-repo) | US-45…US-59 |

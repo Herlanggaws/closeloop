@@ -25,14 +25,20 @@ type AutoprRun = {
   reroute_reason?: string;
 };
 
-function statusLabel(status: string) {
+function isGitLabRun(run: AutoprRun, repos: ProjectRepo[]) {
+  if (run.pr_url?.includes("/-/merge_requests/")) return true;
+  const match = repos.find((r) => r.full_name.toLowerCase() === (run.repo || "").toLowerCase());
+  return match?.provider === "gitlab";
+}
+
+function statusLabel(status: string, isGitLab = false) {
   switch (status) {
     case "queued":
       return "Queued";
     case "running":
       return "Running";
     case "succeeded":
-      return "PR opened";
+      return isGitLab ? "MR opened" : "PR opened";
     case "failed":
       return "Failed";
     case "cancelled":
@@ -64,6 +70,7 @@ export function AutoPRRuns() {
   const [runs, setRuns] = useState<AutoprRun[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [githubRepo, setGithubRepo] = useState("");
+  const [gitlabConnected, setGitlabConnected] = useState(false);
   const [repos, setRepos] = useState<ProjectRepo[]>([]);
   const [crossRead, setCrossRead] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -105,6 +112,8 @@ export function AutoPRRuns() {
               : gh.config;
           setGithubRepo(String(cfg.repo_full_name || ""));
         }
+        const gl = (integRes.integrations || []).find((i) => i.provider === "gitlab");
+        setGitlabConnected(Boolean(gl));
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load");
@@ -149,6 +158,7 @@ export function AutoPRRuns() {
   }
   const credits = me?.usage?.auto_pr_credits ?? 0;
   const succeeded = runs.filter((r) => r.status === "succeeded").length;
+  const hasIntegration = Boolean(repos.length || githubRepo || gitlabConnected);
 
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
@@ -175,8 +185,8 @@ export function AutoPRRuns() {
               </span>
             </div>
             <p className="font-ds-ui text-[13.5px] text-[#737373]">
-              Agent opens a pull request from a ticket. Review and merge yourself — Saidloop never
-              merges.
+              Agent opens a pull request (GitHub) or merge request (GitLab) from a ticket. Review and
+              merge yourself — Saidloop never merges.
             </p>
           </div>
           <Link
@@ -196,12 +206,16 @@ export function AutoPRRuns() {
 
               <div className="grid gap-3 sm:grid-cols-4">
                 <Stat label="Runs listed" value={String(runs.length)} />
-                <Stat label="PRs opened" value={String(succeeded)} />
+                <Stat label="PRs / MRs opened" value={String(succeeded)} />
                 <Stat label="Credits left" value={String(credits)} />
                 <Stat
                   label="Repository"
-                  value={repos.length ? `${repos.length} connected` : githubRepo || "Not connected"}
-                  href={repos.length || githubRepo ? undefined : "/app/settings/integrations"}
+                  value={
+                    repos.length
+                      ? `${repos.length} connected`
+                      : githubRepo || (gitlabConnected ? "GitLab connected" : "Not connected")
+                  }
+                  href={hasIntegration ? undefined : "/app/settings/integrations"}
                 />
               </div>
 
@@ -215,7 +229,7 @@ export function AutoPRRuns() {
                       <tr className="font-ds-ui text-[11px] text-[#A3A3A3]">
                         <th className="px-4 py-2.5 font-medium">Status</th>
                         <th className="px-4 py-2.5 font-medium">Ticket</th>
-                        <th className="px-4 py-2.5 font-medium">Pull request</th>
+                        <th className="px-4 py-2.5 font-medium">PR / MR</th>
                         <th className="px-4 py-2.5 font-medium">Cost</th>
                         <th className="px-4 py-2.5 font-medium">Started</th>
                       </tr>
@@ -228,7 +242,7 @@ export function AutoPRRuns() {
                             className="px-4 py-8 font-ds-ui text-[13px] text-[#737373]"
                           >
                             No runs yet. Open a ticket and click Run Auto PR
-                            {!githubRepo ? (
+                            {!hasIntegration ? (
                               <>
                                 {" "}
                                 after{" "}
@@ -236,7 +250,7 @@ export function AutoPRRuns() {
                                   href="/app/settings/integrations"
                                   className="text-[#171717] underline"
                                 >
-                                  connecting GitHub App
+                                  connecting GitHub or GitLab
                                 </Link>
                               </>
                             ) : null}
@@ -244,64 +258,67 @@ export function AutoPRRuns() {
                           </td>
                         </tr>
                       ) : (
-                        runs.map((run) => (
-                          <tr
-                            key={run.id}
-                            onClick={() => setSelectedId(run.id)}
-                            className={`cursor-pointer border-t border-[#17171714] font-ds-ui text-[13px] ${
-                              run.status === "needs_reroute"
-                                ? "bg-[#FFF7ED]"
-                                : selectedId === run.id
-                                  ? "bg-[#FAFAFA]"
-                                  : "bg-white"
-                            }`}
-                          >
-                            <td className="px-4 py-3 text-[#171717]">
-                              {run.status === "needs_reroute" ? (
-                                <span className="inline-flex items-center gap-1.5 text-[#EA6C0C]">
-                                  <span aria-hidden>↪</span>
-                                  {statusLabel(run.status)}
-                                </span>
-                              ) : (
-                                statusLabel(run.status)
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              <Link
-                                href={`/app/tickets/${run.ticket_id}`}
-                                className="text-[#171717] underline"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {run.ticket_id.slice(0, 8)}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3">
-                              {run.pr_url ? (
-                                <a
-                                  href={run.pr_url}
-                                  target="_blank"
-                                  rel="noreferrer"
+                        runs.map((run) => {
+                          const isGL = isGitLabRun(run, repos);
+                          return (
+                            <tr
+                              key={run.id}
+                              onClick={() => setSelectedId(run.id)}
+                              className={`cursor-pointer border-t border-[#17171714] font-ds-ui text-[13px] ${
+                                run.status === "needs_reroute"
+                                  ? "bg-[#FFF7ED]"
+                                  : selectedId === run.id
+                                    ? "bg-[#FAFAFA]"
+                                    : "bg-white"
+                              }`}
+                            >
+                              <td className="px-4 py-3 text-[#171717]">
+                                {run.status === "needs_reroute" ? (
+                                  <span className="inline-flex items-center gap-1.5 text-[#EA6C0C]">
+                                    <span aria-hidden>↪</span>
+                                    {statusLabel(run.status, isGL)}
+                                  </span>
+                                ) : (
+                                  statusLabel(run.status, isGL)
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <Link
+                                  href={`/app/tickets/${run.ticket_id}`}
                                   className="text-[#171717] underline"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  Open PR
-                                </a>
-                              ) : (
-                                <span className="text-[#A3A3A3]">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 font-ds-mono text-[12px]">
-                              {run.status === "needs_reroute" ? (
-                                <span className="text-[#16A34A]">Refund</span>
-                              ) : (
-                                formatCost(run.cost_cents)
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-[#737373]">
-                              {formatWhen(run.created_at)}
-                            </td>
-                          </tr>
-                        ))
+                                  {run.ticket_id.slice(0, 8)}
+                                </Link>
+                              </td>
+                              <td className="px-4 py-3">
+                                {run.pr_url ? (
+                                  <a
+                                    href={run.pr_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[#171717] underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {isGL ? "Open MR" : "Open PR"}
+                                  </a>
+                                ) : (
+                                  <span className="text-[#A3A3A3]">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 font-ds-mono text-[12px]">
+                                {run.status === "needs_reroute" ? (
+                                  <span className="text-[#16A34A]">Refund</span>
+                                ) : (
+                                  formatCost(run.cost_cents)
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-[#737373]">
+                                {formatWhen(run.created_at)}
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -334,7 +351,7 @@ export function AutoPRRuns() {
                       )}
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-ds-ui text-[12px] text-[#A3A3A3]">No pull request was opened.</span>
+                      <span className="font-ds-ui text-[12px] text-[#A3A3A3]">No pull or merge request was opened.</span>
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -362,11 +379,11 @@ export function AutoPRRuns() {
                   <div data-tour="autopr-repo">
                     <div className="font-ds-ui text-[11px] font-medium text-[#A3A3A3]">Repositories</div>
                     <p className="mt-1 font-ds-ui text-[12px] text-[#737373]">
-                      Each run uses the ticket&apos;s repo. Write access covers that repo only.
+                      Each run uses the ticket&apos;s repo (GitHub or GitLab). Write access covers that repo only.
                     </p>
                     {repos.length === 0 ? (
                       <div className="mt-2 font-ds-ui text-[13px] text-[#171717]">
-                        {githubRepo || "Connect GitHub App"}
+                        {githubRepo || (gitlabConnected ? "GitLab connected" : "Connect GitHub or GitLab")}
                       </div>
                     ) : (
                       <ul className="mt-2 flex flex-col gap-1.5">
@@ -374,6 +391,7 @@ export function AutoPRRuns() {
                           <li key={r.id} className="flex flex-col">
                             <span className="font-ds-mono text-[12px] text-[#171717]">{r.full_name}</span>
                             <span className="font-ds-ui text-[11px] text-[#A3A3A3]">
+                              {r.provider === "gitlab" ? "GitLab" : "GitHub"} ·{" "}
                               {r.routes.length
                                 ? r.routes.map((rt) => repoPlatformLabel(rt.platform)).join(", ")
                                 : r.is_fallback
@@ -405,12 +423,12 @@ export function AutoPRRuns() {
                       </pre>
                     </div>
                   ) : null}
-                  {!githubRepo && projectId ? (
+                  {!hasIntegration && projectId ? (
                     <Link
                       href="/app/settings/integrations"
                       className="inline-flex h-9 items-center justify-center rounded-md bg-[#171717] px-3 font-ds-sans text-[13px] font-medium text-white no-underline"
                     >
-                      Connect GitHub App
+                      Connect GitHub or GitLab
                     </Link>
                   ) : null}
                 </aside>

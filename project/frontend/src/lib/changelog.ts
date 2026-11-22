@@ -6,6 +6,16 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-11-22",
+    title: "Indie with 2 seats, monthly or yearly billing",
+    body: "Indie is $15 a month or $150 a year and now has room for you and one teammate; Studio stays $39 a month or $390 a year with 5 seats. Workspace owners can pick monthly or yearly in Billing and pay on a secure checkout. The plan switches on once payment is confirmed, and canceling keeps it until the end of the paid period, with the end date shown in Billing.",
+  },
+  {
+    date: "2026-11-22",
+    title: "Landing page fills wide screens",
+    body: "On wide monitors the landing page no longer sits in a boxed column: the banner, navigation, sections and footer now span the full width while the content stays centred. The hero Join the waitlist button is no longer greyed out before you type an email.",
+  },
+  {
     date: "2026-11-20",
     title: "Add to Slack",
     body: "Connect Slack by picking a workspace and channel in Slack itself instead of pasting a webhook URL. Saidloop shows which channel it posts to, and changing the channel keeps your event choices. Pasting an Incoming Webhook URL still works.",

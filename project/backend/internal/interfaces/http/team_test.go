@@ -9,7 +9,6 @@ import (
 
 func TestTeam_InviteAcceptAndViewerBlocked(t *testing.T) {
 	h := newReportHarness(t)
-	// Indie has 1 seat (D-21); invites need Studio.
 	owner := h.seedUserProject("studio")
 
 	code, body := h.do(http.MethodPost, "/api/org/invites", map[string]any{
@@ -76,22 +75,29 @@ func TestTeam_SeatLimitFree(t *testing.T) {
 	}
 }
 
-// D-21 / US-67: Indie includes 1 seat. Invites are refused; existing members keep access.
-func TestTeam_IndieOneSeat(t *testing.T) {
+// US-67: Indie includes 2 seats, so one invite fits and the next is refused.
+func TestTeam_IndieTwoSeats(t *testing.T) {
 	h := newReportHarness(t)
 	owner := h.seedUserProject("indie")
+	auth := h.authHeaders(owner.AccessToken)
 	code, body := h.do(http.MethodPost, "/api/org/invites", map[string]any{
 		"emails": []string{"second@test.closeloop"}, "role": "member",
-	}, h.authHeaders(owner.AccessToken))
-	if code != 403 || errCode(body) != "SEAT_LIMIT" {
-		t.Fatalf("indie invite want 403 SEAT_LIMIT got %d %v", code, body)
+	}, auth)
+	if code != 201 {
+		t.Fatalf("second seat invite want 201 got %d %v", code, body)
 	}
-	code, me := h.do(http.MethodGet, "/api/me", nil, h.authHeaders(owner.AccessToken))
+	code, body = h.do(http.MethodPost, "/api/org/invites", map[string]any{
+		"emails": []string{"third@test.closeloop"}, "role": "member",
+	}, auth)
+	if code != 403 || errCode(body) != "SEAT_LIMIT" {
+		t.Fatalf("third seat invite want 403 SEAT_LIMIT got %d %v", code, body)
+	}
+	code, me := h.do(http.MethodGet, "/api/me", nil, auth)
 	if code != 200 {
 		t.Fatalf("me: %d", code)
 	}
 	seats := me["usage"].(map[string]any)["seats"].(map[string]any)
-	if seats["limit"].(float64) != 1 || seats["used"].(float64) != 1 {
-		t.Fatalf("indie seats = %v, want 1 of 1", seats)
+	if seats["limit"].(float64) != 2 || seats["used"].(float64) != 2 {
+		t.Fatalf("indie seats = %v, want 2 of 2", seats)
 	}
 }
