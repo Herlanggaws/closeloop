@@ -121,13 +121,17 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] Polar credit packs (buy credits is a stub)
 - [x] Annual pricing: Indie $150, Studio $390 (22 Nov)
 - [ ] Early-access Indie 3 months (landing sudah menjanjikan; belum ada discount/trial di checkout)
-- [ ] **Billing go-live**, belum ada yang dikerjakan:
+- [ ] **Billing go-live**: sandbox lolos 22 Nov, production belum:
   - [ ] Review + merge branch ke `dev` lewat PR (ada migrasi `026`)
-  - [ ] Isi env backend di sandbox: `POLAR_ACCESS_TOKEN` (scope `checkouts:write`, `customer_sessions:write`), `POLAR_WEBHOOK_SECRET`, `POLAR_SERVER`, `POLAR_PRODUCT_INDIE_MONTHLY`, `POLAR_PRODUCT_INDIE_YEARLY`, `POLAR_PRODUCT_STUDIO_MONTHLY`, `POLAR_PRODUCT_STUDIO_YEARLY`
-  - [ ] Daftarin webhook `<API_URL>/api/webhooks/billing` (format Raw), event `subscription.created`, `.active`, `.updated`, `.uncanceled`, `.canceled`, `.revoked`
+  - [x] Isi env backend di sandbox: `POLAR_ACCESS_TOKEN` (scope `checkouts:write`, `customer_sessions:write`), `POLAR_WEBHOOK_SECRET`, `POLAR_SERVER`, `POLAR_PRODUCT_INDIE_MONTHLY`, `POLAR_PRODUCT_INDIE_YEARLY`, `POLAR_PRODUCT_STUDIO_MONTHLY`, `POLAR_PRODUCT_STUDIO_YEARLY`
+  - [x] Daftarin webhook sandbox `<API_URL>/api/webhooks/billing` (format Raw, API version 2026-10), event `subscription.created`, `.active`, `.updated`, `.uncanceled`, `.canceled`, `.revoked`
   - [ ] Di dashboard Polar: nyalain Customer Portal "Enable subscription plan changes" (tanpa ini Switch plan buntu); biarin "Allow multiple subscriptions" mati
-  - [ ] Tes beli, ganti plan, cancel, revoke di sandbox asli. Sejauh ini baru dites dengan API palsu dan webhook yang ditandatangani lokal
-  - [ ] Ulang untuk production (token, secret dan product ID beda; `POLAR_SERVER=production`). Selama token kosong, owner masih bisa pindah ke plan berbayar gratis lewat `PATCH /api/org/plan`
+  - [x] Tes di sandbox asli 22 Nov: beli Indie, ganti ke Studio, cancel (plan tetap), uncancel, revoke (balik Free). Keempat produk dicek harga + interval-nya lewat checkout
+  - [ ] Production: reset secret webhook (sempat ke-screenshot), API version 2026-10, cek interval produk Yearly
+  - [ ] Setting provider, sandbox + production: proration "Prorate and charge now" (sekarang selisih upgrade baru ditagih periode berikutnya)
+  - [ ] Putusin tax behavior: default location-based bikin harga udah termasuk pajak di luar US/Canada/India
+  - [ ] Sebelum April 2027: pindah webhook ke API version 2027-01 dan tes ulang
+  - [ ] Ulang untuk production (token, secret dan product ID beda; `POLAR_SERVER=production`), taroh di `project/backend/.env` server karena `project/.env` ikut kebaca container frontend. Selama token kosong, owner masih bisa pindah ke plan berbayar gratis lewat `PATCH /api/org/plan`
   - [ ] Putusin org yang sudah Indie/Studio manual: tetap gratis atau harus subscribe
 - [x] Billing, bug dari tes sandbox 22 Nov:
   - [x] Email akun yang ditolak provider (domain tanpa mail server) bikin checkout 502: sekarang checkout tetap kebuka, email diisi di sana
