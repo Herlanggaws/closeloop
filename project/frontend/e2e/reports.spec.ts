@@ -709,8 +709,8 @@ test.describe("Report UI smoke (R-UI)", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
-  // D-20: the launcher badge is Free only; paid plans are sold "No Saidloop badge".
-  test("R-UI-24 Launcher badge on Free only", async ({ page, request }) => {
+  // Launcher hover slider ("Feedback by Saidloop") is always shown across all plans.
+  test("R-UI-24 Launcher badge always shown on hover across all plans", async ({ page, request }) => {
     for (const plan of ["free", "indie", "studio"] as const) {
       const session = await seedSession(request, { plan });
       const config = page.waitForResponse(
@@ -723,14 +723,8 @@ test.describe("Report UI smoke (R-UI)", () => {
       const launcher = page.locator("button.fab");
       await expect(launcher).toBeVisible();
       await launcher.hover();
-      if (plan === "free") {
-        await expect(launcher.locator(".fab-sub")).toHaveCSS("opacity", "1");
-        await expect(launcher).toContainText("Feedback by Saidloop");
-      } else {
-        await page.waitForTimeout(400); // longer than the 220ms hover swap
-        await expect(launcher.locator(".fab-sub")).toHaveCount(0);
-        await expect(launcher.locator(".fab-primary")).toHaveCSS("opacity", "1");
-      }
+      await expect(launcher.locator(".fab-sub")).toHaveCSS("opacity", "1");
+      await expect(launcher).toContainText("Feedback by Saidloop");
     }
   });
 });
