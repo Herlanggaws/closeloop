@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -29,8 +30,8 @@ func (s *Store) ExistingGitHubIssue(ctx context.Context, ticketID string) (Exter
 	if err != nil {
 		return ExternalIssue{}, false, err
 	}
-	for i := len(events) - 1; i >= 0; i-- {
-		if events[i].Kind != githubIssueCreatedKind {
+	for _, ev := range slices.Backward(events) {
+		if ev.Kind != githubIssueCreatedKind {
 			continue
 		}
 		var payload struct {
@@ -38,7 +39,7 @@ func (s *Store) ExistingGitHubIssue(ctx context.Context, ticketID string) (Exter
 			HTMLURL string `json:"html_url"`
 			Repo    string `json:"repo"`
 		}
-		if err := json.Unmarshal(events[i].Payload, &payload); err != nil {
+		if err := json.Unmarshal(ev.Payload, &payload); err != nil {
 			continue
 		}
 		if payload.HTMLURL == "" || payload.Number == 0 {

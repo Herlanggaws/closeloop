@@ -8,3 +8,9 @@ In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the re
 
 If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
 <!-- CODEGRAPH_END -->
+
+## Branching & Merge Policy
+
+- **Never commit or push directly to `dev` or `main`.** Always work on and push to a feature branch (`feat/<slug>`, `fix/<slug>`, `chore/<slug>`) branched from `dev`.
+- If currently on `dev` or `main`, checkout a new feature branch (`git checkout -b <type>/<slug>`) before committing or pushing.
+- Every feature branch must pass the **Lint & Vulnerability Check** (`eslint`, `pnpm audit`, `golangci-lint`, and `govulncheck`) as a required merge blocker before merging into `dev` or `main`.

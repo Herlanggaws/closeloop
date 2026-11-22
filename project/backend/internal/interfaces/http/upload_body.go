@@ -55,9 +55,9 @@ func decodeAttachmentBody(contentType string, r io.Reader) (io.Reader, int64, er
 
 func decodeDataURL(dataURL string) ([]byte, error) {
 	const marker = ";base64,"
-	i := strings.Index(dataURL, marker)
-	if i < 0 || !strings.HasPrefix(dataURL, "data:") {
+	_, rest, ok := strings.Cut(dataURL, marker)
+	if !ok || !strings.HasPrefix(dataURL, "data:") {
 		return nil, application.ErrInvalidInput
 	}
-	return base64.StdEncoding.DecodeString(dataURL[i+len(marker):])
+	return base64.StdEncoding.DecodeString(rest)
 }

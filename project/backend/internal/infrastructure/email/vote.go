@@ -121,14 +121,8 @@ func renderVoteReleasedHTMLRaw(m VoteReleasedMail) string {
 	initial := html.EscapeString(brandInitial(m.ProjectName))
 	boardHost := html.EscapeString(strings.TrimSpace(m.BoardHost))
 
-	votes := m.VoteCount
-	if votes < 1 {
-		votes = 1
-	}
-	reports := m.ReportCount
-	if reports < 0 {
-		reports = 0
-	}
+	votes := max(m.VoteCount, 1)
+	reports := max(m.ReportCount, 0)
 	votesLine := fmt.Sprintf("%d votes", votes)
 	if reports > 0 {
 		votesLine = fmt.Sprintf("%d votes · requested in %d reports", votes, reports)

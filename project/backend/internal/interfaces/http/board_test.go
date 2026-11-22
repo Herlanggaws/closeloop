@@ -805,11 +805,10 @@ func extractSuggestToken(htmlBody string) string {
 }
 
 func extractTokenMarker(htmlBody, marker string) string {
-	i := strings.Index(htmlBody, marker)
-	if i < 0 {
+	_, rest, ok := strings.Cut(htmlBody, marker)
+	if !ok {
 		return ""
 	}
-	rest := htmlBody[i+len(marker):]
 	end := strings.IndexAny(rest, `"'<> `)
 	if end < 0 {
 		return rest

@@ -197,6 +197,7 @@ export function AppSidebar({
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#171717]">
               {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <span className="font-ds-sans text-[11px] font-medium text-white">

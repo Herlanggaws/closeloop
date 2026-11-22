@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -32,12 +33,7 @@ func (e *PlatformConflictError) Error() string {
 var RepoPlatforms = []string{"web", "android", "ios", "backend", "shared"}
 
 func validRepoPlatform(p string) bool {
-	for _, x := range RepoPlatforms {
-		if x == p {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(RepoPlatforms, p)
 }
 
 func PlatformLabel(p string) string {
@@ -71,6 +67,7 @@ type ProjectRepo struct {
 	DefaultBranch  string      `json:"default_branch"`
 	IsFallback     bool        `json:"is_fallback"`
 	RoutingPaused  bool        `json:"routing_paused"`
+	Provider       string      `json:"provider"`
 	Routes         []RepoRoute `json:"routes"`
 	CreatedAt      time.Time   `json:"created_at"`
 }
@@ -81,6 +78,7 @@ type RepoInput struct {
 	FullName       string      `json:"full_name"`
 	DefaultBranch  string      `json:"default_branch"`
 	IsFallback     *bool       `json:"is_fallback"`
+	Provider       string      `json:"provider"`
 	Routes         []RepoRoute `json:"routes"`
 }
 
@@ -103,7 +101,7 @@ func normalizeRoutes(in []RepoRoute) ([]RepoRoute, error) {
 
 func (s *Store) ListProjectRepos(ctx context.Context, projectID string) ([]ProjectRepo, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, project_id, installation_id, account_login, full_name, default_branch, is_fallback, routing_paused, created_at
+		SELECT id, project_id, installation_id, account_login, full_name, default_branch, is_fallback, routing_paused, created_at, COALESCE(provider, 'github')
 		FROM project_repos WHERE project_id=$1
 		ORDER BY is_fallback DESC, created_at ASC`, projectID)
 	if err != nil {
@@ -114,7 +112,7 @@ func (s *Store) ListProjectRepos(ctx context.Context, projectID string) ([]Proje
 	byID := map[string]int{}
 	for rows.Next() {
 		var r ProjectRepo
-		if err := rows.Scan(&r.ID, &r.ProjectID, &r.InstallationID, &r.AccountLogin, &r.FullName, &r.DefaultBranch, &r.IsFallback, &r.RoutingPaused, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.ProjectID, &r.InstallationID, &r.AccountLogin, &r.FullName, &r.DefaultBranch, &r.IsFallback, &r.RoutingPaused, &r.CreatedAt, &r.Provider); err != nil {
 			return nil, err
 		}
 		r.Routes = []RepoRoute{}
@@ -255,12 +253,20 @@ func (s *Store) AddProjectRepo(ctx context.Context, projectID string, in RepoInp
 	if err := checkRouteConflicts(ctx, tx, projectID, "00000000-0000-0000-0000-000000000000", routes); err != nil {
 		return ProjectRepo{}, err
 	}
+	provider := strings.ToLower(strings.TrimSpace(in.Provider))
+	if provider == "" {
+		provider = "github"
+	}
+	if provider != "github" && provider != "gitlab" {
+		return ProjectRepo{}, fmt.Errorf("%w: invalid provider %q", ErrInvalidInput, in.Provider)
+	}
+
 	var id string
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO project_repos(project_id, installation_id, account_login, full_name, default_branch)
-		VALUES ($1,$2,$3,$4,$5)
+		INSERT INTO project_repos(project_id, installation_id, account_login, full_name, default_branch, provider)
+		VALUES ($1,$2,$3,$4,$5,$6)
 		ON CONFLICT (project_id, full_name) DO NOTHING
-		RETURNING id`, projectID, in.InstallationID, strings.TrimSpace(in.AccountLogin), in.FullName, branch).Scan(&id)
+		RETURNING id`, projectID, in.InstallationID, strings.TrimSpace(in.AccountLogin), in.FullName, branch, provider).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ProjectRepo{}, fmt.Errorf("%w: %s is already connected", ErrConflict, in.FullName)
 	}
@@ -304,6 +310,14 @@ func (s *Store) UpdateProjectRepo(ctx context.Context, projectID, repoID string,
 			return ProjectRepo{}, err
 		}
 		if err := replaceRoutes(ctx, tx, projectID, repoID, routes); err != nil {
+			return ProjectRepo{}, err
+		}
+	}
+	if p := strings.ToLower(strings.TrimSpace(in.Provider)); p != "" {
+		if p != "github" && p != "gitlab" {
+			return ProjectRepo{}, fmt.Errorf("%w: invalid provider %q", ErrInvalidInput, in.Provider)
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE project_repos SET provider=$2 WHERE id=$1`, repoID, p); err != nil {
 			return ProjectRepo{}, err
 		}
 	}
@@ -477,7 +491,7 @@ func (s *Store) TicketPlatforms(ctx context.Context, ticketID string) (map[strin
 	return byPlatform, err
 }
 
-// RepoPlatforms lists the platforms a repo serves. The fallback also covers platforms
+// RepoServesPlatforms lists the platforms a repo serves. The fallback also covers platforms
 // that have no route of their own.
 func (s *Store) RepoServesPlatforms(ctx context.Context, projectID, repoID string) (map[string]bool, error) {
 	repos, err := s.ListProjectRepos(ctx, projectID)
