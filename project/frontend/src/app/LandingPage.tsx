@@ -1474,7 +1474,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Description"
-            className="box-border w-full max-w-[420px] shrink-0 h-auto flex flex-row gap-0 pt-0 pb-1.5 pl-0 lg:pl-5 justify-start items-start border-0 lg:border-l lg:border-solid lg:border-[#1717171F]"
+            className="box-border w-full max-w-[420px] shrink-0 lg:shrink lg:min-w-0 h-auto flex flex-row gap-0 pt-0 pb-1.5 pl-0 lg:pl-5 justify-start items-start border-0 lg:border-l lg:border-solid lg:border-[#1717171F]"
           >
             <div
               data-pencil-name="Text"
@@ -1487,11 +1487,11 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
         </div>
         <div
           data-pencil-name="Steps"
-          className="box-border w-full h-fit shrink-0 flex flex-col lg:flex-row gap-0 justify-start items-stretch bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
+          className="box-border w-full h-fit shrink-0 grid grid-cols-1 sm:grid-cols-2 xl:flex xl:flex-row gap-0 justify-start items-stretch bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
         >
           <div
             data-pencil-name="Step 01"
-            className="box-border [flex:1_1_0] h-fit flex flex-col gap-[20px] p-[28px] justify-start items-start bg-[#FFFFFF00]"
+            className="box-border [flex:1_1_0] h-auto min-[1440px]:h-fit flex flex-col gap-[20px] p-[28px] justify-start items-start bg-[#FFFFFF00]"
           >
             <div
               data-pencil-name="Top"
@@ -1582,7 +1582,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Step 02"
-            className="box-border [flex:1_1_0] h-[266px] flex flex-col gap-[20px] p-[28px] justify-start items-start bg-[#FFFFFF00] [border-width:0px_0px_0px_1px] [border-style:solid] [border-color:#17171714] [margin:0px_0px_0px_-0.5px] w-[319.5px]"
+            className="box-border [flex:1_1_0] h-auto min-[1440px]:h-[266px] flex flex-col gap-[20px] p-[28px] justify-start items-start bg-[#FFFFFF00] [border-width:1px_0px_0px_0px] sm:[border-width:0px_0px_0px_1px] [border-style:solid] [border-color:#17171714] xl:[margin:0px_0px_0px_-0.5px] w-full xl:w-[319.5px]"
           >
             <div
               data-pencil-name="Top"
@@ -1673,7 +1673,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Step 03"
-            className="box-border [flex:1_1_0] h-[272px] flex flex-col gap-[20px] p-[28px] justify-start items-start bg-[#FFFFFF00] [border-width:0px_0px_0px_1px] [border-style:solid] [border-color:#17171714] [margin:0px_0px_0px_-0.5px] w-[319.5px]"
+            className="box-border [flex:1_1_0] h-auto min-[1440px]:h-[272px] flex flex-col gap-[20px] p-[28px] justify-start items-start bg-[#FFFFFF00] [border-width:1px_0px_0px_0px] xl:[border-width:0px_0px_0px_1px] [border-style:solid] [border-color:#17171714] xl:[margin:0px_0px_0px_-0.5px] w-full xl:w-[319.5px]"
           >
             <div
               data-pencil-name="Top"
@@ -1753,7 +1753,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Step 04"
-            className="box-border [flex:1_1_0] h-[245px] flex flex-col gap-[20px] p-[28px] justify-start items-start bg-[#FAFAFA] [border-width:0px_0px_0px_1px] [border-style:solid] [border-color:#17171714] [margin:0px_0px_0px_-0.5px] w-[319.5px]"
+            className="box-border [flex:1_1_0] h-auto min-[1440px]:h-[245px] flex flex-col gap-[20px] p-[28px] justify-start items-start bg-[#FAFAFA] [border-width:1px_0px_0px_0px] sm:[border-width:1px_0px_0px_1px] xl:[border-width:0px_0px_0px_1px] [border-style:solid] [border-color:#17171714] xl:[margin:0px_0px_0px_-0.5px] w-full xl:w-[319.5px]"
           >
             <div
               data-pencil-name="Top"
@@ -1918,7 +1918,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Description"
-            className="box-border w-full max-w-[420px] shrink-0 h-auto flex flex-row gap-0 pt-0 pb-1.5 pl-0 lg:pl-5 justify-start items-start border-0 lg:border-l lg:border-solid lg:border-[#1717171F]"
+            className="box-border w-full max-w-[420px] shrink-0 lg:shrink lg:min-w-0 h-auto flex flex-row gap-0 pt-0 pb-1.5 pl-0 lg:pl-5 justify-start items-start border-0 lg:border-l lg:border-solid lg:border-[#1717171F]"
           >
             <div
               data-pencil-name="Text"
@@ -1935,11 +1935,11 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
         >
           <div
             data-pencil-name="Row A"
-            className="box-border w-full h-fit shrink-0 flex flex-col lg:h-[440px] lg:flex-row gap-4 lg:gap-[16px] justify-start items-stretch"
+            className="box-border w-full h-fit shrink-0 flex flex-col xl:min-h-[440px] min-[1440px]:h-[440px] xl:flex-row gap-4 justify-start items-stretch"
           >
             <div
               data-pencil-name="In-app widget with annotated screenshots"
-              className="box-border [flex:1_1_0] h-auto lg:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
+              className="box-border flex-none xl:[flex:1_1_0] h-auto min-[1440px]:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
             >
               <div
                 data-pencil-name="Text"
@@ -1951,7 +1951,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 >
                   <div
                     data-pencil-name="Title"
-                    className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
+                    className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:normal]"
                   >
                     In-app widget with annotated screenshots
                   </div>
@@ -1966,15 +1966,15 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               </div>
               <div
                 data-pencil-name="Visual"
-                className="box-border w-full [flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-start"
+                className="box-border @container w-full flex-none xl:flex-auto min-[1440px]:[flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-start"
               >
                 <div
                   data-pencil-name="Browser"
-                  className="box-border w-full h-[250px] shrink-0 bg-[#FAFAFA] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[12px_12px_0px_0px] overflow-hidden relative"
+                  className="box-border w-full h-auto @min-[560px]:h-[250px] shrink-0 flex flex-col gap-5 p-6 @min-[560px]:block @min-[560px]:p-0 bg-[#FAFAFA] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[12px_12px_0px_0px] overflow-hidden relative"
                 >
                   <div
                     data-pencil-name="App Content"
-                    className="box-border w-[400px] h-fit absolute left-[24px] top-[24px] flex flex-col gap-[10px] justify-start items-start [z-index:0]"
+                    className="box-border w-full @min-[560px]:w-[min(400px,calc(100%-324px))] h-fit relative @min-[560px]:absolute @min-[560px]:left-[24px] @min-[560px]:top-[24px] flex flex-col gap-[10px] justify-start items-start [z-index:0]"
                   >
                     <div
                       data-pencil-name="H"
@@ -2045,11 +2045,11 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                   </div>
                   <div
                     data-pencil-name="Annotation"
-                    className="box-border w-[200px] h-[46px] absolute left-[16px] top-[56px] [outline:2px_solid_#DA314A] [outline-offset:-1px] rounded-[8px] [z-index:1]"
+                    className="box-border w-[min(200px,calc(100%-32px))] h-[46px] absolute left-[16px] top-[56px] [outline:2px_solid_#DA314A] [outline-offset:-1px] rounded-[8px] [z-index:1]"
                   ></div>
                   <div
                     data-pencil-name="Report Form"
-                    className="box-border w-[240px] h-fit [box-shadow:0px_12px_30px_#1717171F] absolute left-[460px] top-[24px] flex flex-col gap-[10px] p-[14px] justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[12px] [z-index:2]"
+                    className="box-border w-full max-w-[240px] @min-[560px]:w-[240px] h-fit [box-shadow:0px_12px_30px_#1717171F] relative self-center @min-[560px]:absolute @min-[560px]:left-[min(460px,calc(100%-264px))] @min-[560px]:top-[24px] flex flex-col gap-[10px] p-[14px] justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[12px] [z-index:2]"
                   >
                     <div
                       data-pencil-name="Title"
@@ -2108,7 +2108,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     </div>
                     <div
                       data-pencil-name="Screenshot"
-                      className="box-border w-full h-fit shrink-0 flex flex-row gap-[8px] justify-start items-center"
+                      className="box-border w-full h-fit shrink-0 flex flex-row flex-wrap min-[1440px]:flex-nowrap gap-[8px] justify-start items-center"
                     >
                       <div
                         data-pencil-name="Thumb"
@@ -2138,7 +2138,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
             <div
               data-pencil-name="Native SDKs, offline-safe"
-              className="box-border w-full lg:w-[420px] shrink-0 h-auto lg:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
+              className="box-border w-full xl:w-[420px] shrink-0 h-auto min-[1440px]:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
             >
               <div
                 data-pencil-name="Text"
@@ -2165,7 +2165,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               </div>
               <div
                 data-pencil-name="Visual"
-                className="box-border w-full [flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-center"
+                className="box-border w-full flex-none xl:flex-auto min-[1440px]:[flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-center"
               >
                 <div
                   data-pencil-name="Phone"
@@ -2228,11 +2228,11 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
           </div>
           <div
             data-pencil-name="Row B"
-            className="box-border w-full h-fit shrink-0 flex flex-col lg:h-[400px] lg:flex-row gap-4 lg:gap-[16px] justify-start items-stretch"
+            className="box-border w-full h-fit shrink-0 flex flex-col xl:min-h-[400px] min-[1440px]:h-[400px] xl:flex-row gap-4 justify-start items-stretch"
           >
             <div
               data-pencil-name="Context that reproduces"
-              className="box-border [flex:1_1_0] h-auto lg:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
+              className="box-border flex-none xl:[flex:1_1_0] h-auto min-[1440px]:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
             >
               <div
                 data-pencil-name="Text"
@@ -2244,7 +2244,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 >
                   <div
                     data-pencil-name="Title"
-                    className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
+                    className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:normal]"
                   >
                     Context that reproduces
                   </div>
@@ -2259,7 +2259,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               </div>
               <div
                 data-pencil-name="Visual"
-                className="box-border w-full [flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-start"
+                className="box-border w-full flex-none xl:flex-auto min-[1440px]:[flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-start"
               >
                 <div
                   data-pencil-name="Context Table"
@@ -2291,14 +2291,14 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     </div>
                     <div
                       data-pencil-name="V"
-                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left [white-space:nowrap]"
+                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left min-w-0 [overflow-wrap:anywhere]"
                     >
                       Pixel 7 · Android 14
                     </div>
                   </div>
                   <div
                     data-pencil-name="Build"
-                    className="box-border w-[360px] h-[34.5px] shrink-0 flex flex-row gap-[10px] p-[10px_14px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
+                    className="box-border w-full h-auto min-h-[34.5px] min-[1440px]:h-[34.5px] shrink-0 flex flex-row gap-[10px] p-[10px_14px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
                   >
                     <svg
                       data-pencil-name="I"
@@ -2322,14 +2322,14 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     </div>
                     <div
                       data-pencil-name="V"
-                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left [white-space:nowrap]"
+                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left min-w-0 [overflow-wrap:anywhere]"
                     >
                       2.4.1 (241)
                     </div>
                   </div>
                   <div
                     data-pencil-name="Route"
-                    className="box-border w-[360px] h-[34.5px] shrink-0 flex flex-row gap-[10px] p-[10px_14px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
+                    className="box-border w-full h-auto min-h-[34.5px] min-[1440px]:h-[34.5px] shrink-0 flex flex-row gap-[10px] p-[10px_14px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
                   >
                     <svg
                       data-pencil-name="I"
@@ -2353,14 +2353,14 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     </div>
                     <div
                       data-pencil-name="V"
-                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left [white-space:nowrap]"
+                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left min-w-0 [overflow-wrap:anywhere]"
                     >
                       /transactions?range=7d
                     </div>
                   </div>
                   <div
                     data-pencil-name="Sentry"
-                    className="box-border w-[360px] h-[34.5px] shrink-0 flex flex-row gap-[10px] p-[10px_14px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
+                    className="box-border w-full h-auto min-h-[34.5px] min-[1440px]:h-[34.5px] shrink-0 flex flex-row gap-[10px] p-[10px_14px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
                   >
                     <svg
                       data-pencil-name="I"
@@ -2384,14 +2384,14 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     </div>
                     <div
                       data-pencil-name="V"
-                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left [white-space:nowrap]"
+                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left min-w-0 [overflow-wrap:anywhere]"
                     >
                       TypeError · 14 events
                     </div>
                   </div>
                   <div
                     data-pencil-name="PostHog"
-                    className="box-border w-[360px] h-[34.5px] shrink-0 flex flex-row gap-[10px] p-[10px_14px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
+                    className="box-border w-full h-auto min-h-[34.5px] min-[1440px]:h-[34.5px] shrink-0 flex flex-row gap-[10px] p-[10px_14px] justify-start items-center [border-width:1px_0px_0px_0px] [border-style:solid] [border-color:#17171714] [margin:-0.5px_0px_0px_0px]"
                   >
                     <svg
                       data-pencil-name="I"
@@ -2415,7 +2415,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     </div>
                     <div
                       data-pencil-name="V"
-                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left [white-space:nowrap]"
+                      className="text-[11.5px]/[normal] box-border text-[#171717] font-ds-mono font-normal text-left min-w-0 [overflow-wrap:anywhere]"
                     >
                       Session · 2m before report
                     </div>
@@ -2425,7 +2425,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
             <div
               data-pencil-name="Public board and voting"
-              className="box-border [flex:1_1_0] h-auto lg:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
+              className="box-border flex-none xl:[flex:1_1_0] h-auto min-[1440px]:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
             >
               <div
                 data-pencil-name="Text"
@@ -2437,7 +2437,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 >
                   <div
                     data-pencil-name="Title"
-                    className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
+                    className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:normal]"
                   >
                     Public board and voting
                   </div>
@@ -2463,7 +2463,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               </div>
               <div
                 data-pencil-name="Visual"
-                className="box-border w-full [flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-start"
+                className="box-border w-full flex-none xl:flex-auto min-[1440px]:[flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-start"
               >
                 <div
                   data-pencil-name="Board"
@@ -2471,7 +2471,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 >
                   <div
                     data-pencil-name="Export to Google Sheets"
-                    className="box-border w-full h-fit shrink-0 flex flex-row gap-[12px] p-[10px] justify-start items-center bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px]"
+                    className="box-border w-full h-fit shrink-0 flex flex-row flex-wrap min-[1440px]:flex-nowrap gap-[12px] p-[10px] justify-start items-center bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px]"
                   >
                     <div
                       data-pencil-name="Vote"
@@ -2522,7 +2522,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                   </div>
                   <div
                     data-pencil-name="Recurring transactions"
-                    className="box-border w-full h-fit shrink-0 flex flex-row gap-[12px] p-[10px] justify-start items-center bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px]"
+                    className="box-border w-full h-fit shrink-0 flex flex-row flex-wrap min-[1440px]:flex-nowrap gap-[12px] p-[10px] justify-start items-center bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px]"
                   >
                     <div
                       data-pencil-name="Vote"
@@ -2573,7 +2573,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                   </div>
                   <div
                     data-pencil-name="Dark mode"
-                    className="box-border w-full h-fit shrink-0 flex flex-row gap-[12px] p-[10px] justify-start items-center bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px]"
+                    className="box-border w-full h-fit shrink-0 flex flex-row flex-wrap min-[1440px]:flex-nowrap gap-[12px] p-[10px] justify-start items-center bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[10px]"
                   >
                     <div
                       data-pencil-name="Vote"
@@ -2627,7 +2627,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
             </div>
             <div
               data-pencil-name="AI auto pull requests"
-              className="box-border [flex:1_1_0] h-auto lg:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
+              className="box-border flex-none xl:[flex:1_1_0] h-auto min-[1440px]:h-full [box-shadow:0px_4px_4px_#1717170A] flex flex-col gap-0 justify-start items-start bg-[#FFFFFF] [outline:1px_solid_#17171714] [outline-offset:-0.5px] rounded-[16px] overflow-hidden"
             >
               <div
                 data-pencil-name="Text"
@@ -2639,7 +2639,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                 >
                   <div
                     data-pencil-name="Title"
-                    className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:nowrap]"
+                    className="text-[18px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.36px] text-left [white-space:normal]"
                   >
                     AI auto pull requests
                   </div>
@@ -2665,7 +2665,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               </div>
               <div
                 data-pencil-name="Visual"
-                className="box-border w-full [flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-start"
+                className="box-border w-full flex-none xl:flex-auto min-[1440px]:[flex:1_1_0] flex flex-col gap-0 p-[0px_28px] justify-end items-start"
               >
                 <div
                   data-pencil-name="PR Card"
@@ -2711,7 +2711,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                   </div>
                   <div
                     data-pencil-name="Meta"
-                    className="box-border w-full h-fit shrink-0 flex flex-row gap-[12px] justify-start items-center"
+                    className="box-border w-full h-fit shrink-0 flex flex-row flex-wrap min-[1440px]:flex-nowrap gap-[12px] justify-start items-center"
                   >
                     <div
                       data-pencil-name="Diff"
