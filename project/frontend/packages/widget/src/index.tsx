@@ -778,12 +778,12 @@ function Widget({ cfg }: { cfg: Config }) {
       font-weight:700;
       letter-spacing:-0.02em;
     }
-    .fab.has-badge:hover .fab-primary,
-    .fab.has-badge:focus-visible .fab-primary {
+    .fab:hover .fab-primary,
+    .fab:focus-visible .fab-primary {
       opacity:0;
     }
-    .fab.has-badge:hover .fab-sub,
-    .fab.has-badge:focus-visible .fab-sub {
+    .fab:hover .fab-sub,
+    .fab:focus-visible .fab-sub {
       opacity:1;
     }
     .scrim {
@@ -993,21 +993,20 @@ function Widget({ cfg }: { cfg: Config }) {
     @media (prefers-reduced-motion: no-preference) {
       .fab { animation: fabIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
       .fab:hover { translate: 0 -2px; }
-      .fab:not(.has-badge):hover .fab-chat-icon { transform: scale(1.12) rotate(-6deg); }
       .fab:active { translate: 0 0; scale: 0.97; }
       .fab-primary { translate: 0 0; }
       .fab-sub { translate: 0 110%; }
       .fab-brand-icon { transform: rotate(-45deg) scale(0.85); }
-      .fab.has-badge:hover .fab-primary,
-      .fab.has-badge:focus-visible .fab-primary {
+      .fab:hover .fab-primary,
+      .fab:focus-visible .fab-primary {
         translate: 0 -110%;
       }
-      .fab.has-badge:hover .fab-sub,
-      .fab.has-badge:focus-visible .fab-sub {
+      .fab:hover .fab-sub,
+      .fab:focus-visible .fab-sub {
         translate: 0 0;
       }
-      .fab.has-badge:hover .fab-brand-icon,
-      .fab.has-badge:focus-visible .fab-brand-icon {
+      .fab:hover .fab-brand-icon,
+      .fab:focus-visible .fab-brand-icon {
         transform: rotate(0deg) scale(1);
       }
       .btn:hover:not(:disabled) { translate: 0 -1px; }
@@ -1071,7 +1070,7 @@ function Widget({ cfg }: { cfg: Config }) {
       <style>{lookCss(look)}</style>
       {state === "launcher" && look.position !== "hidden" && (
         <button
-          class={`${look.position === "bottom_left" ? "fab left" : "fab"}${badge.on ? " has-badge" : ""}`}
+          class={look.position === "bottom_left" ? "fab left" : "fab"}
           type="button"
           onClick={openForm}
         >
@@ -1082,16 +1081,14 @@ function Widget({ cfg }: { cfg: Config }) {
               </svg>
               <span>{look.label}</span>
             </span>
-            {badge.on && (
-              <span class="fab-sub" aria-hidden="true">
-                <svg class="fab-brand-icon" width="14" height="14" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
-                  <path d={SAIDLOOP_MARK_PATH} />
-                </svg>
-                <span>
-                  Feedback by <b>Saidloop</b>
-                </span>
+            <span class="fab-sub" aria-hidden="true">
+              <svg class="fab-brand-icon" width="14" height="14" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
+                <path d={SAIDLOOP_MARK_PATH} />
+              </svg>
+              <span>
+                Feedback by <b>Saidloop</b>
               </span>
-            )}
+            </span>
           </span>
         </button>
       )}
