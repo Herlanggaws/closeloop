@@ -249,6 +249,7 @@ Fase D · menunggu keputusan (jangan dikerjakan dulu)
 Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5).
 - [x] D-20 Badge "Powered by Saidloop" cuma di Free (`s67yG`): `/v1/ingest/config` kirim `badge` + `badge_url` (UTM `utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`), widget tampilkan di launcher (tooltip hover), form, sent, banner, dicek ulang tiap 1 menit; email pelapor/voter/comment/suggest footer `Powered by Saidloop` di Free, hilang di plan berbayar. Diputusin Herlangga 19 Nov
 - [x] D-21 Seat Indie = 2 sejak 22 Nov (awalnya 1, detail berikut dari 19 Nov) + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
+- [x] D-23 Landing full-width di layar lebar (22 Nov): banner, nav, background section dan footer full-bleed, konten tetap max 1280px di tengah; tombol hero `Join the waitlist` nggak abu-abu/disabled lagi waktu email kosong (validasi pakai `required` + `type=email`). Belum di-deploy ke prod.
 
 ---
 
