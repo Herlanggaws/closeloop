@@ -25,7 +25,6 @@ export type ChecklistItem = {
 const BILLING = "/app/settings/billing";
 
 export function onboardingChecklist(s: ChecklistState): ChecklistItem[] {
-  const studio = planAtLeast(s.plan, "studio");
   const indie = planAtLeast(s.plan, "indie");
   return [
     {
@@ -49,11 +48,11 @@ export function onboardingChecklist(s: ChecklistState): ChecklistItem[] {
     {
       id: "invite",
       title: "Invite a teammate",
-      subtitle: studio ? "Triage reports together" : "Team seats come with Studio (5 seats)",
-      done: studio && s.teammates > 1,
-      action: studio
+      subtitle: indie ? "Triage reports together" : "Team seats start with Indie (2 seats)",
+      done: indie && s.teammates > 1,
+      action: indie
         ? { label: "Invite", href: "/app/settings/team" }
-        : { label: "Upgrade to Studio", href: BILLING },
+        : { label: "Upgrade to Indie", href: BILLING },
     },
     {
       id: "slack",

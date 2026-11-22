@@ -582,18 +582,18 @@ export function InboxEmpty() {
                   data-pencil-name="S"
                   className="text-[12px]/[normal] box-border text-[#A3A3A3] font-ds-ui font-normal text-left [white-space:nowrap]"
                 >
-                  Team seats come with Studio (5 seats)
+                  Team seats start with Indie (2 seats)
                 </div>
               </div>
               <div
-                data-pencil-name="Upgrade to Studio"
+                data-pencil-name="Upgrade to Indie"
                 className="box-border w-fit shrink-0 h-[28px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_10px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]"
               >
                 <div
                   data-pencil-name="Label"
                   className="text-[12px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
                 >
-                  Upgrade to Studio
+                  Upgrade to Indie
                 </div>
               </div>
             </div>

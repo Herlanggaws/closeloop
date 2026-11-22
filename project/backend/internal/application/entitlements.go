@@ -14,7 +14,7 @@ type PlanLimits struct {
 func LimitsForPlan(plan string) PlanLimits {
 	switch strings.ToLower(strings.TrimSpace(plan)) {
 	case "indie":
-		return PlanLimits{MaxProjects: 3, ReportsPerMonth: 1000, MaxSeats: 1, MaxReposPerProject: 5}
+		return PlanLimits{MaxProjects: 3, ReportsPerMonth: 1000, MaxSeats: 2, MaxReposPerProject: 5}
 	case "studio":
 		return PlanLimits{MaxProjects: 0, ReportsPerMonth: 10000, MaxSeats: 5, MaxReposPerProject: 10}
 	case "business":

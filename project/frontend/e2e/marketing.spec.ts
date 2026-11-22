@@ -52,17 +52,19 @@ test.describe("Marketing pages smoke", () => {
     const yearly = pricing.getByRole("button", { name: /Yearly/ });
     const monthly = pricing.getByRole("button", { name: "Monthly" });
 
-    await expect(pricing.getByText("$12", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$15", { exact: true })).toBeVisible();
     await expect(yearly).toHaveAttribute("aria-pressed", "false");
 
     await yearly.click();
     await expect(yearly).toHaveAttribute("aria-pressed", "true");
-    await expect(pricing.getByText("$10", { exact: true })).toBeVisible();
-    await expect(pricing.getByText("$33", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$12.50", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$32.50", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$150 / year", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$390 / year", { exact: true })).toBeVisible();
 
     await monthly.click();
     await expect(monthly).toHaveAttribute("aria-pressed", "true");
-    await expect(pricing.getByText("$12", { exact: true })).toBeVisible();
+    await expect(pricing.getByText("$15", { exact: true })).toBeVisible();
     await expect(pricing.getByText("$39", { exact: true })).toBeVisible();
   });
 
@@ -73,6 +75,9 @@ test.describe("Marketing pages smoke", () => {
     await expect(plans).toHaveCount(3);
     const pricing = page.locator("#pricing");
     await expect(pricing.getByText("1 project · 50 reports / mo · 3 repos / project")).toBeVisible();
+    await expect(
+      pricing.getByText("3 projects · 1,000 reports / mo · 5 repos / project · 2 seats"),
+    ).toBeVisible();
     await expect(pricing.getByText("Full MCP loop, including mark_fixed")).toBeVisible();
     for (const hidden of ["Business", "SSO", "self-host", "Self-hosting", "Audit log", "30 days", "MCP read-only tools"]) {
       await expect(pricing.getByText(hidden, { exact: false })).toHaveCount(0);
