@@ -778,12 +778,12 @@ function Widget({ cfg }: { cfg: Config }) {
       font-weight:700;
       letter-spacing:-0.02em;
     }
-    .fab:hover .fab-primary,
-    .fab:focus-visible .fab-primary {
+    .fab.branded:hover .fab-primary,
+    .fab.branded:focus-visible .fab-primary {
       opacity:0;
     }
-    .fab:hover .fab-sub,
-    .fab:focus-visible .fab-sub {
+    .fab.branded:hover .fab-sub,
+    .fab.branded:focus-visible .fab-sub {
       opacity:1;
     }
     .scrim {
@@ -997,12 +997,12 @@ function Widget({ cfg }: { cfg: Config }) {
       .fab-primary { translate: 0 0; }
       .fab-sub { translate: 0 110%; }
       .fab-brand-icon { transform: rotate(-45deg) scale(0.85); }
-      .fab:hover .fab-primary,
-      .fab:focus-visible .fab-primary {
+      .fab.branded:hover .fab-primary,
+      .fab.branded:focus-visible .fab-primary {
         translate: 0 -110%;
       }
-      .fab:hover .fab-sub,
-      .fab:focus-visible .fab-sub {
+      .fab.branded:hover .fab-sub,
+      .fab.branded:focus-visible .fab-sub {
         translate: 0 0;
       }
       .fab:hover .fab-brand-icon,
@@ -1070,7 +1070,7 @@ function Widget({ cfg }: { cfg: Config }) {
       <style>{lookCss(look)}</style>
       {state === "launcher" && look.position !== "hidden" && (
         <button
-          class={look.position === "bottom_left" ? "fab left" : "fab"}
+          class={`fab${look.position === "bottom_left" ? " left" : ""}${badge.on ? " branded" : ""}`}
           type="button"
           onClick={openForm}
         >
@@ -1081,14 +1081,16 @@ function Widget({ cfg }: { cfg: Config }) {
               </svg>
               <span>{look.label}</span>
             </span>
-            <span class="fab-sub" aria-hidden="true">
-              <svg class="fab-brand-icon" width="14" height="14" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
-                <path d={SAIDLOOP_MARK_PATH} />
-              </svg>
-              <span>
-                Feedback by <b>Saidloop</b>
+            {badge.on && (
+              <span class="fab-sub" aria-hidden="true">
+                <svg class="fab-brand-icon" width="14" height="14" viewBox="0 0 22 22" fill="currentColor" aria-hidden="true">
+                  <path d={SAIDLOOP_MARK_PATH} />
+                </svg>
+                <span>
+                  Feedback by <b>Saidloop</b>
+                </span>
               </span>
-            </span>
+            )}
           </span>
         </button>
       )}

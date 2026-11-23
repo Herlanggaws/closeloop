@@ -7,6 +7,11 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-23",
+    title: "No Saidloop branding on paid plans",
+    body: "On Indie and up the Report button no longer flips to \"Feedback by Saidloop\" on hover, and your public board no longer shows the \"Powered by Saidloop\" footer. Free keeps both, alongside the badge in the form and emails.",
+  },
+  {
+    date: "2026-11-23",
     title: "Auto PR marked as coming soon",
     body: "Auto PR is not part of Indie or Studio yet. The agent that writes the fix is still being built, so the landing page, Billing and the ticket page now show it as coming soon and you can no longer start a run. Nothing changes for the MCP loop or GitHub issues.",
   },

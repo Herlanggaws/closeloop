@@ -1210,6 +1210,7 @@ func (s *Server) getPublicBoard(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	s.setBoardBadge(c, &board)
 	c.JSON(200, gin.H{"project": board, "ideas": ideas})
 }
 
@@ -1219,7 +1220,14 @@ func (s *Server) getPublicIdea(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	s.setBoardBadge(c, &board)
 	c.JSON(200, gin.H{"project": board, "idea": idea})
+}
+
+// setBoardBadge marks Free boards so the public footer shows "Powered by Saidloop" (D-20).
+func (s *Server) setBoardBadge(c *gin.Context, board *application.PublicBoard) {
+	board.BadgeURL = s.Store.BadgeURLForBoard(c.Request.Context(), board.BoardSlug, s.Cfg.WebURL, "board")
+	board.Badge = board.BadgeURL != ""
 }
 
 func (s *Server) requestPublicVote(c *gin.Context) {
