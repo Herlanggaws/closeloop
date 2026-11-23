@@ -187,3 +187,38 @@ func TestMeIncludesAutoPRCredits(t *testing.T) {
 		t.Fatalf("want auto_pr_credits 3, got %s", b)
 	}
 }
+
+// Auto PR is off by default until the runner writes real fixes: the API refuses the run
+// before any credit is spent.
+func TestAutopr_DisabledByDefault(t *testing.T) {
+	h := newReportHarness(t)
+	h.server.Cfg.AutoPREnabled = false
+	h.router = h.server.Router()
+	seed := h.seedUserProject("indie")
+	if _, err := h.store.GrantAutoPRCredits(t.Context(), seed.OrgID, 3, "test_seed"); err != nil {
+		t.Fatalf("grant credits: %v", err)
+	}
+	_, _ = h.do(http.MethodPut, "/api/projects/"+seed.ProjectID+"/integrations/github_app", map[string]any{
+		"config": map[string]any{
+			"installation_id": 1,
+			"repo_full_name":  "acme/app",
+			"default_branch":  "main",
+		},
+	}, h.authHeaders(seed.AccessToken))
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type":    "bug",
+		"message": "not yet",
+	})
+
+	code, body := h.do(http.MethodPost, "/api/tickets/"+ticketID+"/autopr", map[string]any{}, h.authHeaders(seed.AccessToken))
+	if code != 409 {
+		t.Fatalf("want 409 while auto PR is off, got %d %v", code, body)
+	}
+	code, credits := h.do(http.MethodGet, "/api/org/credits", nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		t.Fatalf("credits: %d %v", code, credits)
+	}
+	if got := int(credits["credits"].(float64)); got < 3 {
+		t.Fatalf("credits spent while disabled: %v", credits)
+	}
+}

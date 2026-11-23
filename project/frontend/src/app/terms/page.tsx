@@ -60,7 +60,7 @@ export default function TermsPage() {
 
         <h2>Plans and payment</h2>
         <p>
-          Paid plans are billed through our merchant of record (Polar) unless we agree otherwise.
+          Paid plans are billed through our merchant of record unless we agree otherwise.
           Fees are as listed on the pricing page or your order. Taxes may apply. We may change
           prices with notice for the next billing period. Free and early-access offers may be
           withdrawn or modified.
@@ -74,7 +74,7 @@ export default function TermsPage() {
 
         <h2>Third-party services</h2>
         <p>
-          Agents, IDEs, Polar, email providers, and other third parties have their own terms. We are
+          Agents, IDEs, payment providers, email providers, and other third parties have their own terms. We are
           not responsible for third-party products. Saidloop does not merge code for you; agents may
           open PRs that you review and ship.
         </p>

@@ -1,4 +1,4 @@
-import { BUSINESS_PLAN_VISIBLE } from "@/lib/plans";
+import { AUTO_PR_VISIBLE, BUSINESS_PLAN_VISIBLE } from "@/lib/plans";
 
 export type TourSide = "above" | "below" | "left" | "right";
 
@@ -346,6 +346,8 @@ const BUSINESS_TOURS = new Set(["sso", "self-host"]);
 
 export function getTour(tourId: string): TourDefinition | undefined {
   if (!BUSINESS_PLAN_VISIBLE && BUSINESS_TOURS.has(tourId)) return undefined;
+  // Auto PR is Coming soon (D-24); its tour describes a runner that does not ship yet.
+  if (!AUTO_PR_VISIBLE && tourId === "auto-pr") return undefined;
   return TOURS[tourId];
 }
 

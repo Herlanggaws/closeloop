@@ -203,7 +203,7 @@ Format ID: `R-<area>-<nn>`. Tiap case punya **Given / When / Then**, **assert AP
 | R-UI-03 | Merge flow | Multi-select → `/app/inbox/merge` → confirm | Parent detail shows merged count |
 | R-UI-04 | Mark fixed UI | Detail → fixed → submit note | Status Fixed; activity updated |
 | R-UI-05 | Banner payload | After fix + identify | `/v1/ingest/updates` non-empty (widget banner assert light) |
-| R-UI-06 | Post-M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | Public board + Auto PR runs links live; `/app/auto-pr` shows runs heading |
+| R-UI-06 | Post-M1 surface | Inbox nav + `/app/auto-pr` + `/app/board` | Public board link live; Auto PR runs shows as Soon (not a link) and `/app/auto-pr` shows "Auto PR is coming soon" while `AUTO_PR_VISIBLE` is off (D-24) |
 | R-UI-07 | Public board | Publish idea via API | Open `/board/{slug}` | Published title visible |
 | R-UI-08 | Idea detail | Publish idea via API | Open list → click idea | Detail title + back to list |
 | R-UI-10 | Integrations catalog | Seed session | Open `/app/settings/integrations` | Notify/Debugging sections + Slack Configure webhook field |

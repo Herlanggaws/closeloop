@@ -28,7 +28,7 @@ import {
   type TicketDetailResponse,
   type TicketStatus,
 } from "@/lib/tickets";
-import { planAtLeast } from "@/lib/plans";
+import { AUTO_PR_VISIBLE, planAtLeast } from "@/lib/plans";
 import { repoPlatformLabel, shortRepo, type ProjectRepo, type ReposResponse } from "@/lib/repos";
 import type { MeResponse } from "@/lib/usage";
 
@@ -437,9 +437,15 @@ export function ReportDetail() {
             )}
             {ticket && (
               <HeaderButton
-                label={autoprBusy ? "Starting…" : "Run auto PR"}
-                disabled={autoprBusy || autoprBlocked}
-                title={autoprBlocked ? "Pick a repo for this ticket first. Auto PR runs in the ticket's repo." : undefined}
+                label={!AUTO_PR_VISIBLE ? "Auto PR · soon" : autoprBusy ? "Starting…" : "Run auto PR"}
+                disabled={!AUTO_PR_VISIBLE || autoprBusy || autoprBlocked}
+                title={
+                  !AUTO_PR_VISIBLE
+                    ? "Auto PR is coming soon."
+                    : autoprBlocked
+                      ? "Pick a repo for this ticket first. Auto PR runs in the ticket's repo."
+                      : undefined
+                }
                 onClick={() => void runAutopr()}
               />
             )}
