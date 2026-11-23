@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { SaidloopLogo } from "@/components/SaidloopLogo";
 
 const NAV_LINKS = [
@@ -59,6 +60,13 @@ export function LandingNav({ onJoinWaitlist }: Props) {
       </div>
 
       <div className="flex w-fit shrink-0 flex-row items-center justify-start gap-2">
+        <Link
+          href="/login"
+          data-pencil-name="Log in"
+          className="box-border hidden h-9 w-fit shrink-0 cursor-pointer flex-row items-center justify-center rounded-[6px] px-3 font-ds-sans text-[14px] font-medium tracking-[-0.2px] text-[#171717] no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] [white-space:nowrap] sm:flex"
+        >
+          Log in
+        </Link>
         <button
           type="button"
           onClick={onJoinWaitlist}
@@ -115,6 +123,13 @@ export function LandingNav({ onJoinWaitlist }: Props) {
               {link.label}
             </a>
           ))}
+          <Link
+            href="/login"
+            onClick={closeMenu}
+            className="box-border flex min-h-11 items-center rounded-[8px] px-3 font-ds-ui text-[15px] font-normal tracking-[-0.2px] text-[#171717] no-underline transition-colors hover:bg-[#F5F5F5]"
+          >
+            Log in
+          </Link>
           <button
             type="button"
             onClick={() => {
