@@ -1,4 +1,4 @@
-group = "ai.closeloop.flutter"
+group = "com.saidloop.flutter"
 version = "0.1.0"
 
 buildscript {
@@ -18,7 +18,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        // Native SDK: `./gradlew :sdk:publishToMavenLocal` in project/sdks/android until it is on Maven Central.
+        // Native SDK com.saidloop:android is not on Maven Central yet: `./gradlew :sdk:publishToMavenLocal` in the Android SDK first.
         mavenLocal()
     }
 }
@@ -27,7 +27,7 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
 android {
-    namespace = "ai.closeloop.closeloop"
+    namespace = "com.saidloop.flutter"
 
     compileSdk = 36
 
@@ -50,7 +50,7 @@ android {
     }
 
     dependencies {
-        implementation("ai.closeloop:sdk:0.1.0")
+        implementation("com.saidloop:android:0.1.0")
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
     }

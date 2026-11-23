@@ -1,4 +1,4 @@
-package ai.closeloop.closeloop_example
+package com.saidloop.flutter_example
 
 import io.flutter.embedding.android.FlutterActivity
 

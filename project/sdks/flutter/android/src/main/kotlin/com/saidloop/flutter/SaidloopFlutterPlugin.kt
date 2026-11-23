@@ -1,6 +1,6 @@
-package ai.closeloop.closeloop
+package com.saidloop.flutter
 
-import ai.closeloop.sdk.Saidloop
+import com.saidloop.sdk.Saidloop
 import android.content.Context
 import android.graphics.Rect
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -10,7 +10,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 /** Forwards the Dart `Saidloop` calls to the native Android SDK. */
-class CloseloopPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware {
+class SaidloopFlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware {
     private var activity: android.app.Activity? = null
     private lateinit var channel: MethodChannel
     private lateinit var context: Context

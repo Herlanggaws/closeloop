@@ -156,9 +156,14 @@ Saidloop.start(key: "${key}", api: URL(string: "${API_URL}")!)`,
         fileLabel: "pubspec.yaml",
         description: "Add the Flutter package; it forwards to the native Android and iOS SDKs.",
         code: `dependencies:
-  closeloop: ^0.1.0
+  saidloop_flutter: ^0.1.0
+
+# ios/Podfile, inside target 'Runner' (until the iOS SDK is on CocoaPods trunk)
+pod 'Saidloop', :git => 'https://github.com/XERV-Project/saidloop-ios.git', :tag => '0.1.0'
 
 // main.dart
+import 'package:saidloop_flutter/saidloop_flutter.dart';
+
 await Saidloop.init(key: "${key}", api: "${API_URL}");`,
       };
     case "react-native":
@@ -312,9 +317,11 @@ Saidloop.identify(userId: "user_123", appVersion: "1.0.0")
     case "flutter":
       return `# pubspec.yaml
 dependencies:
-  closeloop: ^0.1.0
+  saidloop_flutter: ^0.1.0
 
 // main.dart
+import 'package:saidloop_flutter/saidloop_flutter.dart';
+
 await Saidloop.init(key: "${key}", api: "${API_URL}");
 Saidloop.identify(userId: "user_123", appVersion: "1.0.0");
 // Saidloop.show();`;

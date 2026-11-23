@@ -1,4 +1,4 @@
-import 'package:closeloop/closeloop.dart';
+import 'package:saidloop_flutter/saidloop_flutter.dart';
 import 'package:flutter/material.dart';
 
 // Run with: flutter run --dart-define=SAIDLOOP_KEY=pk_… --dart-define=SAIDLOOP_API=http://10.0.2.2:8080
