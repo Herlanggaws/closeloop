@@ -1,4 +1,4 @@
-// Expo config plugin: `plugins: ["@closeloop/react-native"]` in app.json.
+// Expo config plugin: `plugins: ["@saidloop/react-native"]` in app.json.
 // Saidloop needs Android minSdk 24 and iOS 15; everything else autolinks.
 const { withGradleProperties, withPodfileProperties } = (() => {
   try {

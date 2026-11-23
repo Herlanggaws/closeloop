@@ -1,7 +1,28 @@
 {
-  "name": "@closeloop/react-native",
+  "name": "@saidloop/react-native",
   "version": "0.1.0",
-  "description": "Saidloop for React Native: shake to report, masked screenshots and an offline queue, backed by the native Android and iOS SDKs.",
+  "description": "Saidloop for React Native: in-app bug reports and feedback that your coding agent can fix via MCP. Shake to report, masked screenshots and an offline queue, backed by the native Android and iOS SDKs.",
+  "license": "MIT",
+  "author": "XERV Project",
+  "homepage": "https://github.com/XERV-Project/saidloop-react-native#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XERV-Project/saidloop-react-native.git"
+  },
+  "bugs": {
+    "url": "https://github.com/XERV-Project/saidloop-react-native/issues"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "bug-report",
+    "feedback",
+    "screenshot",
+    "mcp",
+    "saidloop",
+    "ios",
+    "android"
+  ],
   "main": "src/index.tsx",
   "types": "src/index.tsx",
   "react-native": "src/index.tsx",
@@ -9,7 +30,7 @@
     "src",
     "android",
     "ios",
-    "closeloop-react-native.podspec",
+    "saidloop-react-native.podspec",
     "app.plugin.js",
     "!**/__tests__"
   ],
@@ -36,5 +57,8 @@
   },
   "jest": {
     "testEnvironment": "node"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

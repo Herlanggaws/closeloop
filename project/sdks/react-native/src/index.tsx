@@ -25,7 +25,7 @@ function native(): NativeSaidloop {
   const mod = NativeModules.Saidloop as NativeSaidloop | undefined;
   if (!mod) {
     throw new Error(
-      "Saidloop native module not found. Rebuild the app after installing @closeloop/react-native (Expo: add the config plugin and run a dev build).",
+      "Saidloop native module not found. Rebuild the app after installing @saidloop/react-native (Expo: add the config plugin and run a dev build).",
     );
   }
   return mod;

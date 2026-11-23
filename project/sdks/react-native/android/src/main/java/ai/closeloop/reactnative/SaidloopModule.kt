@@ -1,6 +1,6 @@
 package ai.closeloop.reactnative
 
-import ai.closeloop.sdk.Saidloop
+import com.saidloop.sdk.Saidloop
 import android.graphics.Rect
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
