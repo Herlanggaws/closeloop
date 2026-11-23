@@ -303,33 +303,72 @@ func TestWidgetSettingsBranding(t *testing.T) {
 	}
 }
 
-// D-20 (revised 23 Nov): the public board footer badge shows on Free boards only.
+// D-20 (revised 23 Nov): paid boards carry no badge. Free boards are not served at all
+// (see TestPlan_DowngradeHidesBoard), so the footer never shows on a live board.
 func TestPlan_BoardBadgeFreeOnly(t *testing.T) {
 	h := newReportHarness(t)
-	for _, tc := range []struct {
-		plan string
-		want bool
-	}{{"free", true}, {"indie", false}, {"studio", false}} {
-		seed := h.seedUserProject(tc.plan)
-		code, body := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
-		if code != 200 {
-			t.Fatalf("%s get project: %d %v", tc.plan, code, body)
-		}
-		slug, _ := body["project"].(map[string]any)["board_slug"].(string)
+	for _, plan := range []string{"indie", "studio"} {
+		seed := h.seedUserProject(plan)
+		slug := h.boardSlug(seed)
 		code, pub := h.do(http.MethodGet, "/api/public/boards/"+slug, nil, nil)
 		if code != 200 {
-			t.Fatalf("%s public board: %d %v", tc.plan, code, pub)
+			t.Fatalf("%s public board: %d %v", plan, code, pub)
 		}
 		project := pub["project"].(map[string]any)
-		if project["badge"] != tc.want {
-			t.Fatalf("%s board badge = %v, want %v", tc.plan, project["badge"], tc.want)
+		if project["badge"] != false || project["badge_url"] != nil {
+			t.Fatalf("%s board should have no badge: %v", plan, project)
 		}
-		url, _ := project["badge_url"].(string)
-		if tc.want && !strings.Contains(url, "utm_medium=board") {
-			t.Fatalf("%s badge_url = %q", tc.plan, url)
+	}
+}
+
+func (h *reportHarness) boardSlug(seed seededProject) string {
+	h.t.Helper()
+	code, body := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+	if code != 200 {
+		h.t.Fatalf("get project: %d %v", code, body)
+	}
+	slug, _ := body["project"].(map[string]any)["board_slug"].(string)
+	return slug
+}
+
+// Audit 23 Nov: Indie → Free makes the public board private (404) but keeps its ideas;
+// upgrading again brings it back.
+func TestPlan_DowngradeHidesBoard(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	slug := h.boardSlug(seed)
+	ticketID, _, _, _, _ := h.ingestReport(seed.PublicKey, map[string]any{
+		"type": "idea", "message": "offline mode", "platform": "web",
+	})
+	if code, body := h.do(http.MethodPatch, "/api/tickets/"+ticketID, map[string]any{"is_public": true}, h.authHeaders(seed.AccessToken)); code != 200 {
+		t.Fatalf("publish: %d %v", code, body)
+	}
+	setPlan := func(plan string) {
+		if _, err := h.db.Exec(`UPDATE organizations SET plan=$2 WHERE id=$1`, seed.OrgID, plan); err != nil {
+			t.Fatal(err)
 		}
-		if !tc.want && url != "" {
-			t.Fatalf("%s should have no badge_url: %q", tc.plan, url)
+	}
+
+	setPlan("free")
+	for _, req := range []struct{ method, path string }{
+		{http.MethodGet, "/api/public/boards/" + slug},
+		{http.MethodGet, "/api/public/boards/" + slug + "/ideas/" + ticketID},
+		{http.MethodGet, "/api/public/boards/" + slug + "/ideas/" + ticketID + "/comments"},
+		{http.MethodPost, "/api/public/boards/" + slug + "/ideas/" + ticketID + "/votes"},
+		{http.MethodPost, "/api/public/boards/" + slug + "/ideas/suggest"},
+	} {
+		code, body := h.do(req.method, req.path, map[string]any{"email": "a@example.com", "title": "x"}, nil)
+		if code != 404 {
+			t.Fatalf("free %s %s: want 404, got %d %v", req.method, req.path, code, body)
 		}
+	}
+
+	setPlan("indie")
+	code, pub := h.do(http.MethodGet, "/api/public/boards/"+slug, nil, nil)
+	if code != 200 {
+		t.Fatalf("upgraded board: %d %v", code, pub)
+	}
+	if ideas, _ := pub["ideas"].([]any); len(ideas) != 1 {
+		t.Fatalf("idea should survive the downgrade: %v", pub)
 	}
 }

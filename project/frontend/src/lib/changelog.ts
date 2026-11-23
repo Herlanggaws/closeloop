@@ -7,6 +7,11 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-23",
+    title: "Moving back to Free pauses Slack and the public board",
+    body: "If a workspace drops below Indie, Slack posts pause and the public board goes private. Your Slack connection, ideas, votes and comments are kept, and everything comes back as soon as you upgrade again.",
+  },
+  {
+    date: "2026-11-23",
     title: "No Saidloop branding on paid plans",
     body: "On Indie and up the Report button no longer flips to \"Feedback by Saidloop\" on hover, and your public board no longer shows the \"Powered by Saidloop\" footer. Free keeps both, alongside the badge in the form and emails.",
   },

@@ -350,3 +350,45 @@ func TestR_SLACK_06_EventFiltersGateEnqueue(t *testing.T) {
 		t.Fatalf("want 1 fixed post, got %d", len(posts))
 	}
 }
+
+// Audit 23 Nov: Indie → Free pauses Slack posts; the connection stays and posts resume on upgrade.
+func TestR_SLACK_07_DowngradePausesSlack(t *testing.T) {
+	h := newReportHarness(t)
+	seed := h.seedUserProject("indie")
+	if code, body := h.do(http.MethodPut, "/api/projects/"+seed.ProjectID+"/integrations/slack", map[string]any{
+		"config": map[string]any{"webhook_url": "https://hooks.slack.com/services/T000/B000/XXXX"},
+	}, h.authHeaders(seed.AccessToken)); code != 200 {
+		t.Fatalf("put slack: %d %v", code, body)
+	}
+	setPlan := func(plan string) {
+		if _, err := h.db.Exec(`UPDATE organizations SET plan=$2 WHERE id=$1`, seed.OrgID, plan); err != nil {
+			t.Fatal(err)
+		}
+	}
+	poster := &recordingSlackPoster{}
+	run := func() {
+		if _, err := application.ProcessJobsOnce(context.Background(), h.store, application.WorkerDeps{
+			Mail: h.mailer, Slack: poster, WebURL: h.server.Cfg.WebURL,
+		}, 20); err != nil {
+			t.Fatalf("process jobs: %v", err)
+		}
+	}
+
+	setPlan("free")
+	h.ingestReport(seed.PublicKey, map[string]any{"type": "bug", "message": "after downgrade", "platform": "web"})
+	run()
+	if n := len(poster.Posts()); n != 0 {
+		t.Fatalf("free plan should not post to Slack, got %d", n)
+	}
+
+	setPlan("indie")
+	h.ingestReport(seed.PublicKey, map[string]any{"type": "bug", "message": "after upgrade", "platform": "web"})
+	run()
+	posts := poster.Posts()
+	if len(posts) != 1 {
+		t.Fatalf("want 1 post after upgrade, got %d", len(posts))
+	}
+	if text, _ := posts[0].Body["text"].(string); !strings.Contains(text, "after upgrade") {
+		t.Fatalf("unexpected post: %v", posts[0].Body)
+	}
+}
