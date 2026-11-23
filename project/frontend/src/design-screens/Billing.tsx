@@ -14,7 +14,7 @@ import {
   type BillingInterval,
   type PlanAction,
 } from "@/lib/billing";
-import { planInfo, visiblePlans, type PlanId } from "@/lib/plans";
+import { AUTO_PR_VISIBLE, planInfo, visiblePlans, type PlanId } from "@/lib/plans";
 import {
   formatOf,
   formatUsage,
@@ -280,7 +280,7 @@ export function Billing() {
                     pct={projectPct}
                     warn={projects.limit > 0 && projects.used >= projects.limit}
                   />
-                  {creditsGranted > 0 && (
+                  {AUTO_PR_VISIBLE && creditsGranted > 0 && (
                     <UsageBar
                       label="Auto PR credits"
                       value={`${formatOf(creditsUsed, creditsGranted)} used`}
@@ -314,11 +314,18 @@ export function Billing() {
               <section className="rounded-2xl border border-[#17171714] bg-white p-6">
                 <h2 className="font-ds-sans text-[16px] font-medium tracking-[-0.3px] text-[#171717]">
                   Auto PR credits
+                  {!AUTO_PR_VISIBLE && (
+                    <span className="ml-2 rounded-full bg-[#F5F5F5] px-2 py-0.5 align-middle font-ds-ui text-[11px] font-normal text-[#737373]">
+                      Coming soon
+                    </span>
+                  )}
                 </h2>
                 <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                  1 credit = 1 Auto PR run. Paid plans get a starter pack. Credit packs are coming
-                  soon.
+                  {AUTO_PR_VISIBLE
+                    ? "1 credit = 1 Auto PR run. Paid plans get a starter pack. Credit packs are coming soon."
+                    : "Auto PR is not available yet and is not part of any plan today. We will announce it when the agent ships."}
                 </p>
+                {AUTO_PR_VISIBLE && (
                 <div className="mt-4 flex items-end justify-between gap-4">
                   <div>
                     <div className="font-ds-ui text-[11px] text-[#A3A3A3]">Balance</div>
@@ -335,6 +342,7 @@ export function Billing() {
                     Buy credits · soon
                   </button>
                 </div>
+                )}
               </section>
 
               <section className="rounded-2xl border border-[#17171714] bg-white p-6">

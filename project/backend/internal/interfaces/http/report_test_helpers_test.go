@@ -111,6 +111,8 @@ func newReportHarness(t *testing.T) *reportHarness {
 		WebURL:      "http://web.test",
 		APIAddr:     ":0",
 		EmailFrom:   "Saidloop <test@saidloop.dev>",
+		// Existing Auto PR tests exercise the flow; TestAutopr_DisabledByDefault flips it off.
+		AutoPREnabled: true,
 	}
 
 	store := &application.Store{DB: sqlDB}

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  AUTO_PR_VISIBLE,
   BUSINESS_PLAN_VISIBLE,
   PLANS,
   businessSurfacesVisible,
@@ -14,6 +15,17 @@ describe("plans (D-05, D-06, D-22)", () => {
     const prices = Object.fromEntries(PLANS.map((p) => [p.id, [p.price, p.yearlyPrice]]));
     assert.deepEqual(prices.indie, ["$15", "$150"]);
     assert.deepEqual(prices.studio, ["$39", "$390"]);
+  });
+
+  it("keeps Auto PR off paid plans until the runner writes real fixes (D-24)", () => {
+    assert.equal(AUTO_PR_VISIBLE, false);
+    for (const plan of PLANS) {
+      assert.ok(
+        !plan.landing.features.some((f) => /auto pr/i.test(f)),
+        `${plan.id} still promises Auto PR`,
+      );
+    }
+    assert.equal(getTour("auto-pr"), undefined);
   });
 
   it("hides Business until M6", () => {

@@ -7,7 +7,7 @@ import { Tour } from "@/components/coach/Tour";
 import { RepositoriesSection } from "@/components/repos/RepositoriesSection";
 import { api } from "@/lib/api";
 import { asConfig, parseIntegrationConfig } from "@/lib/integration-config";
-import { planAtLeast, planInfo, type PlanId } from "@/lib/plans";
+import { AUTO_PR_VISIBLE, planAtLeast, planInfo, type PlanId } from "@/lib/plans";
 import type { MeResponse } from "@/lib/usage";
 
 type Integration = {
@@ -103,7 +103,9 @@ const DEBUG_CATALOG: CatalogItem[] = [
   {
     id: "github_app",
     name: "GitHub App",
-    description: "Repository access for AI auto PR",
+    description: AUTO_PR_VISIBLE
+      ? "Repository access for AI auto PR"
+      : "Repository access for repo routing and GitHub issues",
     icon: "GA",
     iconBg: "#171717",
     action: "configure",
@@ -112,7 +114,9 @@ const DEBUG_CATALOG: CatalogItem[] = [
   {
     id: "gitlab",
     name: "GitLab",
-    description: "Repository access for multi-repo routing and Auto PR merge requests",
+    description: AUTO_PR_VISIBLE
+      ? "Repository access for multi-repo routing and Auto PR merge requests"
+      : "Repository access for multi-repo routing",
     icon: "GL",
     iconBg: "#FC6D26",
     action: "configure",
@@ -1178,8 +1182,9 @@ export function Integrations() {
                               GitHub App
                             </h3>
                             <p className="mt-1 font-ds-ui text-[12.5px] text-[#737373]">
-                              Auto PR opens branches and pull requests in your project's repos. Saidloop
-                              never merges.
+                              {AUTO_PR_VISIBLE
+                                ? "Auto PR opens branches and pull requests in your project\u2019s repos. Saidloop never merges."
+                                : "Saidloop reads your project\u2019s repos to route reports and can file GitHub issues. It never merges."}
                             </p>
                           </div>
                           <button

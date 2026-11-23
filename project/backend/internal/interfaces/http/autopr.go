@@ -305,6 +305,11 @@ func (s *Server) listAutoprRuns(c *gin.Context) {
 }
 
 func (s *Server) startAutoprRun(c *gin.Context) {
+	// Auto PR stays off until the runner writes real fixes; refuse before any credit is spent.
+	if !s.Cfg.AutoPREnabled {
+		writeErr(c, 409, "AUTOPR_UNAVAILABLE", "Auto PR is coming soon")
+		return
+	}
 	ticketID := c.Param("id")
 	ticket, err := s.Store.GetTicket(c.Request.Context(), ticketID)
 	if err != nil {

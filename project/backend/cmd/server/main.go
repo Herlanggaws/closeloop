@@ -63,7 +63,10 @@ func main() {
 	defer stop()
 
 	var autoprExec application.AutoprExecutor
-	if pem, err := githubapp.LoadPrivateKey([]byte(cfg.GitHubAppPrivateKey), cfg.GitHubAppPrivateKeyPath); err == nil {
+	// No executor while Auto PR is off: a stray queued run fails and refunds its credit.
+	if !cfg.AutoPREnabled {
+		log.Printf("auto PR disabled (set AUTOPR_ENABLED=true to turn it on)")
+	} else if pem, err := githubapp.LoadPrivateKey([]byte(cfg.GitHubAppPrivateKey), cfg.GitHubAppPrivateKeyPath); err == nil {
 		if gh, err := githubapp.New(githubapp.Config{
 			AppID:         cfg.GitHubAppID,
 			Slug:          cfg.GitHubAppSlug,

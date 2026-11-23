@@ -7,6 +7,13 @@
  */
 export const BUSINESS_PLAN_VISIBLE = false;
 
+/**
+ * Auto PR stays "Coming soon" until the runner writes real fixes (D-24). Today it only
+ * commits a placeholder note, so paid plans must not promise it. Flip to true together
+ * with AUTOPR_ENABLED=true on the API to show credits, Run auto PR and the runs page again.
+ */
+export const AUTO_PR_VISIBLE = false;
+
 export type PlanId = "free" | "indie" | "studio" | "business";
 
 export type PlanInfo = {
@@ -62,7 +69,7 @@ export const PLANS: PlanInfo[] = [
         "Slack and GitHub Issues",
         "Public board and voting",
         "No Saidloop badge",
-        "Auto PR starter credits",
+        ...(AUTO_PR_VISIBLE ? ["Auto PR starter credits"] : []),
       ],
     },
   },

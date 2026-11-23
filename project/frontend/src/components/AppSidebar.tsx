@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { logout } from "@/lib/api";
 import { displayName, initials } from "@/lib/tickets";
-import { businessSurfacesVisible } from "@/lib/plans";
+import { AUTO_PR_VISIBLE, businessSurfacesVisible } from "@/lib/plans";
 import { formatUsage, type OrgUsage } from "@/lib/usage";
 
 export type AppSidebarActive =
@@ -100,6 +100,7 @@ export function AppSidebar({
           label="Auto PR runs"
           active={active === "auto-pr"}
           icon={<IconPullRequest />}
+          comingSoon={!AUTO_PR_VISIBLE}
         />
         <NavItem
           href="/app/board"
@@ -180,7 +181,8 @@ export function AppSidebar({
               />
             </div>
             {/* Free has no auto PR credits, so the line stays hidden there (D-02). */}
-            {(usage.auto_pr_credits ?? 0) > 0 || (usage.plan || plan) !== "free" ? (
+            {/* Auto PR is Coming soon (D-24): no credit line until the runner ships. */}
+            {AUTO_PR_VISIBLE && ((usage.auto_pr_credits ?? 0) > 0 || (usage.plan || plan) !== "free") ? (
               <div className="font-ds-ui text-[11px] text-[#A3A3A3]">
                 {typeof usage.auto_pr_credits === "number"
                   ? `${usage.auto_pr_credits} auto PR credit${usage.auto_pr_credits === 1 ? "" : "s"} left`
