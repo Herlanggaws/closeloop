@@ -33,6 +33,7 @@ type Props = {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   afterSwitcher?: ReactNode;
+  loading?: boolean;
 };
 
 export function AppSidebar({
@@ -48,6 +49,7 @@ export function AppSidebar({
   searchValue,
   onSearchChange,
   afterSwitcher,
+  loading = false,
 }: Props) {
   const reportsPct =
     usage && usage.reports.limit > 0
@@ -61,7 +63,7 @@ export function AppSidebar({
       data-pencil-name="Sidebar"
       className="box-border flex h-screen w-[248px] shrink-0 flex-col items-start gap-[2px] border-r border-[#17171714] bg-[#FAFAFA] p-3"
     >
-      <ProjectSwitcher projectName={projectName} plan={plan} email={email} usage={usage} />
+      <ProjectSwitcher projectName={projectName} plan={plan} email={email} usage={usage} loading={loading} />
 
       {afterSwitcher ?? (
         <div data-pencil-name="Search Wrap" className="flex w-full shrink-0 items-start p-[8px_0]">
@@ -192,7 +194,7 @@ export function AppSidebar({
           </div>
         )}
 
-        {email && (
+        {email ? (
           <div
             data-pencil-name="User"
             className="flex w-full items-center gap-2.5 px-1.5 pb-0.5 pt-2.5"
@@ -220,7 +222,16 @@ export function AppSidebar({
               <IconEllipsis className="h-4 w-4" />
             </button>
           </div>
-        )}
+        ) : loading ? (
+          <div
+            data-testid="sidebar-user-skeleton"
+            className="flex w-full items-center gap-2.5 px-1.5 pb-0.5 pt-2.5"
+            aria-hidden="true"
+          >
+            <div className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-[#1717170D]" />
+            <div className="h-3.5 w-24 animate-pulse rounded bg-[#1717170D]" />
+          </div>
+        ) : null}
       </div>
     </aside>
   );

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { InboxSkeleton } from "./InboxSkeleton.tsx";
+import { ProjectSwitcher, ProjectSwitcherSkeleton } from "./ProjectSwitcher.tsx";
 import { ReportDetailSkeleton } from "./ReportDetailSkeleton.tsx";
 import { Skeleton } from "./ui.tsx";
 
@@ -11,6 +12,23 @@ describe("Skeleton UI components", () => {
     const html = renderToStaticMarkup(<Skeleton className="h-4 w-12" />);
     assert.match(html, /animate-pulse/);
     assert.match(html, /h-4 w-12/);
+  });
+
+  describe("ProjectSwitcher skeleton", () => {
+    it("renders pulsating skeleton placeholder via ProjectSwitcherSkeleton", () => {
+      const html = renderToStaticMarkup(<ProjectSwitcherSkeleton />);
+      assert.match(html, /data-testid="project-switcher-skeleton"/);
+      assert.match(html, /animate-pulse/);
+    });
+
+    it("renders pulsating skeleton placeholder when ProjectSwitcher has loading=true", () => {
+      const html = renderToStaticMarkup(
+        <ProjectSwitcher projectName="Portfolio" loading={true} />
+      );
+      assert.match(html, /data-testid="project-switcher-skeleton"/);
+      assert.match(html, /animate-pulse/);
+      assert.doesNotMatch(html, /Portfolio/);
+    });
   });
 
   describe("InboxSkeleton", () => {

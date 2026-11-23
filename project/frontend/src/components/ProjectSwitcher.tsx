@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { projectInitial, displayName } from "@/lib/tickets";
@@ -26,14 +26,58 @@ type Props = {
   plan?: string;
   email?: string;
   usage?: OrgUsage;
+  loading?: boolean;
 };
 
-export function ProjectSwitcher({ projectName, plan = "free", email = "", usage }: Props) {
+export function ProjectSwitcherSkeleton() {
+  return (
+    <div
+      data-testid="project-switcher-skeleton"
+      className="flex w-full items-center gap-2.5 rounded-md p-1.5"
+      aria-hidden="true"
+    >
+      <div className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-[#1717170D]" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="h-3.5 w-24 animate-pulse rounded bg-[#1717170D]" />
+        <div className="h-2.5 w-16 animate-pulse rounded bg-[#17171708]" />
+      </div>
+      <div className="h-3.5 w-3.5 shrink-0 animate-pulse rounded bg-[#17171708]" />
+    </div>
+  );
+}
+
+export function ProjectSwitcher({
+  projectName,
+  plan = "free",
+  email = "",
+  usage,
+  loading = false,
+}: Props) {
+  if (loading) {
+    return <ProjectSwitcherSkeleton />;
+  }
+
+  return (
+    <ProjectSwitcherMenu
+      projectName={projectName}
+      plan={plan}
+      email={email}
+      usage={usage}
+    />
+  );
+}
+
+function ProjectSwitcherMenu({
+  projectName,
+  plan = "free",
+  email = "",
+  usage,
+}: Omit<Props, "loading">) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [fetchedUsage, setFetchedUsage] = useState<OrgUsage | undefined>(usage);
-  const [loading, setLoading] = useState(false);
+  const [menuLoading, setMenuLoading] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const selectedId =
     typeof window !== "undefined" ? localStorage.getItem("closeloop_project") || "" : "";
@@ -57,7 +101,7 @@ export function ProjectSwitcher({ projectName, plan = "free", email = "", usage 
   }, [open]);
 
   async function loadMenu() {
-    setLoading(true);
+    setMenuLoading(true);
     try {
       const [listRes, meRes] = await Promise.all([
         api<{ projects: ProjectRow[] }>("/api/projects"),
@@ -68,7 +112,7 @@ export function ProjectSwitcher({ projectName, plan = "free", email = "", usage 
     } catch {
       setProjects([]);
     } finally {
-      setLoading(false);
+      setMenuLoading(false);
     }
   }
 
@@ -141,10 +185,10 @@ export function ProjectSwitcher({ projectName, plan = "free", email = "", usage 
           className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-lg border border-[#1717171F] bg-white shadow-[0_8px_24px_#00000014]"
         >
           <div className="max-h-56 overflow-y-auto py-1">
-            {loading && (
+            {menuLoading && (
               <div className="px-3 py-2 font-ds-ui text-[12px] text-[#A3A3A3]">Loading…</div>
             )}
-            {!loading &&
+            {!menuLoading &&
               projects.map((p) => {
                 const id = idOf(p);
                 const name = nameOf(p);
