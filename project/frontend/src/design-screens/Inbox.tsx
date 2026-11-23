@@ -328,6 +328,7 @@ export function Inbox() {
         inboxCount={filtered.length}
         searchValue={search}
         onSearchChange={setSearch}
+        loading={!project || !me}
       />
 
       <main className="flex min-h-screen min-w-0 flex-1 flex-col">

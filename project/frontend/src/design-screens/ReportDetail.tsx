@@ -372,6 +372,7 @@ export function ReportDetail() {
         userName={me?.user?.name}
         avatarUrl={me?.user?.avatar_url}
         active="inbox"
+        loading={!project || !me}
       />
 
       <main className="flex min-h-screen min-w-0 flex-1 flex-col">
