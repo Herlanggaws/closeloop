@@ -135,7 +135,7 @@ Saidloop.init({ key: "${key}", api: "${API_URL}" });`,
       return {
         fileLabel: "build.gradle.kts",
         description: "Add the Kotlin SDK, then init with your public key in Application.onCreate.",
-        code: `implementation("ai.closeloop:sdk:0.1.0")
+        code: `implementation("com.saidloop:android:0.1.0")
 
 // Application.onCreate
 Saidloop.init(this, "${key}", api = "${API_URL}")`,
@@ -145,7 +145,7 @@ Saidloop.init(this, "${key}", api = "${API_URL}")`,
         fileLabel: "AppDelegate.swift",
         description: "Add the Swift Package, then start with your public key.",
         code: `// Package.swift / Xcode → Add Package
-// https://github.com/closeloop/closeloop-ios
+// https://github.com/XERV-Project/saidloop-ios
 
 import Saidloop
 
@@ -156,18 +156,23 @@ Saidloop.start(key: "${key}", api: URL(string: "${API_URL}")!)`,
         fileLabel: "pubspec.yaml",
         description: "Add the Flutter package; it forwards to the native Android and iOS SDKs.",
         code: `dependencies:
-  closeloop: ^0.1.0
+  saidloop_flutter: ^0.1.0
+
+# ios/Podfile, inside target 'Runner' (until the iOS SDK is on CocoaPods trunk)
+pod 'Saidloop', :git => 'https://github.com/XERV-Project/saidloop-ios.git', :tag => '0.1.0'
 
 // main.dart
+import 'package:saidloop_flutter/saidloop_flutter.dart';
+
 await Saidloop.init(key: "${key}", api: "${API_URL}");`,
       };
     case "react-native":
       return {
         fileLabel: "App.tsx",
         description: "Install the npm package; it wraps the native SDKs (Expo config plugin supported).",
-        code: `npm install @closeloop/react-native
+        code: `npm install @saidloop/react-native
 
-import { Saidloop } from "@closeloop/react-native";
+import { Saidloop } from "@saidloop/react-native";
 
 Saidloop.init({ key: "${key}", api: "${API_URL}" });`,
       };
@@ -221,13 +226,13 @@ function buildMaskSnippet(method: InstallMethod): { fileLabel: string; code: str
       return {
         fileLabel: "BalanceView.kt",
         code: `// Mark the view before capture
-view.closeloopMask = true`,
+view.saidloopMask = true`,
       };
     case "ios":
       return {
         fileLabel: "BalanceView.swift",
         code: `// Mark the view before capture
-view.closeloopMask = true`,
+view.saidloopMask = true`,
       };
     case "flutter":
       return {
@@ -294,7 +299,7 @@ export function buildSnippet(platform: string, publicKey: string): string {
   switch (platform) {
     case "android":
       return `// build.gradle.kts
-implementation("ai.closeloop:sdk:0.1.0")
+implementation("com.saidloop:android:0.1.0")
 
 // Application.onCreate
 Saidloop.init(this, "${key}", api = "${API_URL}")
@@ -302,7 +307,7 @@ Saidloop.identify(userId = "user_123", appVersion = "1.0.0")
 // Saidloop.show() // or enable shake`;
     case "ios":
       return `// Package.swift / Xcode → Add Package
-// https://github.com/closeloop/closeloop-ios
+// https://github.com/XERV-Project/saidloop-ios
 
 import Saidloop
 
@@ -312,16 +317,18 @@ Saidloop.identify(userId: "user_123", appVersion: "1.0.0")
     case "flutter":
       return `# pubspec.yaml
 dependencies:
-  closeloop: ^0.1.0
+  saidloop_flutter: ^0.1.0
 
 // main.dart
+import 'package:saidloop_flutter/saidloop_flutter.dart';
+
 await Saidloop.init(key: "${key}", api: "${API_URL}");
 Saidloop.identify(userId: "user_123", appVersion: "1.0.0");
 // Saidloop.show();`;
     case "react-native":
-      return `npm install @closeloop/react-native
+      return `npm install @saidloop/react-native
 
-import { Saidloop } from "@closeloop/react-native";
+import { Saidloop } from "@saidloop/react-native";
 
 Saidloop.init({ key: "${key}", api: "${API_URL}" });
 Saidloop.identify({ userId: "user_123", appVersion: "1.0.0" });

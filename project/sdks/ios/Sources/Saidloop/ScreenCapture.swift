@@ -5,10 +5,16 @@ import UIKit
 private var maskKey: UInt8 = 0
 
 public extension UIView {
-    /// Hide this view in Saidloop screenshots: `view.closeloopMask = true`.
-    var closeloopMask: Bool {
+    /// Hide this view in Saidloop screenshots: `view.saidloopMask = true`.
+    var saidloopMask: Bool {
         get { (objc_getAssociatedObject(self, &maskKey) as? Bool) ?? false }
         set { objc_setAssociatedObject(self, &maskKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+    }
+
+    @available(*, deprecated, renamed: "saidloopMask")
+    var closeloopMask: Bool {
+        get { saidloopMask }
+        set { saidloopMask = newValue }
     }
 }
 
@@ -32,7 +38,7 @@ enum ScreenCapture {
 
     private static func collect(_ view: UIView, in window: UIWindow, maskTextInputs: Bool, into out: inout [CGRect]) {
         guard !view.isHidden, view.alpha > 0.01 else { return }
-        if view.closeloopMask || (maskTextInputs && (view is UITextField || view is UITextView)) {
+        if view.saidloopMask || (maskTextInputs && (view is UITextField || view is UITextView)) {
             out.append(view.convert(view.bounds, to: window))
             return
         }

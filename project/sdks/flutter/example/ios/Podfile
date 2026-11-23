@@ -31,8 +31,14 @@ target 'Runner' do
   use_frameworks!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-  # Native Saidloop iOS SDK from this repo until it is published.
-  pod 'Saidloop', :path => '../../../ios'
+  # Native Saidloop iOS SDK: the monorepo copy when this example lives in it,
+  # otherwise the public release repo (not on CocoaPods trunk yet).
+  monorepo_ios = File.expand_path('../../../ios', __dir__)
+  if File.exist?(File.join(monorepo_ios, 'Saidloop.podspec'))
+    pod 'Saidloop', :path => monorepo_ios
+  else
+    pod 'Saidloop', :git => 'https://github.com/XERV-Project/saidloop-ios.git', :tag => '0.1.0'
+  end
   target 'RunnerTests' do
     inherit! :search_paths
   end

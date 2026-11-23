@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { subscribeWidgetSubmitted } from "@/lib/widget-events";
 import { AppSidebar } from "@/components/AppSidebar";
+import { InboxSkeleton } from "@/components/InboxSkeleton";
 import { Tour } from "@/components/coach/Tour";
 import { API_URL, api, clearProjectSelection } from "@/lib/api";
 import { onboardingChecklist } from "@/lib/onboarding-checklist";
@@ -311,6 +312,8 @@ export function Inbox() {
   const plan = me?.org.plan || "free";
   const email = me?.user.email || "";
 
+  const isInitialLoading = loading && tickets.length === 0;
+
   return (
     <div className="box-border flex min-h-screen w-full bg-white">
       <Tour id="inbox" ready={!loading} />
@@ -333,9 +336,13 @@ export function Inbox() {
             <h1 className="font-ds-sans text-lg font-semibold tracking-[-0.36px] text-[#171717]">
               Inbox
             </h1>
-            <span className="rounded-full bg-[#F5F5F5] px-1.5 py-px font-ds-mono text-[11px] text-[#737373]">
-              {openCountLabel}
-            </span>
+            {isInitialLoading ? (
+              <span className="inline-block h-4 w-10 animate-pulse rounded-full bg-[#1717170D]" />
+            ) : (
+              <span className="rounded-full bg-[#F5F5F5] px-1.5 py-px font-ds-mono text-[11px] text-[#737373]">
+                {openCountLabel}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {selected.size >= 2 && (
@@ -385,7 +392,7 @@ export function Inbox() {
                       : "bg-transparent text-[#737373] hover:text-[#171717]"
                   }`}
                 >
-                  {tab.label} {count}
+                  {tab.label} {isInitialLoading ? "" : count}
                 </button>
               );
             })}
@@ -406,20 +413,27 @@ export function Inbox() {
           </div>
         )}
 
-        {loading ? (
-          <div className="grid flex-1 place-items-center font-ds-ui text-sm text-[#737373]">
-            Loading reports…
-          </div>
+        {isInitialLoading ? (
+          <InboxSkeleton rows={8} hasRepos={repos.length > 0} />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            projectName={projectName}
-            plan={me?.org.plan || "free"}
-            usage={me?.usage}
-            onSendTest={sendTestReport}
-            sending={sendingTest}
-          />
+          loading ? (
+            <InboxSkeleton rows={5} hasRepos={repos.length > 0} />
+          ) : (
+            <EmptyState
+              projectName={projectName}
+              plan={me?.org.plan || "free"}
+              usage={me?.usage}
+              onSendTest={sendTestReport}
+              sending={sendingTest}
+            />
+          )
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-auto">
+            {loading && (
+              <div className="sticky top-0 z-20 h-0.5 w-full overflow-hidden bg-[#266DF0]/20">
+                <div className="h-full w-full animate-pulse bg-[#266DF0]" />
+              </div>
+            )}
             <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-[#17171714] bg-[#FAFAFA] px-6 py-2 font-ds-ui text-[11px] text-[#A3A3A3]">
               <span className="w-4 shrink-0" />
               <span className="flex-1">Report</span>

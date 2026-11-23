@@ -3,10 +3,10 @@ plugins {
 }
 
 android {
-    namespace = "ai.closeloop.sample"
+    namespace = "com.saidloop.sample"
     compileSdk = 36
     defaultConfig {
-        applicationId = "ai.closeloop.sample"
+        applicationId = "com.saidloop.sample"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
