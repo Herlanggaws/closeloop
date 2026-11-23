@@ -1,4 +1,4 @@
-package ai.closeloop.sdk
+package com.saidloop.sdk
 
 import android.content.Context
 import androidx.work.BackoffPolicy

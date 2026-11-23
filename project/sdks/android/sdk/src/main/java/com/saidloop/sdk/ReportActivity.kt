@@ -1,4 +1,4 @@
-package ai.closeloop.sdk
+package com.saidloop.sdk
 
 import android.app.Activity
 import android.content.Context
@@ -105,7 +105,7 @@ class ReportActivity : Activity() {
             textSize = 15f
             background = rounded(Color.WHITE, 10f, stroke = Color.rgb(212, 212, 212))
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            closeloopMask = false
+            saidloopMask = false
             addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                     send.isEnabled = !s.isNullOrBlank()

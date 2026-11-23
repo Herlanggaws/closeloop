@@ -1,7 +1,7 @@
-package ai.closeloop.sample
+package com.saidloop.sample
 
-import ai.closeloop.sdk.Saidloop
-import ai.closeloop.sdk.closeloopMask
+import com.saidloop.sdk.Saidloop
+import com.saidloop.sdk.saidloopMask
 import android.app.Activity
 import android.os.Bundle
 import android.widget.Button
@@ -19,7 +19,7 @@ class MainActivity : Activity() {
         root.addView(TextView(this).apply {
             text = "Rp 12.450.000"
             textSize = 32f
-            closeloopMask = true // hidden in screenshots
+            saidloopMask = true // hidden in screenshots
         })
         root.addView(Button(this).apply {
             text = "Report a problem"
