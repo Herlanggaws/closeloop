@@ -302,3 +302,34 @@ func TestWidgetSettingsBranding(t *testing.T) {
 		t.Fatalf("downgraded accent should fall back: %v", cfg["widget"])
 	}
 }
+
+// D-20 (revised 23 Nov): the public board footer badge shows on Free boards only.
+func TestPlan_BoardBadgeFreeOnly(t *testing.T) {
+	h := newReportHarness(t)
+	for _, tc := range []struct {
+		plan string
+		want bool
+	}{{"free", true}, {"indie", false}, {"studio", false}} {
+		seed := h.seedUserProject(tc.plan)
+		code, body := h.do(http.MethodGet, "/api/projects/"+seed.ProjectID, nil, h.authHeaders(seed.AccessToken))
+		if code != 200 {
+			t.Fatalf("%s get project: %d %v", tc.plan, code, body)
+		}
+		slug, _ := body["project"].(map[string]any)["board_slug"].(string)
+		code, pub := h.do(http.MethodGet, "/api/public/boards/"+slug, nil, nil)
+		if code != 200 {
+			t.Fatalf("%s public board: %d %v", tc.plan, code, pub)
+		}
+		project := pub["project"].(map[string]any)
+		if project["badge"] != tc.want {
+			t.Fatalf("%s board badge = %v, want %v", tc.plan, project["badge"], tc.want)
+		}
+		url, _ := project["badge_url"].(string)
+		if tc.want && !strings.Contains(url, "utm_medium=board") {
+			t.Fatalf("%s badge_url = %q", tc.plan, url)
+		}
+		if !tc.want && url != "" {
+			t.Fatalf("%s should have no badge_url: %q", tc.plan, url)
+		}
+	}
+}

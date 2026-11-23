@@ -18,6 +18,9 @@ export type PublicIdea = {
 export type PublicProject = {
   name: string;
   board_slug: string;
+  /** True on Free boards only: shows the "Powered by Saidloop" footer (D-20). */
+  badge?: boolean;
+  badge_url?: string;
 };
 
 export const STATUS_LABEL: Record<string, string> = {
@@ -104,10 +107,11 @@ export function PublicBoardHeader({
   );
 }
 
-export function PublicBoardFooter() {
+export function PublicBoardFooter({ project }: { project: PublicProject | null }) {
+  if (!project?.badge) return null;
   return (
     <footer className="flex items-center justify-center gap-2 pb-10 pt-4">
-      <Link href="/" className="inline-flex items-center gap-2 no-underline opacity-70 hover:opacity-100">
+      <Link href={project.badge_url || "/"} className="inline-flex items-center gap-2 no-underline opacity-70 hover:opacity-100">
         <SaidloopLogo href={null} height={16} />
         <span className="font-ds-ui text-[12px] text-[#737373]">Powered by Saidloop</span>
       </Link>

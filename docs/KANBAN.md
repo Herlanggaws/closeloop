@@ -247,11 +247,13 @@ Fase C · multi-repo — udah di-merge ke dev 20 Nov (migrasi `023`). Yang masih
 
 Fase D · menunggu keputusan (jangan dikerjakan dulu)
 Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5).
-- [x] D-20 Badge "Powered by Saidloop" di form/sent/banner/email cuma di Free (`s67yG`), sedangkan animasi hover `"Feedback by Saidloop"` di tombol launcher widget (`button.fab`) **selalu ditampilkan di semua plan** (Free, Indie, Studio, Business): `/v1/ingest/config` kirim `badge` + `badge_url` (UTM `utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`), widget tampilkan footer `Powered by Saidloop` di form, sent, banner pada Free (dicek ulang tiap 1 menit), tapi hover `"Feedback by Saidloop"` di tombol launcher selalu aktif di semua tier. Diputusin Herlangga 22 Nov
+- [x] D-20 Badge "Powered by Saidloop" di form/sent/banner/email, hover `"Feedback by Saidloop"` di tombol launcher widget (`button.fab`), dan footer "Powered by Saidloop" di public board **cuma di Free**. `/v1/ingest/config` kirim `badge` + `badge_url` (UTM `utm_source=badge&utm_medium={surface}&utm_campaign={project_id}`), `/api/public/boards/:slug` kirim `project.badge` + `badge_url` (`utm_medium=board`). Diputusin ulang Herlangga 23 Nov (sebelumnya 22 Nov: hover launcher tampil di semua plan). Dijaga `R-UI-24` + `TestPlan_BoardBadgeFreeOnly`
 - [x] D-21 Seat Indie = 2 sejak 22 Nov (awalnya 1, detail berikut dari 19 Nov) + S-14 v2 (`APr9x`): subjudul `x of 1 seat used`, banner merah `Invite not sent. Indie includes 1 seat.` + `Upgrade to Studio`, header Members `over the Indie seat limit`. Diputusin Herlangga 19 Nov
 - [x] D-23 Landing full-width di layar lebar (22 Nov): banner, nav, background section dan footer full-bleed, konten tetap max 1280px di tengah; tombol hero `Join the waitlist` nggak abu-abu/disabled lagi waktu email kosong (validasi pakai `required` + `type=email`). Belum di-deploy ke prod.
 - [x] D-24 Auto PR jadi "Coming soon" sebelum rilis Indie (23 Nov). Runner sekarang cuma commit file catatan `.saidloop/autopr-*.md`, belum ada fix dari AI, jadi gak boleh dijanjiin ke plan berbayar. Flag frontend `AUTO_PR_VISIBLE=false` (`lib/plans.ts`): item "Auto PR starter credits" dihapus dari Indie, landing (kartu AI auto PR + strip credits) jadi Coming soon dan contoh root cause jadi "Preview", nav Auto PR runs jadi Soon, `/app/auto-pr` nampilin Coming soon, tombol Run auto PR disabled, baris credits di sidebar + Billing diumpetin, tour auto-pr mati, toggle read access repo disabled, copy GitHub App/GitLab di Integrations gak nyebut Auto PR. Backend: `POST /api/tickets/:id/autopr` balikin 409 `AUTOPR_UNAVAILABLE` kecuali `AUTOPR_ENABLED=true`, dan worker gak dapet executor (run nyangkut = failed + refund). Starter 10 credits tetep ke-seed diam-diam. Terms gak nyebut nama payment provider lagi. Test: `TestAutopr_DisabledByDefault`, `plans.test.ts`, R-UI-06 + R-UI-22
 - [ ] Nyalain lagi Auto PR (balikin D-24) setelah runner beneran nulis fix: `AUTO_PR_VISIBLE=true` + `AUTOPR_ENABLED=true`
+- [ ] Downgrade Indie → Free masih bocor (audit 23 Nov): Slack tetep posting (worker `notifySlack` gak cek plan), public board tetep publik, project/seat lebih tetep ada. Cuma koneksi/publish baru yang diblok
+- [ ] "3 months free for early access" di kartu Indie landing belum ada di kode: harus diset sebagai diskon/trial di payment provider sebelum jualan
 
 ---
 
@@ -262,7 +264,7 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 - [ ] Domain final (code and snippets still use `closeloop.dev`)
 - [x] Seat Indie: 2, harga $15 (diputusin 22 Nov; sebelumnya 1 seat dan $12)
 - [ ] `closeloop.pen` belum ikut: S-01 pricing, S-06 checklist, S-14 v2, S-15 masih $12 / 1 seat
-- [x] Badge "Powered by Saidloop" di form/sent/banner/email cuma di Free, sedangkan animasi hover `"Feedback by Saidloop"` di tombol launcher widget (`button.fab`) **selalu tampil di semua plan** termasuk Indie/Studio/Business (diputusin Herlangga 22 Nov; dijaga `R-UI-24`)
+- [x] Badge Saidloop (form/sent/banner/email, hover launcher, footer public board) cuma di Free; Indie ke atas bersih (diputusin ulang Herlangga 23 Nov; dijaga `R-UI-24`, `TestPlan_BoardBadgeFreeOnly`)
 - [ ] Kuota Free tetap 50?
 - [ ] Angka repo per project (3 / 5 / 10) — validate in M0 interviews
 - [ ] Basis repo: fork pola Bear Budget Go vs clean (current: new repo)
