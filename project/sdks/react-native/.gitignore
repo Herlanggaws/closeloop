@@ -1,3 +1,8 @@
 node_modules/
 android/build/
 android/.gradle/
+android/.idea/
+ios/build/
+*.tgz
+coverage/
+.DS_Store

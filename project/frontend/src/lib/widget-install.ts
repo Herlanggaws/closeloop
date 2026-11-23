@@ -165,9 +165,9 @@ await Saidloop.init(key: "${key}", api: "${API_URL}");`,
       return {
         fileLabel: "App.tsx",
         description: "Install the npm package; it wraps the native SDKs (Expo config plugin supported).",
-        code: `npm install @closeloop/react-native
+        code: `npm install @saidloop/react-native
 
-import { Saidloop } from "@closeloop/react-native";
+import { Saidloop } from "@saidloop/react-native";
 
 Saidloop.init({ key: "${key}", api: "${API_URL}" });`,
       };
@@ -319,9 +319,9 @@ await Saidloop.init(key: "${key}", api: "${API_URL}");
 Saidloop.identify(userId: "user_123", appVersion: "1.0.0");
 // Saidloop.show();`;
     case "react-native":
-      return `npm install @closeloop/react-native
+      return `npm install @saidloop/react-native
 
-import { Saidloop } from "@closeloop/react-native";
+import { Saidloop } from "@saidloop/react-native";
 
 Saidloop.init({ key: "${key}", api: "${API_URL}" });
 Saidloop.identify({ userId: "user_123", appVersion: "1.0.0" });

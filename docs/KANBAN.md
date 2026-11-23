@@ -98,6 +98,8 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] **F3** Dogfood on Bear Budget KMP
 - [x] **F7** Flutter package — `project/sdks/flutter` (Nov 20). Dites di emulator Android dan Simulator iOS: lapor masuk, `SaidloopMask` ketutup di screenshot. 4/4 test Dart. Belum: publish ke pub.dev (butuh SDK native ke Maven Central/CocoaPods dulu)
 - [x] **F7** React Native + Expo config plugin — `project/sdks/react-native` (Nov 20). Dites di emulator Android dan Simulator iOS (RN 0.76): lapor + mask + antrean offline jalan; plugin Expo dites lewat `expo prebuild` (minSdk 24, gak nurunin target iOS); JS 7/7. Belum: publish ke npm
+- [x] **F7** React Native SDK punya repo rilis sendiri: [XERV-Project/saidloop-react-native](https://github.com/XERV-Project/saidloop-react-native) (23 Nov). History `project/sdks/react-native` dibawa lewat `git subtree split`, lisensi MIT. Nama npm jadi `@saidloop/react-native` (dulu `@closeloop/react-native`), podspec jadi `saidloop-react-native` dengan tag semver polos. Snippet install RN di app/docs udah pakai nama baru. Monorepo tetap sumber kode; sync = copy file `project/sdks/react-native` lalu commit di main repo rilis (cek `diff -r -x .git -x node_modules`)
+- [ ] Publish `@saidloop/react-native` ke npm (butuh akun/org npm `saidloop`) + tag `0.1.0` (nunggu Herlangga). Catatan: tanpa SDK Android di Maven Central dan pod `Saidloop` di trunk, user luar harus pasang native SDK manual (udah ditulis di README)
 - [ ] **Multi-repo** see section below (R1–R3 ship with M2)
 
 #### M3 · Tool tim & publik (F8, F9, F11)

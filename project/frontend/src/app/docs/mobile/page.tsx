@@ -29,8 +29,12 @@ export default function MobileDocsPage() {
 
         <h2>React Native</h2>
         <p>
-          Install the npm package; it wraps the native SDKs (Expo config plugin supported). Package
-          name is still <code>@closeloop/react-native</code> during early access.
+          Install the npm package; it wraps the native SDKs (Expo config plugin supported). Source
+          and setup notes:{" "}
+          <a href="https://github.com/XERV-Project/saidloop-react-native">
+            XERV-Project/saidloop-react-native
+          </a>
+          .
         </p>
         <CodeBlock>{docsSnippet("react-native")}</CodeBlock>
 
