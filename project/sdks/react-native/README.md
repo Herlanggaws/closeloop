@@ -25,7 +25,7 @@ The native SDKs are not on Maven Central or the CocoaPods trunk yet, so the app 
   pod 'Saidloop', :git => 'https://github.com/XERV-Project/saidloop-ios.git', :tag => '0.1.0'
   ```
 
-- **Android**: the module depends on `ai.closeloop:sdk:0.1.0` and resolves it from `mavenLocal()`. Until it is published, build it from the Saidloop Android SDK with `./gradlew :sdk:publishToMavenLocal` and add `mavenLocal()` to your app's repositories.
+- **Android**: the module depends on `com.saidloop:android:0.1.0` and resolves it from `mavenLocal()`. Until it is published, run `./gradlew publishToMavenLocal` in the Saidloop Android SDK and add `mavenLocal()` to your app's repositories.
 
 This section goes away once the native SDKs are published.
 
