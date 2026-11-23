@@ -255,6 +255,7 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 - [x] Downgrade Indie → Free (audit 23 Nov, disetujui Herlangga): Slack berhenti posting (worker `notifySlack` cek plan, koneksi sebelum gating tetep jalan), public board + vote/komentar/suggest jadi 404 di bawah Indie. Data dan koneksi tetep, nyala lagi pas upgrade. Test: `TestR_SLACK_07_DowngradePausesSlack`, `TestPlan_DowngradeHidesBoard`
 - [ ] Downgrade: project/seat yang lebih dari limit Free tetep ada (cuma bikin baru yang diblok). Belum diputusin
 - [ ] Free: tombol "Open" board di Project settings masih ngarah ke board yang sekarang 404. Ganti jadi Upgrade/hint
+- [x] Tombol "Log in" balik lagi di nav landing (desktop + menu mobile) ke `/login`, buat jualan Indie (23 Nov). Test: `landing nav has a Log in link` di `e2e/marketing.spec.ts`
 - [ ] "3 months free for early access" di kartu Indie landing belum ada di kode: harus diset sebagai diskon/trial di payment provider sebelum jualan
 
 ---
