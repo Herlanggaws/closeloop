@@ -128,6 +128,34 @@ func (s *Store) RequireBoardPublish(ctx context.Context, projectID string) error
 	return &PremiumRequiredError{Feature: "Public board", RequiredPlan: "indie"}
 }
 
+// BoardLive reports whether a public board is served. Boards of orgs below Indie
+// (for example after a downgrade) go private: ideas, votes and comments are kept
+// and come back on upgrade.
+func (s *Store) BoardLive(ctx context.Context, slug string) (bool, error) {
+	var plan string
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT o.plan FROM projects p JOIN organizations o ON o.id = p.org_id
+		WHERE p.board_slug=$1 AND p.deleted_at IS NULL`, slug).Scan(&plan)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return BoardAllowed(plan), nil
+}
+
+// SlackAllowedForProject reports whether Slack notifications may post for a project:
+// Indie and up, or a connection made before plan gating shipped (grandfathered).
+func (s *Store) SlackAllowedForProject(ctx context.Context, projectID string) (bool, error) {
+	err := s.RequireIntegrationUse(ctx, projectID, "slack", "slack")
+	var premium *PremiumRequiredError
+	if errors.As(err, &premium) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func integrationFeatureName(provider string) string {
 	switch provider {
 	case "slack":

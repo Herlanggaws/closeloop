@@ -348,7 +348,7 @@ export function PublicIdeaDetailView({ slug, ideaId }: { slug: string; ideaId: s
         )}
       </main>
 
-      <PublicBoardFooter />
+      <PublicBoardFooter project={project} />
 
       {voteOpen && idea ? (
         <VoteEmailModal

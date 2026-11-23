@@ -42,6 +42,9 @@ func truncatePublicDescription(raw string) string {
 type PublicBoard struct {
 	Name      string `json:"name"`
 	BoardSlug string `json:"board_slug"`
+	// Badge is true on Free boards, which show the "Powered by Saidloop" footer (D-20).
+	Badge    bool   `json:"badge"`
+	BadgeURL string `json:"badge_url,omitempty"`
 }
 
 func NormalizeBoardSlug(raw string) (string, error) {

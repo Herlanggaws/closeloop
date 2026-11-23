@@ -264,7 +264,7 @@ export function PublicBoardView({ slug }: { slug: string }) {
         )}
       </main>
 
-      <PublicBoardFooter />
+      <PublicBoardFooter project={project} />
     </div>
   );
 }
