@@ -20,6 +20,18 @@ test.describe("Marketing pages smoke", () => {
     });
   }
 
+  test("landing nav has a Log in link on desktop and mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/");
+    const nav = page.locator("#nav");
+    await expect(nav.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await nav.getByRole("button", { name: "Open menu" }).click();
+    const menu = page.locator("#mobile-nav-menu");
+    await menu.getByRole("link", { name: "Log in" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+  });
+
   test("landing footer links to privacy and docs", async ({ page }) => {
     await page.goto("/");
     const footer = page.locator("#footer");
