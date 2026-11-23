@@ -1,4 +1,4 @@
-package ai.closeloop.sdk
+package com.saidloop.sdk
 
 import android.annotation.SuppressLint
 import android.content.Context

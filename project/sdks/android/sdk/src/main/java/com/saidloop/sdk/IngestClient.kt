@@ -1,4 +1,4 @@
-package ai.closeloop.sdk
+package com.saidloop.sdk
 
 import java.io.IOException
 import java.net.HttpURLConnection

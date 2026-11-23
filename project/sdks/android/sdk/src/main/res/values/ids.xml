@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <item name="closeloop_mask" type="id" />
+    <item name="saidloop_mask" type="id" />
 </resources>

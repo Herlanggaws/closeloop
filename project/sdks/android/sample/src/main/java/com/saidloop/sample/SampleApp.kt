@@ -1,6 +1,6 @@
-package ai.closeloop.sample
+package com.saidloop.sample
 
-import ai.closeloop.sdk.Saidloop
+import com.saidloop.sdk.Saidloop
 import android.app.Application
 
 class SampleApp : Application() {
