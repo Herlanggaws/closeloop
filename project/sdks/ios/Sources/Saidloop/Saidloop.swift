@@ -12,7 +12,7 @@ import UIKit
 /// Saidloop.start(key: "pk_…", api: URL(string: "https://<your API host>")!)
 /// Saidloop.identify(userId: user.id, email: user.email, appVersion: "2.4.1")
 /// Saidloop.show() // or shake the phone
-/// balanceLabel.closeloopMask = true
+/// balanceLabel.saidloopMask = true
 /// ```
 @MainActor
 public enum Saidloop {

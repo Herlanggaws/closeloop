@@ -145,7 +145,7 @@ Saidloop.init(this, "${key}", api = "${API_URL}")`,
         fileLabel: "AppDelegate.swift",
         description: "Add the Swift Package, then start with your public key.",
         code: `// Package.swift / Xcode → Add Package
-// https://github.com/closeloop/closeloop-ios
+// https://github.com/XERV-Project/saidloop-ios
 
 import Saidloop
 
@@ -227,7 +227,7 @@ view.closeloopMask = true`,
       return {
         fileLabel: "BalanceView.swift",
         code: `// Mark the view before capture
-view.closeloopMask = true`,
+view.saidloopMask = true`,
       };
     case "flutter":
       return {
@@ -302,7 +302,7 @@ Saidloop.identify(userId = "user_123", appVersion = "1.0.0")
 // Saidloop.show() // or enable shake`;
     case "ios":
       return `// Package.swift / Xcode → Add Package
-// https://github.com/closeloop/closeloop-ios
+// https://github.com/XERV-Project/saidloop-ios
 
 import Saidloop
 
