@@ -1,6 +1,6 @@
 package ai.closeloop.closeloop
 
-import ai.closeloop.sdk.Saidloop
+import com.saidloop.sdk.Saidloop
 import android.content.Context
 import android.graphics.Rect
 import io.flutter.embedding.engine.plugins.FlutterPlugin

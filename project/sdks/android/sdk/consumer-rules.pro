@@ -1,2 +1,2 @@
--keep class ai.closeloop.sdk.Saidloop { *; }
--keep class ai.closeloop.sdk.FlushWorker { *; }
+-keep class com.saidloop.sdk.Saidloop { *; }
+-keep class com.saidloop.sdk.FlushWorker { *; }

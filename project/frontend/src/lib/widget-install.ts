@@ -135,7 +135,7 @@ Saidloop.init({ key: "${key}", api: "${API_URL}" });`,
       return {
         fileLabel: "build.gradle.kts",
         description: "Add the Kotlin SDK, then init with your public key in Application.onCreate.",
-        code: `implementation("ai.closeloop:sdk:0.1.0")
+        code: `implementation("com.saidloop:android:0.1.0")
 
 // Application.onCreate
 Saidloop.init(this, "${key}", api = "${API_URL}")`,
@@ -221,7 +221,7 @@ function buildMaskSnippet(method: InstallMethod): { fileLabel: string; code: str
       return {
         fileLabel: "BalanceView.kt",
         code: `// Mark the view before capture
-view.closeloopMask = true`,
+view.saidloopMask = true`,
       };
     case "ios":
       return {
@@ -294,7 +294,7 @@ export function buildSnippet(platform: string, publicKey: string): string {
   switch (platform) {
     case "android":
       return `// build.gradle.kts
-implementation("ai.closeloop:sdk:0.1.0")
+implementation("com.saidloop:android:0.1.0")
 
 // Application.onCreate
 Saidloop.init(this, "${key}", api = "${API_URL}")

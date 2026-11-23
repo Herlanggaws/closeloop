@@ -1,4 +1,4 @@
-package ai.closeloop.sdk
+package com.saidloop.sdk
 
 import android.app.Activity
 import android.graphics.Bitmap
@@ -16,12 +16,17 @@ import android.view.ViewGroup
 import android.widget.EditText
 import java.io.ByteArrayOutputStream
 
-private val MASK_TAG = R.id.closeloop_mask
+private val MASK_TAG = R.id.saidloop_mask
 
-/** Mark a view so it is covered in screenshots: `view.closeloopMask = true`. */
-var View.closeloopMask: Boolean
+/** Mark a view so it is covered in screenshots: `view.saidloopMask = true`. */
+var View.saidloopMask: Boolean
     get() = getTag(MASK_TAG) == true
     set(value) = setTag(MASK_TAG, value)
+
+@Deprecated("Renamed to saidloopMask", ReplaceWith("saidloopMask"))
+var View.closeloopMask: Boolean
+    get() = saidloopMask
+    set(value) { saidloopMask = value }
 
 /** Masked areas as screen-relative rects, computed before capture. */
 internal object ScreenCapture {
@@ -97,7 +102,7 @@ internal object ScreenCapture {
 
     private fun collectMasks(view: View, maskTextInputs: Boolean, out: MutableList<Rect>) {
         if (view.visibility != View.VISIBLE) return
-        if (view.closeloopMask || (maskTextInputs && view is EditText)) {
+        if (view.saidloopMask || (maskTextInputs && view is EditText)) {
             val loc = IntArray(2)
             view.getLocationInWindow(loc)
             out += Rect(loc[0], loc[1], loc[0] + view.width, loc[1] + view.height)

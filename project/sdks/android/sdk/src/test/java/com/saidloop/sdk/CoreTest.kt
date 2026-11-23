@@ -1,4 +1,4 @@
-package ai.closeloop.sdk
+package com.saidloop.sdk
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

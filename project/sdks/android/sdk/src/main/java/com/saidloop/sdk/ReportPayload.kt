@@ -1,4 +1,4 @@
-package ai.closeloop.sdk
+package com.saidloop.sdk
 
 /**
  * One report as sent to `POST /v1/ingest/reports`. Pure Kotlin so it can be queued
