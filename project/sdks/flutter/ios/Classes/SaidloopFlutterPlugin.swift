@@ -3,10 +3,10 @@ import Saidloop
 import UIKit
 
 /// Forwards the Dart `Saidloop` calls to the native iOS SDK.
-public class CloseloopPlugin: NSObject, FlutterPlugin {
+public class SaidloopFlutterPlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "ai.closeloop/saidloop", binaryMessenger: registrar.messenger())
-        registrar.addMethodCallDelegate(CloseloopPlugin(), channel: channel)
+        registrar.addMethodCallDelegate(SaidloopFlutterPlugin(), channel: channel)
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

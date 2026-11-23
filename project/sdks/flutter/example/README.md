@@ -1,6 +1,6 @@
-# closeloop_example
+# saidloop_flutter_example
 
-Demonstrates how to use the closeloop plugin.
+Demonstrates how to use the saidloop_flutter plugin.
 
 ## Getting Started
 
