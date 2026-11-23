@@ -227,7 +227,7 @@ view.closeloopMask = true`,
       return {
         fileLabel: "BalanceView.swift",
         code: `// Mark the view before capture
-view.closeloopMask = true`,
+view.saidloopMask = true`,
       };
     case "flutter":
       return {

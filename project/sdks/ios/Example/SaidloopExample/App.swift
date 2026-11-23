@@ -30,7 +30,7 @@ final class HomeViewController: UIViewController {
         let balance = UILabel()
         balance.text = "Rp 12.450.000"
         balance.font = .systemFont(ofSize: 32, weight: .bold)
-        balance.closeloopMask = true
+        balance.saidloopMask = true
         let button = UIButton(type: .system)
         button.setTitle("Report a problem", for: .normal)
         button.accessibilityIdentifier = "report"

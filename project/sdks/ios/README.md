@@ -62,7 +62,7 @@ Saidloop.show()
 Text fields and text views are covered in screenshots by default. Hide any other view:
 
 ```swift
-balanceLabel.closeloopMask = true
+balanceLabel.saidloopMask = true
 ```
 
 ### Options
