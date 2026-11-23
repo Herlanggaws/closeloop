@@ -176,18 +176,20 @@ test.describe("Report UI smoke (R-UI)", () => {
     expect(secondBody.updates || []).toHaveLength(0);
   });
 
-  test("R-UI-06 post-M1 nav: board + Auto PR live", async ({ page, request }) => {
+  test("R-UI-06 post-M1 nav: board live, Auto PR coming soon", async ({ page, request }) => {
     const session = await seedSession(request);
     await gotoInbox(page, session);
 
     const nav = page.locator("aside nav");
     await expect(nav.getByRole("link", { name: "Inbox" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Public board" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Auto PR runs" })).toBeVisible();
+    // Auto PR is Coming soon (D-24): the nav item is not a link and the page says so.
+    await expect(nav.getByRole("link", { name: "Auto PR runs" })).toHaveCount(0);
+    await expect(nav.getByText("Auto PR runs")).toBeVisible();
 
     await page.goto("/app/auto-pr");
     await expect(page).toHaveURL(/\/app\/auto-pr/);
-    await expect(page.getByRole("heading", { name: "Auto PR runs" })).toBeVisible();
+    await expect(page.getByText("Auto PR is coming soon")).toBeVisible();
 
     await page.goto("/app/board");
     await expect(page).toHaveURL(/\/app\/board/);
@@ -628,7 +630,7 @@ test.describe("Report UI smoke (R-UI)", () => {
     await page.goto("/app/settings/integrations");
     await expect(page.getByText("No repos yet. Add one so reports reach the right codebase.")).toBeVisible();
     await page
-      .getByText("Repository access for AI auto PR", { exact: true })
+      .getByText("Repository access for repo routing and GitHub issues", { exact: true })
       .locator("xpath=..")
       .getByRole("button", { name: "Configure" })
       .click();

@@ -8,6 +8,7 @@ import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
 import { repoPlatformLabel, shortRepo, type ProjectRepo, type ReposResponse } from "@/lib/repos";
 import type { MeResponse } from "@/lib/usage";
+import { AUTO_PR_VISIBLE } from "@/lib/plans";
 
 type AutoprRun = {
   id: string;
@@ -181,24 +182,44 @@ export function AutoPRRuns() {
                 Auto PR runs
               </h1>
               <span className="rounded-full bg-[#F5F5F5] px-2 py-0.5 font-ds-ui text-[11px] text-[#737373]">
-                Add-on
+                {AUTO_PR_VISIBLE ? "Add-on" : "Coming soon"}
               </span>
             </div>
             <p className="font-ds-ui text-[13.5px] text-[#737373]">
-              Agent opens a pull request (GitHub) or merge request (GitLab) from a ticket. Review and
-              merge yourself — Saidloop never merges.
+              {AUTO_PR_VISIBLE
+                ? "Agent opens a pull request (GitHub) or merge request (GitLab) from a ticket. Review and merge yourself \u2014 Saidloop never merges."
+                : "An agent that turns a ticket into a fix PR or MR you review. It is not available yet."}
             </p>
           </div>
+          {AUTO_PR_VISIBLE && (
           <Link
             href="/app/settings/billing"
             className="inline-flex h-9 shrink-0 items-center rounded-md border border-[#1717171F] bg-white px-3 font-ds-sans text-[13px] font-medium text-[#171717] no-underline"
           >
             Buy credits
           </Link>
+          )}
         </header>
 
         <div className="flex flex-1 flex-col gap-6 px-10 pb-10 pt-6">
-          {loading ? (
+          {!AUTO_PR_VISIBLE ? (
+            <div
+              data-pencil-name="Auto PR coming soon"
+              className="flex max-w-[560px] flex-col gap-2 rounded-xl border border-[#17171714] bg-[#FAFAFA] p-6"
+            >
+              <p className="font-ds-sans text-[15px] font-medium text-[#171717]">Auto PR is coming soon</p>
+              <p className="font-ds-ui text-[13px] text-[#737373]">
+                We are still building the agent that writes the fix. Until then, use the MCP loop to
+                fix tickets from your own coding agent, or create a GitHub issue from a ticket.
+              </p>
+              <Link
+                href="/app/inbox"
+                className="mt-2 w-fit font-ds-ui text-[13px] text-[#171717] underline"
+              >
+                Back to inbox
+              </Link>
+            </div>
+          ) : loading ? (
             <p className="font-ds-ui text-sm text-[#737373]">Loading…</p>
           ) : (
             <>

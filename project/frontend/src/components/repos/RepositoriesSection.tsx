@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AUTO_PR_VISIBLE } from "@/lib/plans";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiRequestError, api } from "@/lib/api";
 import {
@@ -268,22 +269,29 @@ export function RepositoriesSection({
 
         <label
           data-pencil-name="Read Access"
-          className="flex cursor-pointer items-start gap-3 border-t border-[#17171714] px-5 py-4"
+          className={`flex items-start gap-3 border-t border-[#17171714] px-5 py-4 ${
+            AUTO_PR_VISIBLE ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+          }`}
         >
           <input
             type="checkbox"
             role="switch"
-            className="mt-0.5 h-4 w-7 cursor-pointer accent-[#171717]"
-            checked={data.allow_cross_repo_read}
+            className="mt-0.5 h-4 w-7 cursor-pointer accent-[#171717] disabled:cursor-not-allowed"
+            checked={AUTO_PR_VISIBLE && data.allow_cross_repo_read}
+            disabled={!AUTO_PR_VISIBLE}
             onChange={() => void toggleCrossRead()}
           />
           <span>
             <span className="block font-ds-ui text-[13px] font-medium text-[#171717]">
               Let auto PR agents read other repos in this project
+              {!AUTO_PR_VISIBLE && (
+                <span className="ml-2 font-ds-mono text-[10px] font-normal text-[#A3A3A3]">Soon</span>
+              )}
             </span>
             <span className="block font-ds-ui text-[12px] text-[#737373]">
-              Gives the runner read-only context, like your backend. Write access is always limited to
-              the ticket&apos;s repo.
+              {AUTO_PR_VISIBLE
+                ? "Gives the runner read-only context, like your backend. Write access is always limited to the ticket\u2019s repo."
+                : "Auto PR is coming soon. This setting turns on with it."}
             </span>
           </span>
         </label>

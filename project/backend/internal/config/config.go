@@ -32,6 +32,9 @@ type Config struct {
 	PolarWebhookSecret      string
 	PolarAPIBase            string // from POLAR_SERVER; empty when that value is invalid
 	PolarProducts           polar.Products
+	// AutoPREnabled turns the Auto PR runner on (AUTOPR_ENABLED=true). Off by default:
+	// the runner only commits a placeholder note today, so it stays hidden until it writes real fixes.
+	AutoPREnabled bool
 }
 
 func Load() Config {
@@ -61,6 +64,7 @@ func Load() Config {
 		SlackClientSecret:       os.Getenv("SLACK_CLIENT_SECRET"),
 		SlackAPIBase:            env("SLACK_API_BASE", "https://slack.com"),
 		AnthropicAPIKey:         os.Getenv("ANTHROPIC_API_KEY"),
+		AutoPREnabled:           strings.EqualFold(trimmedEnv("AUTOPR_ENABLED"), "true"),
 		PolarAccessToken:        trimmedEnv("POLAR_ACCESS_TOKEN"),
 		PolarWebhookSecret:      trimmedEnv("POLAR_WEBHOOK_SECRET"),
 		PolarAPIBase:            polar.BaseURL(os.Getenv("POLAR_SERVER")),

@@ -6,7 +6,7 @@ import { LandingNav } from "@/components/LandingNav";
 import { MarketingFooter } from "@/components/MarketingFooter";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { LANDING_FAQ_ITEMS } from "@/lib/landing-faq";
-import { visiblePlans, type PlanInfo } from "@/lib/plans";
+import { AUTO_PR_VISIBLE, visiblePlans, type PlanInfo } from "@/lib/plans";
 
 type Props = {
   onJoinWaitlist?: () => void;
@@ -2655,7 +2655,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                       data-pencil-name="Label"
                       className="text-[11px]/[normal] box-border text-[#737373] font-ds-ui font-medium text-left [white-space:nowrap]"
                     >
-                      Add-on
+                      {AUTO_PR_VISIBLE ? "Add-on" : "Coming soon"}
                     </div>
                   </div>
                 </div>
@@ -2663,8 +2663,9 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                   data-pencil-name="Desc"
                   className="text-[14px]/[21px] box-border w-full text-[#737373] font-ds-sans font-normal tracking-[-0.2px] text-left"
                 >
-                  Connect a repo through the GitHub App. An agent runs in a sandbox and opens a PR
-                  with the fix and root cause. It never merges.
+                  {AUTO_PR_VISIBLE
+                    ? "Connect a repo through the GitHub App. An agent runs in a sandbox and opens a PR with the fix and root cause. It never merges."
+                    : "We are building an agent that turns a bug ticket into a fix PR for you to review. It will never merge. Not available yet."}
                 </div>
               </div>
               <div
@@ -2710,8 +2711,9 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                     data-pencil-name="Root"
                     className="text-[12px]/[18px] box-border w-full text-[#737373] font-ds-ui font-normal text-left"
                   >
-                    Root cause: useFilteredTransactions memoized on account only, so dateRange
-                    changes were ignored.
+                    {AUTO_PR_VISIBLE
+                      ? "Root cause: useFilteredTransactions memoized on account only, so dateRange changes were ignored."
+                      : "Preview of the planned PR card. Not a real run."}
                   </div>
                   <div
                     data-pencil-name="Meta"
@@ -2727,7 +2729,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                       data-pencil-name="Cost"
                       className="text-[11px]/[normal] box-border [flex:1_1_0] text-[#A3A3A3] font-ds-ui font-normal text-left"
                     >
-                      1 credit · 3m 12s
+                      {AUTO_PR_VISIBLE ? "1 credit · 3m 12s" : "Preview"}
                     </div>
                     <div
                       data-pencil-name="Status"
@@ -2741,7 +2743,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
                         data-pencil-name="Label"
                         className="text-[11px]/[normal] box-border text-[#171717] font-ds-ui font-medium text-left [white-space:nowrap]"
                       >
-                        Ready for review
+                        {AUTO_PR_VISIBLE ? "Ready for review" : "Coming soon"}
                       </div>
                     </div>
                   </div>
@@ -3553,14 +3555,15 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               data-pencil-name="T"
               className="text-[15px]/[normal] box-border text-[#171717] font-ds-sans font-semibold tracking-[-0.2px] text-left"
             >
-              AI auto PR credits
+              {AUTO_PR_VISIBLE ? "AI auto PR credits" : "AI auto PR · coming soon"}
             </div>
             <div
               data-pencil-name="D"
               className="text-[13px]/[1.4] box-border w-full text-[#737373] font-ds-ui font-normal text-left [white-space:normal]"
             >
-              Add-on for any paid plan. One credit runs one sandboxed agent that opens a pull
-              request. Pricing set once per-run model cost is measured.
+              {AUTO_PR_VISIBLE
+                ? "Add-on for any paid plan. One credit runs one sandboxed agent that opens a pull request. Pricing set once per-run model cost is measured."
+                : "Not part of any plan yet. When the agent ships it will be a paid add-on, with pricing set once per-run cost is measured."}
             </div>
           </div>
           <a href="/signup" data-pencil-name="CTA" className="cursor-pointer no-underline transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] box-border w-fit shrink-0 h-[40px] [box-shadow:0px_4px_4px_#1717170A] flex flex-row gap-[8px] p-[0px_16px] justify-center items-center bg-[#FFFFFF] [outline:1px_solid_#1717171F] [outline-offset:-0.5px] rounded-[6px]">
@@ -3568,7 +3571,7 @@ export function LandingPageDesign({ onJoinWaitlist }: Props) {
               data-pencil-name="Label"
               className="text-[14px]/[normal] box-border text-[#171717] font-ds-sans font-medium tracking-[-0.2px] text-left [white-space:nowrap]"
             >
-              How credits work
+              {AUTO_PR_VISIBLE ? "How credits work" : "Start free"}
             </div>
           </a>
         </div>
