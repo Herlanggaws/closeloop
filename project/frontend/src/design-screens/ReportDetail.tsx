@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ReportDetailSkeleton } from "@/components/ReportDetailSkeleton";
 import { Tour } from "@/components/coach/Tour";
 import { SessionReplayPlayer } from "@/components/SessionReplayPlayer";
 import { api } from "@/lib/api";
@@ -470,9 +471,7 @@ export function ReportDetail() {
         )}
 
         {loading ? (
-          <div className="grid flex-1 place-items-center font-ds-ui text-sm text-[#737373]">
-            Loading report…
-          </div>
+          <ReportDetailSkeleton />
         ) : !ticket ? (
           <div className="grid flex-1 place-items-center gap-3 font-ds-ui text-sm text-[#737373]">
             <p>Report not found.</p>

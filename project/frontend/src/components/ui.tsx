@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
 
 export { SaidloopLogo as Logo } from "./SaidloopLogo";
 
@@ -72,3 +72,16 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`rounded-[16px] border border-line bg-surface p-6 shadow-sm ${className}`}>{children}</div>;
 }
+
+export function Skeleton({
+  className = "",
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`animate-pulse rounded bg-[#1717170D] ${className}`}
+      {...props}
+    />
+  );
+}
+
