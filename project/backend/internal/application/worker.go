@@ -363,6 +363,10 @@ func notifySlack(ctx context.Context, store *Store, deps WorkerDeps, ticketID, e
 		}
 		return err
 	}
+	// A downgrade below Indie pauses Slack; the connection stays for the next upgrade.
+	if ok, err := store.SlackAllowedForProject(ctx, ticket.ProjectID); err != nil || !ok {
+		return err
+	}
 	webhookURL, err := store.SlackWebhookURL(ctx, ticket.ProjectID)
 	if err != nil {
 		return err

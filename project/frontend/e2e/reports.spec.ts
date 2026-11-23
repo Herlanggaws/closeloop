@@ -464,7 +464,8 @@ test.describe("Report UI smoke (R-UI)", () => {
   });
 
   test("R-UI-16 public board suggest idea", async ({ page, request }) => {
-    const session = await seedSession(request);
+    // Public boards are Indie and up; Free boards are private (downgrade audit, 23 Nov).
+    const session = await seedSession(request, { plan: "indie" });
     const projectRes = await request.get(`${API_URL}/api/projects/${session.projectId}`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     });
