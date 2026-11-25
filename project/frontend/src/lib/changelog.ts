@@ -6,6 +6,11 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-11-25",
+    title: "Invited teammates land in the right workspace",
+    body: "Accepting an invite now opens the inviting team's workspace and its projects on that team's plan, even if you already had your own account. Your own workspace and plan stay as they were, and you can switch between workspaces from the project menu.",
+  },
+  {
     date: "2026-11-23",
     title: "Moving back to Free pauses Slack and the public board",
     body: "If a workspace drops below Indie, Slack posts pause and the public board goes private. Your Slack connection, ideas, votes and comments are kept, and everything comes back as soon as you upgrade again.",

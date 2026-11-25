@@ -51,6 +51,8 @@ func (s *Server) Router() *gin.Engine {
 		api.POST("/auth/refresh", s.refresh)
 		api.POST("/auth/logout", s.logout)
 		api.GET("/me", s.authRequired(), s.me)
+		api.GET("/orgs", s.authRequired(), s.listMyOrgs)
+		api.POST("/orgs/active", s.authRequired(), s.setActiveOrg)
 		api.PATCH("/org/plan", s.authRequired(), s.patchOrgPlan)
 		api.POST("/billing/checkout", s.authRequired(), s.createBillingCheckout)
 		api.POST("/billing/portal", s.authRequired(), s.createBillingPortal)
@@ -697,7 +699,13 @@ func (s *Server) me(c *gin.Context) {
 		mapErr(c, err)
 		return
 	}
+	orgs, err := s.Store.ListUserOrgs(c.Request.Context(), userID)
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
 	c.JSON(200, gin.H{
+		"orgs": orgs,
 		"user": gin.H{
 			"id":         userID,
 			"email":      user.Email,

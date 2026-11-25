@@ -19,12 +19,23 @@ export type OrgUsage = {
   billing_ends_at?: string;
 };
 
+/** A workspace the user belongs to. Plan is the workspace owner's plan. */
+export type WorkspaceRow = { id: string; name: string; plan: string; role: string; active: boolean };
+
 export type MeResponse = {
   user: { id?: string; email: string; name?: string; avatar_url?: string };
   org: { id?: string; name: string; plan: string };
+  orgs?: WorkspaceRow[];
   role?: string;
   usage?: OrgUsage;
 };
+
+/** Switcher subtitle: in someone else's workspace, name the workspace so its plan is not read as yours. */
+export function switcherSubtitle(firstName: string, plan: string, workspace?: WorkspaceRow) {
+  const label = planLabel(plan);
+  if (workspace && workspace.role !== "owner") return `${workspace.name} · ${label}`;
+  return firstName ? `${firstName} · ${label}` : label;
+}
 
 export function planLabel(plan: string) {
   const p = (plan || "free").toLowerCase();
