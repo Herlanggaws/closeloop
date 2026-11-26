@@ -260,3 +260,47 @@ func TestTeam_CannotSwitchToForeignWorkspace(t *testing.T) {
 		t.Fatalf("bad org id want 404 got %d", code)
 	}
 }
+
+// An expired invite frees its seat; resending it must fit the plan again.
+func TestTeam_ResendExpiredInviteChecksSeats(t *testing.T) {
+	h := newReportHarness(t)
+	owner := h.seedUserProject("studio")
+	auth := h.authHeaders(owner.AccessToken)
+	limit := 0
+	code, me := h.do(http.MethodGet, "/api/me", nil, auth)
+	if code != 200 {
+		t.Fatalf("me: %d", code)
+	}
+	limit = int(me["usage"].(map[string]any)["seats"].(map[string]any)["limit"].(float64))
+	if limit < 2 {
+		t.Fatalf("studio seat limit %d too small for this test", limit)
+	}
+	emails := []string{}
+	for i := 0; i < limit-1; i++ {
+		emails = append(emails, "seat"+string(rune('a'+i))+"@test.closeloop")
+	}
+	if code, body := h.do(http.MethodPost, "/api/org/invites", map[string]any{"emails": emails, "role": "member"}, auth); code != 201 {
+		t.Fatalf("fill seats: %d %v", code, body)
+	}
+	var expiredID string
+	if err := h.db.QueryRow(`UPDATE invites SET expires_at = now() - interval '1 day' WHERE email=$1 RETURNING id`, emails[0]).Scan(&expiredID); err != nil {
+		t.Fatalf("expire: %v", err)
+	}
+
+	// Room again: resending the expired invite works and takes the seat back.
+	if code, body := h.do(http.MethodPost, "/api/org/invites/"+expiredID+"/resend", nil, auth); code != 200 {
+		t.Fatalf("resend with room: %d %v", code, body)
+	}
+
+	// Expire it again and give its seat to someone else: now resend must be refused.
+	if _, err := h.db.Exec(`UPDATE invites SET expires_at = now() - interval '1 day' WHERE id=$1`, expiredID); err != nil {
+		t.Fatalf("expire again: %v", err)
+	}
+	if code, body := h.do(http.MethodPost, "/api/org/invites", map[string]any{"emails": []string{"newcomer@test.closeloop"}, "role": "member"}, auth); code != 201 {
+		t.Fatalf("newcomer: %d %v", code, body)
+	}
+	code, body := h.do(http.MethodPost, "/api/org/invites/"+expiredID+"/resend", nil, auth)
+	if code != 403 || errCode(body) != "SEAT_LIMIT" {
+		t.Fatalf("resend over limit want 403 SEAT_LIMIT got %d %v", code, body)
+	}
+}

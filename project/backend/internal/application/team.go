@@ -225,6 +225,26 @@ func (s *Store) ResendInvite(ctx context.Context, orgID, inviteID, invitedBy str
 		return Invite{}, "", err
 	}
 
+	// An expired invite no longer holds a seat, so bringing it back must fit the plan,
+	// the same as a new invite (CreateInvites).
+	if !inv.ExpiresAt.After(time.Now()) {
+		var plan string
+		if err := tx.QueryRowContext(ctx, `SELECT plan FROM organizations WHERE id=$1 FOR UPDATE`, orgID).Scan(&plan); err != nil {
+			return Invite{}, "", err
+		}
+		var used int
+		if err := tx.QueryRowContext(ctx, `
+			SELECT (SELECT COUNT(*) FROM memberships WHERE org_id=$1)
+			     + (SELECT COUNT(*) FROM invites
+			        WHERE org_id=$1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now())`,
+			orgID).Scan(&used); err != nil {
+			return Invite{}, "", err
+		}
+		if max := LimitsForPlan(plan).MaxSeats; max != 0 && used+1 > max {
+			return Invite{}, "", ErrSeatLimit
+		}
+	}
+
 	raw := uuid.NewString() + uuid.NewString()
 	hash := auth.SHA256(raw)
 	expires := time.Now().UTC().Add(7 * 24 * time.Hour)

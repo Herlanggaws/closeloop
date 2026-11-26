@@ -201,6 +201,11 @@ export function Team() {
       setInviteNotice("Invite resent");
       await reload();
     } catch (err) {
+      // An expired invite gave its seat back; resending it can go over the plan.
+      if (err instanceof ApiRequestError && err.code === "SEAT_LIMIT") {
+        setSeatRefused(true);
+        return;
+      }
       setInviteError(err instanceof Error ? err.message : "Could not resend");
     } finally {
       setSaving(false);
