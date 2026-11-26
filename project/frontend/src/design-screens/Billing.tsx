@@ -232,9 +232,9 @@ export function Billing() {
                 <div className="flex flex-col gap-4 rounded-2xl bg-[#0A0A0A] p-6 text-white">
                   <div className="flex items-center justify-between">
                     <span className="font-ds-ui text-xs text-white/70">Current plan</span>
-                    {!usage?.subscribed && (
-                      <span className="rounded-full bg-[#22C55E26] px-2 py-0.5 font-ds-ui text-[11px] font-medium text-[#22C55E]">
-                        Manual until Subscribed
+                    {!subscribed && plan !== "free" && (
+                      <span className="rounded-full bg-[#FFFFFF1F] px-2 py-0.5 font-ds-ui text-[11px] font-medium text-white/80">
+                        Not billed
                       </span>
                     )}
                   </div>
@@ -354,9 +354,11 @@ export function Billing() {
                     Every limit below is enforced in the product, not just listed.
                   </span>
                 </div>
-                {!usage?.subscribed && (
+                {!subscribed && (
                   <p className="mt-1 font-ds-ui text-[13px] text-[#737373]">
-                    Plans are switched manually until you&apos;re subscribed.
+                    {plan === "free"
+                      ? "Upgrading opens a secure checkout. Cancel anytime from this page."
+                      : `Your ${planLabel(plan)} plan was set up without a subscription, so nothing is billed.`}
                   </p>
                 )}
                 {!isOwner && (

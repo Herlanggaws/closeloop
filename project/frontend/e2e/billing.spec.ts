@@ -94,10 +94,22 @@ test.describe("Billing", () => {
     expect(posts[0].body).toEqual({ plan: "studio", interval: "month" });
   });
 
+  test("free plan explains checkout", async ({ page }) => {
+    await openBilling(page);
+    await expect(page.getByText("Upgrading opens a secure checkout. Cancel anytime from this page.")).toBeVisible();
+    await expect(page.getByText("Not billed", { exact: true })).toHaveCount(0);
+  });
+
+  test("an unbilled paid plan says so", async ({ page }) => {
+    await openBilling(page, { plan: "indie" });
+    await expect(page.getByText("Not billed", { exact: true })).toBeVisible();
+    await expect(page.getByText("Your Indie plan was set up without a subscription, so nothing is billed.")).toBeVisible();
+  });
+
   test("a subscriber changes plans in the portal", async ({ page }) => {
     const posts = await openBilling(page, { plan: "indie", subscribed: true });
     await expect(page.getByRole("button", { name: "Manage subscription" })).toBeVisible();
-    await expect(page.getByText("Manual until Subscribed")).toHaveCount(0);
+    await expect(page.getByText("Not billed", { exact: true })).toHaveCount(0);
     await page.locator('[data-plan="studio"]').click();
     await expect(page).toHaveURL("https://billing.test/hosted/portal");
     expect(posts.map((p) => p.path)).toEqual(["/api/billing/portal"]);

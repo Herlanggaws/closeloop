@@ -147,7 +147,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] Billing, batasan yang diketahui:
   - [ ] Satu email untuk dua workspace: checkout kedua ditolak provider, dan portal tidak bisa dibuka untuk workspace yang customer-nya milik workspace lain
   - [ ] Kirim ulang invite yang expired tidak cek batas seat (bug lama, makin relevan dengan seat berbayar)
-  - [ ] Copy S-15 "Plans are switched manually until you're subscribed." dan pill "Manual until Subscribed" sudah tidak akurat; perlu copy baru di pen
+  - [x] Copy S-15 diganti (26 Nov): pill "Not billed" cuma buat plan berbayar tanpa subscription; Free: "Upgrading opens a secure checkout. Cancel anytime from this page." Pen belum ikut diubah
 - [x] Quota soft-block when over plan
 - [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 2 (D-21, diubah 22 Nov) dan badge cuma di Free (D-20) done
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
