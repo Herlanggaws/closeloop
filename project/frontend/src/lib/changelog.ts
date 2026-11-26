@@ -7,8 +7,8 @@ export type ChangelogEntry = {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-11-26",
-    title: "Android SDK on Maven Central",
-    body: "Add Saidloop to an Android app with implementation(\"com.saidloop:android:0.1.0\"). The source now lives at github.com/XERV-Project/saidloop-android under the MIT license.",
+    title: "Android SDK on Maven Central, mobile setup in Integrations",
+    body: "Add Saidloop to an Android app with implementation(\"com.saidloop:android:0.1.0\"). The source now lives at github.com/XERV-Project/saidloop-android under the MIT license. Integrations now has a Mobile SDK section with copyable install, init and show() steps for iOS, Android and Flutter, with React Native coming soon.",
   },
   {
     date: "2026-11-23",

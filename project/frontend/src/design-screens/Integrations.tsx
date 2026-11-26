@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
+import { MobileSdkSection } from "@/components/integrations/MobileSdkSection";
 import { RepositoriesSection } from "@/components/repos/RepositoriesSection";
 import { api } from "@/lib/api";
 import { asConfig, parseIntegrationConfig } from "@/lib/integration-config";
@@ -189,6 +190,7 @@ export function Integrations() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [projectName, setProjectName] = useState("Project");
   const [projectId, setProjectId] = useState("");
+  const [publicKey, setPublicKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
@@ -243,13 +245,14 @@ export function Integrations() {
     let cancelled = false;
     Promise.all([
       api<MeResponse>("/api/me"),
-      api<{ project: { name: string } }>(`/api/projects/${id}`),
+      api<{ project: { name: string }; public_key?: string }>(`/api/projects/${id}`),
       api<{ integrations: IntegrationRow[] }>(`/api/projects/${id}/integrations`),
     ])
       .then(async ([meRes, projectRes, integRes]) => {
         if (cancelled) return;
         setMe(meRes);
         setProjectName(projectRes.project.name || "Project");
+        setPublicKey(projectRes.public_key || "");
         setGrandfathered(
           new Set(
             (integRes.integrations || []).filter((row) => row.grandfathered).map((row) => row.provider),
@@ -724,6 +727,8 @@ export function Integrations() {
                   />
                 ))}
               </IntegrationGroup>
+
+              <MobileSdkSection publicKey={publicKey} />
 
               {configureModal ? (
                 <div

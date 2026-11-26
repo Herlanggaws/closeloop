@@ -47,7 +47,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-10 Auto PR runs | `/app/auto-pr` | **Coming soon** (D-24): page shows a Coming soon panel while `AUTO_PR_VISIBLE` is off; API refuses runs unless `AUTOPR_ENABLED=true`. Runs list + credits code stays. Runner is a stub (opens a context PR) |
 | S-11 Manage public board | `/app/board` | **Wired** slug + publish + vote counts + comment moderation + roadmap DnD |
 | S-12 Project settings | `/app/settings` | **Partial** name, platforms, notify kill switches, public key, mask text inputs, soft-delete live. Widget section live (Nov 20): button label + position (Bottom right / Bottom left / Hidden) on every plan, accent colour on Studio (`PATCH /api/projects/:id/widget`, migration `024`). Board custom domain still "Coming soon" |
-| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section live (D-12) |
+| S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section live (D-12). **Mobile SDK** section (Nov 26): tabs iOS, Android, Flutter, React Native; 3 steps each (install, init with the project public key, `show()`), copy per code block, GitHub link per SDK. Snippets in `lib/mobile-sdk.ts` follow each SDK README. React Native shows Soon with no install command until `@saidloop/react-native` is on npm (`REACT_NATIVE_PUBLISHED`). No pen frame yet; test `mobile-sdk.test.ts` |
 | S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan (`SEAT_LIMIT`) |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage (Reports, Projects, Auto PR credits, Seats, Repos) + credit balance. Change plan: Free/Indie/Studio cards with limit line from `lib/plans.ts` (D-05). Monthly/Yearly toggle → hosted checkout; subscribers change or cancel in the customer portal; plan follows the billing webhook (Nov 22, needs env, see "Billing go-live"). Manual `PATCH /api/org/plan` can only reach paid plans while no billing token is set. Buy credits is a stub. No invoices list in the app (portal only) |
 | S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only. **Hidden until M6** (D-22) |
@@ -263,6 +263,10 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 - [ ] Downgrade: project/seat yang lebih dari limit Free tetep ada (cuma bikin baru yang diblok). Belum diputusin
 - [ ] Free: tombol "Open" board di Project settings masih ngarah ke board yang sekarang 404. Ganti jadi Upgrade/hint
 - [x] Tombol "Log in" balik lagi di nav landing (desktop + menu mobile) ke `/login`, buat jualan Indie (23 Nov). Test: `landing nav has a Log in link` di `e2e/marketing.spec.ts`
+- [x] Section Mobile SDK di Integrations (26 Nov): iOS (SPM + CocoaPods), Android (Maven Central), Flutter (pub.dev), React Native (Soon). Test `mobile-sdk.test.ts`
+- [ ] React Native: publish `@saidloop/react-native` ke npm, lalu set `REACT_NATIVE_PUBLISHED=true` di `lib/mobile-sdk.ts` (juga install page S-04/S-04b masih nampilin `npm install` RN)
+- [ ] Flutter: `saidloop_flutter` 0.1.0 di pub.dev statusnya retracted (cek 26 Nov), jadi `^0.1.0` gak bakal resolve. Publish versi baru atau un-retract
+- [ ] Tambah frame Mobile SDK ke S-13 di `closeloop.pen`
 - [ ] "3 months free for early access" di kartu Indie landing belum ada di kode: harus diset sebagai diskon/trial di payment provider sebelum jualan
 
 ---
