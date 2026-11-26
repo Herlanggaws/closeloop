@@ -18,6 +18,9 @@ type OrgMember struct {
 	AvatarURL string    `json:"avatar_url"`
 	Role      string    `json:"role"`
 	JoinedAt  time.Time `json:"joined_at"`
+	// SeatLocked marks a member beyond the plan's seat limit (after a downgrade):
+	// they act as a viewer until the org upgrades or frees a seat.
+	SeatLocked bool `json:"seat_locked"`
 }
 
 type Invite struct {
@@ -57,6 +60,10 @@ func (s *Store) CountOrgSeats(ctx context.Context, orgID string) (int, error) {
 }
 
 func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error) {
+	locked, err := s.seatLockedUsers(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT u.id, u.email, u.name, COALESCE(u.avatar_url, ''), m.role, u.created_at
 		FROM memberships m
@@ -73,6 +80,7 @@ func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, 
 		if err := rows.Scan(&m.UserID, &m.Email, &m.Name, &m.AvatarURL, &m.Role, &m.JoinedAt); err != nil {
 			return nil, err
 		}
+		m.SeatLocked = locked[m.UserID]
 		out = append(out, m)
 	}
 	if out == nil {
@@ -307,11 +315,26 @@ func (s *Store) AcceptInvite(ctx context.Context, rawToken, userID, userEmail st
 	}
 	if already {
 		_, _ = tx.ExecContext(ctx, `UPDATE invites SET accepted_at=now() WHERE id=$1`, inviteID)
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET active_org_id=$2 WHERE id=$1`, userID, orgID); err != nil {
+			return Org{}, "", err
+		}
 		if err := tx.Commit(); err != nil {
 			return Org{}, "", err
 		}
-		org, _, err := s.PrimaryOrg(ctx, userID)
-		return org, role, err
+		return s.PrimaryOrg(ctx, userID)
+	}
+
+	// Invites sent on a bigger plan cannot add members past the current seat limit
+	// (for example after a downgrade).
+	var plan string
+	var members int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT o.plan, (SELECT COUNT(*) FROM memberships WHERE org_id=o.id)
+		FROM organizations o WHERE o.id=$1`, orgID).Scan(&plan, &members); err != nil {
+		return Org{}, "", err
+	}
+	if LimitsForPlan(plan).SeatLimitReached(members) {
+		return Org{}, "", ErrSeatLimit
 	}
 
 	if _, err := tx.ExecContext(ctx, `
@@ -331,50 +354,11 @@ func (s *Store) AcceptInvite(ctx context.Context, rawToken, userID, userEmail st
 		return Org{}, "", err
 	}
 
-	// Drop empty personal orgs created at signup so PrimaryOrg lands on the invited workspace.
-	rows, err := tx.QueryContext(ctx, `
-		SELECT o.id
-		FROM organizations o
-		JOIN memberships m ON m.org_id = o.id
-		WHERE m.user_id=$1 AND m.role='owner' AND o.id <> $2`, userID, orgID)
-	if err != nil {
+	// Land on the invited workspace, but keep the invitee's own workspace (and its
+	// plan) intact: joining a paid team must not change their personal plan, and
+	// they can switch back to it from the dashboard.
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET active_org_id=$2 WHERE id=$1`, userID, orgID); err != nil {
 		return Org{}, "", err
-	}
-	defer rows.Close()
-	var emptyOrgs []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return Org{}, "", err
-		}
-		emptyOrgs = append(emptyOrgs, id)
-	}
-	if err := rows.Err(); err != nil {
-		return Org{}, "", err
-	}
-	_ = rows.Close()
-	for _, id := range emptyOrgs {
-		var members, projects int
-		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM memberships WHERE org_id=$1`, id).Scan(&members); err != nil {
-			return Org{}, "", err
-		}
-		if err := tx.QueryRowContext(ctx, `
-			SELECT COUNT(*) FROM projects WHERE org_id=$1 AND deleted_at IS NULL`, id).Scan(&projects); err != nil {
-			return Org{}, "", err
-		}
-		// Deleting a paid org would cascade away the subscription while it keeps charging.
-		live, err := liveSubscription(ctx, tx, id)
-		if err != nil {
-			return Org{}, "", err
-		}
-		if members == 1 && projects == 0 && live.Plan == "" {
-			if _, err := tx.ExecContext(ctx, `DELETE FROM memberships WHERE org_id=$1`, id); err != nil {
-				return Org{}, "", err
-			}
-			if _, err := tx.ExecContext(ctx, `DELETE FROM organizations WHERE id=$1`, id); err != nil {
-				return Org{}, "", err
-			}
-		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -462,16 +446,19 @@ func (s *Store) RemoveMember(ctx context.Context, orgID, targetUserID, actorUser
 }
 
 func (s *Store) RoleForProject(ctx context.Context, userID, projectID string) (string, error) {
-	var role string
+	var role, orgID string
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT m.role
+		SELECT m.role, m.org_id
 		FROM projects p
 		JOIN memberships m ON m.org_id = p.org_id
-		WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2`, projectID, userID).Scan(&role)
+		WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2`, projectID, userID).Scan(&role, &orgID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrForbidden
 	}
-	return role, err
+	if err != nil {
+		return "", err
+	}
+	return s.effectiveRole(ctx, orgID, userID, role)
 }
 
 func CanWriteTickets(role string) bool {

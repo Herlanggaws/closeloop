@@ -63,6 +63,9 @@ export default function InviteAcceptPage() {
     setError("");
     try {
       await api(`/api/invites/${encodeURIComponent(token)}/accept`, { method: "POST" });
+      // The server now shows the invited workspace; drop the old project pick so its projects load.
+      localStorage.removeItem("closeloop_project");
+      localStorage.removeItem("closeloop_public_key");
       router.replace("/app/inbox");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not accept invite");

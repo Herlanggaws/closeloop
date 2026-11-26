@@ -7,11 +7,13 @@ import { projectInitial, displayName } from "@/lib/tickets";
 import {
   canCreateProject,
   planLabel,
+  switcherSubtitle,
   type MeResponse,
   type OrgUsage,
+  type WorkspaceRow,
 } from "@/lib/usage";
 
-type ProjectRow = { id?: string; ID?: string; name?: string; Name?: string };
+type ProjectRow = { id?: string; ID?: string; name?: string; Name?: string; frozen?: boolean };
 
 function idOf(p: ProjectRow) {
   return p.id || p.ID || "";
@@ -78,14 +80,30 @@ function ProjectSwitcherMenu({
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [fetchedUsage, setFetchedUsage] = useState<OrgUsage | undefined>(usage);
   const [menuLoading, setMenuLoading] = useState(false);
+  const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
   const selectedId =
     typeof window !== "undefined" ? localStorage.getItem("closeloop_project") || "" : "";
 
-  const subtitle = email
-    ? `${displayName(email).split(" ")[0]} · ${planLabel(plan)}`
-    : planLabel(plan);
+  const activeWorkspace = workspaces.find((w) => w.active);
+  const subtitle = switcherSubtitle(
+    email ? displayName(email).split(" ")[0] : "",
+    activeWorkspace?.plan || plan,
+    activeWorkspace,
+  );
   const effectiveUsage = fetchedUsage || usage;
+
+  useEffect(() => {
+    let cancelled = false;
+    api<MeResponse>("/api/me")
+      .then((me) => {
+        if (!cancelled) setWorkspaces(me.orgs || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setFetchedUsage(usage);
@@ -109,6 +127,7 @@ function ProjectSwitcherMenu({
       ]);
       setProjects(listRes.projects || []);
       if (meRes.usage) setFetchedUsage(meRes.usage);
+      if (meRes.orgs) setWorkspaces(meRes.orgs);
     } catch {
       setProjects([]);
     } finally {
@@ -127,6 +146,19 @@ function ProjectSwitcherMenu({
     localStorage.setItem("closeloop_project", id);
     localStorage.removeItem("closeloop_public_key");
     setOpen(false);
+    window.location.assign("/app/inbox");
+  }
+
+  async function switchWorkspace(orgId: string) {
+    if (!orgId || orgId === activeWorkspace?.id) return;
+    setOpen(false);
+    try {
+      await api("/api/orgs/active", { method: "POST", body: JSON.stringify({ org_id: orgId }) });
+    } catch {
+      return;
+    }
+    localStorage.removeItem("closeloop_project");
+    localStorage.removeItem("closeloop_public_key");
     window.location.assign("/app/inbox");
   }
 
@@ -208,10 +240,39 @@ function ProjectSwitcherMenu({
                       {projectInitial(name)}
                     </span>
                     <span className="truncate font-ds-ui text-[13px] text-[#171717]">{name}</span>
+                    {p.frozen && (
+                      <span
+                        className="ml-auto shrink-0 rounded bg-[#FEF3C7] px-1.5 font-ds-ui text-[11px] text-[#B45309]"
+                        title="Over your plan's project limit: no new reports until you upgrade."
+                      >
+                        Paused
+                      </span>
+                    )}
                   </button>
                 );
               })}
           </div>
+          {workspaces.length > 1 && (
+            <div className="border-t border-[#17171714] py-1" data-testid="workspace-switcher">
+              <div className="px-3 pb-1 pt-1.5 font-ds-ui text-[11px] uppercase tracking-wide text-[#A3A3A3]">
+                Workspaces
+              </div>
+              {workspaces.map((w) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => void switchWorkspace(w.id)}
+                  aria-current={w.active ? "true" : undefined}
+                  className={`flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-[#FAFAFA] ${
+                    w.active ? "bg-[#FAFAFA]" : ""
+                  }`}
+                >
+                  <span className="truncate font-ds-ui text-[13px] text-[#171717]">{w.name}</span>
+                  <span className="shrink-0 font-ds-ui text-[11px] text-[#A3A3A3]">{planLabel(w.plan)}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="border-t border-[#17171714]">
             <button
               type="button"
