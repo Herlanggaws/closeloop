@@ -50,9 +50,9 @@ Ada 44 story yang dikelompokkan per fitur PRD. Peran: **Builder** (pemilik app, 
 | US-38 | F10 Auto PR | Builder | membeli dan memantau kredit | biaya terkendali | M4 |
 | US-39 | F11 Replay | Builder | memutar ulang sesi sebelum laporan dikirim | lihat langkah yang memicu bug | M3 |
 | US-40 | F11 Replay | Builder | input sensitif dimasking otomatis | replay aman dari data pribadi | M3 |
-| US-41 | F12 Business | Admin | login tim lewat SSO SAML atau OIDC | akses mengikuti aturan perusahaan | M6 |
-| US-42 | F12 Business | Admin | melihat dan mengekspor audit log | kebutuhan audit terpenuhi | M6 |
-| US-43 | F12 Business | Admin | memasang Closeloop di server sendiri | data tidak keluar dari infrastruktur kami | M6 |
+| US-41 | F12 Business | Admin | login tim lewat SSO SAML atau OIDC | akses mengikuti aturan perusahaan | Ditahan |
+| US-42 | F12 Business | Admin | melihat dan mengekspor audit log | kebutuhan audit terpenuhi | Ditahan |
+| US-43 | F12 Business | Admin | memasang Closeloop di server sendiri | data tidak keluar dari infrastruktur kami | Ditahan |
 | US-44 | Billing | Builder | upgrade, downgrade, dan melihat pemakaian kuota | bayar sesuai kebutuhan | M5 |
 
 ## User scenarios
@@ -162,8 +162,8 @@ Total 27 screen. Dashboard dan pengaturan builder adalah bagian terbesar (15 scr
 | S-13 | Integrasi | Settings | Slack, GitHub (App dan Issues), Linear, Jira, Sentry, PostHog | US-29 sampai US-31, US-35 | M3 |
 | S-14 | Tim dan role | Settings | Undang anggota, role owner, member, viewer | US-05 | M1 |
 | S-15 | Billing dan kredit | Settings | Plan saat ini, kuota terpakai, upgrade, beli kredit auto PR, invoice | US-38, US-44 | M5 |
-| S-16 | SSO dan audit log | Settings (Business) | Konfigurasi SAML/OIDC, paksa SSO, tabel audit log, ekspor | US-41, US-42 | M6 |
-| S-17 | Aktivasi lisensi self-host | Self-host | Masukkan kunci lisensi, status versi, info update | US-43 | M6 |
+| S-16 | SSO dan audit log | Settings (Business) | Konfigurasi SAML/OIDC, paksa SSO, tabel audit log, ekspor | US-41, US-42 | Ditahan |
+| S-17 | Aktivasi lisensi self-host | Self-host | Masukkan kunci lisensi, status versi, info update | US-43 | Ditahan |
 | S-18 | Tombol lapor (launcher) | Widget web | Tombol mengambang, posisi dan warna dari pengaturan | US-06 | M1 |
 | S-19 | Form lapor | Widget web | Tipe, pesan, screenshot dengan coretan, email opsional | US-07, US-08 | M1 |
 | S-20 | Konfirmasi terkirim | Widget web | Pesan sukses, nomor laporan | US-09 | M1 |
@@ -221,8 +221,8 @@ Nama di snippet kode (`data-closeloop-mask`) mengikuti kode, bukan desain. Domai
 | S-13 | S-13 Integrations | `wAub0` | Siap | Grid kartu `vf3rD`, Slack detail `uhXUb`. Linear dan Jira sudah berlabel Studio. Untuk repo pakai S-13 v2 | |
 | S-14 | S-14 Team and Roles | `k4JbSl` | Siap, kecuali | Invite `e35w4`, members `I8s1oA`, role table `NG0tk` | Kuota sidebar 312 / 1,000 di akun Studio (harusnya 10,000) |
 | S-15 | S-15 Billing and Credits | `jRMCb` | Siap | Current plan `aEDyd`, usage `zgz4m` (Reports, Projects, Credits, Seats, Repos), beli kredit `blaPN`, Change plan (baris sekunder limit), invoices `Ho69c` |  |
-| S-16 | S-16 SSO and Audit Log | `o2XU2F` | Belum dicek visual · M6 | Seluruh frame | Jangan dirilis sebelum M6 (plan Business disembunyikan) |
-| S-17 | S-17 Self-host License | `dCW7L` | Belum dicek visual · M6 | Seluruh frame | Jangan dirilis sebelum M6 |
+| S-16 | S-16 SSO and Audit Log | `o2XU2F` | Ditahan (Business) | Seluruh frame | Jangan dikerjakan; plan Business on hold |
+| S-17 | S-17 Self-host License | `dCW7L` | Ditahan (Business) | Seluruh frame | Jangan dikerjakan; plan Business on hold |
 | S-18 | S-18 Widget Launcher | `p6yPO` | Belum dicek visual | Launcher `ZjKcM` | |
 | S-19 | S-19 Report Form | `Z0n10` | Siap | Widget `hjYg2` (type `GwNYv`, message `W10wE`, screenshot `AhiTM`, email `l9FjCR`, send `hOoJk`). Versi Indie tanpa badge | |
 | S-20 | S-20 Report Sent | `skxsQ` | Belum dicek visual | Widget `tlw8a` (Indie, tanpa badge) | |

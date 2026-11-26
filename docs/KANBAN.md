@@ -240,7 +240,7 @@ Fase A · samakan screen yang sudah ada (frontend saja)
 - [x] D-04 S-13 Integrations: Linear dan Jira berlabel Studio (`wAub0`)
 - [x] D-05 S-15 Billing: Change plan dengan baris limit, usage Seats + Repos (`jRMCb`)
 - [x] D-06 S-01 Landing pricing: isi kartu baru (`BPPVw`)
-- [x] D-22 Sembunyikan plan Business sampai M6 (landing, Billing, sidebar SSO, FAQ, JSON-LD, copy upsell)
+- [x] D-22 Sembunyikan plan Business (on hold sejak 26 Nov) dari landing, Billing, sidebar SSO, FAQ, JSON-LD, copy upsell
 
 Fase B · pricing di backend
 - [x] D-07 Free dapat semua tools MCP + migrasi token + `QUOTA_LOCKED` (US-60, US-61, US-63)

@@ -17,7 +17,7 @@ Konvensi umum:
 
 - Error API: `{ "error": { "code": "...", "message": "..." } }`. Kode baru di brief ini: `PREMIUM_REQUIRED` (fitur butuh plan lebih tinggi), `QUOTA_LOCKED`, `REPO_LIMIT`, `PLATFORM_CONFLICT`, `REPO_NOT_CONNECTED`.
 - Label plan di UI: badge kecil abu ("Indie", "Studio") di pojok kartu + tombol `Upgrade to Indie` / `Upgrade to Studio`. Pola visualnya ada di kartu Jira di S-13 `wAub0`.
-- **Plan Business disembunyikan sampai M6** (lihat D-22). Desain masih menampilkan kartu dan copy Business; selama sebelum M6, semua yang berbau Business di desain diabaikan. Tabel plan di D-05 dan D-06 tetap mencantumkan Business sebagai acuan untuk M6, tapi tidak dirender.
+- **Plan Business ditahan (on hold) per 26 Nov, fokus Indie dan Studio** (lihat D-22). Desain masih menampilkan kartu dan copy Business; selama sebelum M6, semua yang berbau Business di desain diabaikan. Tabel plan di D-05 dan D-06 tetap mencantumkan Business sebagai acuan untuk M6, tapi tidak dirender.
 - Domain belum final. Jangan hardcode `saidloop.com` atau `saidloop.dev` dari desain; pakai config yang sudah ada (`EMAIL_FROM`, host MCP di kode).
 - UI tidak menyebut nama penyedia pembayaran (Polar, Lemon Squeezy, dll). Bahasa yang dipakai: subscribed / subscription, misal "Plans are switched manually until you're subscribed." Nama penyedia hanya boleh di Privacy, Terms dan DPA.
 
@@ -114,7 +114,9 @@ Konvensi umum:
   - Baris limit tampil di bawah deskripsi plan, sebelum daftar fitur, gaya sekunder.
 - **Selesai bila:** string "MCP read-only tools" dan "All MCP tools, including mark_fixed" hilang; `data-pencil-name` ikut diganti.
 
-### D-22 · Sembunyikan plan Business sampai M6
+### D-22 · Sembunyikan plan Business (on hold)
+
+> Update 26 Nov: Business tidak lagi dijadwalkan di M6, tapi ditahan tanpa tanggal. Flag tetap `false`; jangan dibalik sebelum Herlangga memutuskan Business dilanjutkan. Sisa yang masih bocor: tombol "Log in with SSO" di `AuthForm.tsx` (lihat KANBAN).
 
 Keputusan 19 Nov: semua fitur Business (SSO, audit log, self-host, replay 30 hari, kuota kontrak) pindah ke M6. Sampai M6, user hanya melihat **Free, Indie, Studio**. Kode Business yang sudah ada **jangan dihapus**; cukup disembunyikan supaya gampang dibalikkan di M6.
 
