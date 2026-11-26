@@ -216,3 +216,30 @@ func (s *Server) acceptInvite(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"org": org, "role": role})
 }
+
+func (s *Server) listMyOrgs(c *gin.Context) {
+	orgs, err := s.Store.ListUserOrgs(c.Request.Context(), c.GetString("userID"))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"orgs": orgs})
+}
+
+// setActiveOrg switches which workspace the dashboard shows. Plan, seats and
+// projects then come from that workspace (its owner's subscription).
+func (s *Server) setActiveOrg(c *gin.Context) {
+	var body struct {
+		OrgID string `json:"org_id"`
+	}
+	if err := c.BindJSON(&body); err != nil || strings.TrimSpace(body.OrgID) == "" {
+		writeErr(c, 400, "INVALID_INPUT", "org_id is required")
+		return
+	}
+	org, role, err := s.Store.SetActiveOrg(c.Request.Context(), c.GetString("userID"), strings.TrimSpace(body.OrgID))
+	if err != nil {
+		mapErr(c, err)
+		return
+	}
+	c.JSON(200, gin.H{"org": org, "role": role})
+}

@@ -327,13 +327,71 @@ func (s *Store) RevokeRefresh(ctx context.Context, raw string) error {
 	return err
 }
 
+// UserOrg is one workspace the user belongs to. Plan is the workspace's plan
+// (set by its owner's subscription), never the viewing user's own.
+type UserOrg struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Plan   string `json:"plan"`
+	Role   string `json:"role"`
+	Active bool   `json:"active"`
+}
+
+// ListUserOrgs returns every workspace the user is a member of, the active one marked.
+func (s *Store) ListUserOrgs(ctx context.Context, userID string) ([]UserOrg, error) {
+	active, _, err := s.PrimaryOrg(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT o.id, o.name, o.plan, m.role
+		FROM memberships m JOIN organizations o ON o.id=m.org_id
+		WHERE m.user_id=$1
+		ORDER BY m.role='owner' DESC, o.created_at, o.id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []UserOrg{}
+	for rows.Next() {
+		var o UserOrg
+		if err := rows.Scan(&o.ID, &o.Name, &o.Plan, &o.Role); err != nil {
+			return nil, err
+		}
+		o.Active = o.ID == active.ID
+		out = append(out, o)
+	}
+	return out, rows.Err()
+}
+
+// SetActiveOrg switches the workspace the dashboard shows. The user must be a member.
+func (s *Store) SetActiveOrg(ctx context.Context, userID, orgID string) (Org, string, error) {
+	if _, err := uuid.Parse(orgID); err != nil {
+		return Org{}, "", ErrNotFound
+	}
+	res, err := s.DB.ExecContext(ctx, `
+		UPDATE users SET active_org_id=$2
+		WHERE id=$1 AND EXISTS(SELECT 1 FROM memberships WHERE org_id=$2 AND user_id=$1)`, userID, orgID)
+	if err != nil {
+		return Org{}, "", err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return Org{}, "", ErrNotFound
+	}
+	return s.PrimaryOrg(ctx, userID)
+}
+
 func (s *Store) PrimaryOrg(ctx context.Context, userID string) (Org, string, error) {
 	var org Org
 	var role string
 	err := s.DB.QueryRowContext(ctx, `
 		SELECT o.id, o.name, o.plan, m.role
-		FROM memberships m JOIN organizations o ON o.id=m.org_id
-		WHERE m.user_id=$1 ORDER BY m.role='owner' DESC LIMIT 1`, userID).
+		FROM memberships m
+		JOIN organizations o ON o.id=m.org_id
+		JOIN users u ON u.id=m.user_id
+		WHERE m.user_id=$1
+		ORDER BY (m.org_id = u.active_org_id) IS TRUE DESC, m.role='owner' DESC, o.created_at, o.id
+		LIMIT 1`, userID).
 		Scan(&org.ID, &org.Name, &org.Plan, &role)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Org{}, "", ErrNotFound
