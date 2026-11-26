@@ -17,5 +17,5 @@ If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is 
 
 ## Widget Launcher Hover Branding
 
-- The widget launcher button (`button.fab` in `project/frontend/packages/widget/src/index.tsx`) **must always show** the inline `"Feedback by Saidloop"` (`.fab-sub`) hover slider animation across all subscription tiers (`free`, `indie`, `studio`, `business`).
-- Never gate `.fab-sub` (`"Feedback by Saidloop"`) behind `badge.on`. `badge.on` only controls the `"Powered by Saidloop"` footer link inside the feedback form, sent confirmation, and notification banner (and reporter emails on Free).
+- Decided by Herlangga on 23 Nov 2026 (replaces the 22 Nov rule): the inline `"Feedback by Saidloop"` (`.fab-sub`) hover slider on the widget launcher (`button.fab` in `project/frontend/packages/widget/src/index.tsx`) shows **on Free only**, gated by `badge.on` like every other Saidloop badge.
+- `badge.on` (Free only) controls the launcher hover, the `"Powered by Saidloop"` link in the feedback form, sent confirmation and notification banner, reporter emails, and the public board footer. Paid plans show no Saidloop branding.

@@ -105,7 +105,7 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [x] **F7** React Native + Expo config plugin — `project/sdks/react-native` (Nov 20). Dites di emulator Android dan Simulator iOS (RN 0.76): lapor + mask + antrean offline jalan; plugin Expo dites lewat `expo prebuild` (minSdk 24, gak nurunin target iOS); JS 7/7. Belum: publish ke npm
 - [x] **F7** React Native SDK punya repo rilis sendiri: [XERV-Project/saidloop-react-native](https://github.com/XERV-Project/saidloop-react-native) (23 Nov). History `project/sdks/react-native` dibawa lewat `git subtree split`, lisensi MIT. Nama npm jadi `@saidloop/react-native` (dulu `@closeloop/react-native`), podspec jadi `saidloop-react-native` dengan tag semver polos. Snippet install RN di app/docs udah pakai nama baru. Monorepo tetap sumber kode; sync = copy file `project/sdks/react-native` lalu commit di main repo rilis (cek `diff -r -x .git -x node_modules`). Wrapper Android ikut nama baru SDK Android: `com.saidloop:android:0.1.0`, import `com.saidloop.sdk.Saidloop` (namespace modul RN sendiri tetap `ai.closeloop.reactnative`)
 - [ ] Publish `@saidloop/react-native` ke npm (butuh akun/org npm `saidloop`) + tag `0.1.0` (nunggu Herlangga). Catatan: tanpa SDK Android di Maven Central dan pod `Saidloop` di trunk, user luar harus pasang native SDK manual (udah ditulis di README)
-- [ ] **Multi-repo** see section below (R1–R3 ship with M2)
+- [x] **Multi-repo** see section below (R1–R3 merged to dev Nov 20; freeze routing on downgrade tanpa harus milih dulu menyusul 26 Nov)
 
 #### M3 · Tool tim & publik (F8, F9, F11)
 - [x] **F8** Slack via Incoming Webhook: new report, status, event filters
@@ -260,8 +260,9 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 - [x] D-24 Auto PR jadi "Coming soon" sebelum rilis Indie (23 Nov). Runner sekarang cuma commit file catatan `.saidloop/autopr-*.md`, belum ada fix dari AI, jadi gak boleh dijanjiin ke plan berbayar. Flag frontend `AUTO_PR_VISIBLE=false` (`lib/plans.ts`): item "Auto PR starter credits" dihapus dari Indie, landing (kartu AI auto PR + strip credits) jadi Coming soon dan contoh root cause jadi "Preview", nav Auto PR runs jadi Soon, `/app/auto-pr` nampilin Coming soon, tombol Run auto PR disabled, baris credits di sidebar + Billing diumpetin, tour auto-pr mati, toggle read access repo disabled, copy GitHub App/GitLab di Integrations gak nyebut Auto PR. Backend: `POST /api/tickets/:id/autopr` balikin 409 `AUTOPR_UNAVAILABLE` kecuali `AUTOPR_ENABLED=true`, dan worker gak dapet executor (run nyangkut = failed + refund). Starter 10 credits tetep ke-seed diam-diam. Terms gak nyebut nama payment provider lagi. Test: `TestAutopr_DisabledByDefault`, `plans.test.ts`, R-UI-06 + R-UI-22
 - [ ] Nyalain lagi Auto PR (balikin D-24) setelah runner beneran nulis fix: `AUTO_PR_VISIBLE=true` + `AUTOPR_ENABLED=true`
 - [x] Downgrade Indie → Free (audit 23 Nov, disetujui Herlangga): Slack berhenti posting (worker `notifySlack` cek plan, koneksi sebelum gating tetep jalan), public board + vote/komentar/suggest jadi 404 di bawah Indie. Data dan koneksi tetep, nyala lagi pas upgrade. Test: `TestR_SLACK_07_DowngradePausesSlack`, `TestPlan_DowngradeHidesBoard`
-- [ ] Downgrade: project/seat yang lebih dari limit Free tetep ada (cuma bikin baru yang diblok). Belum diputusin
-- [ ] Free: tombol "Open" board di Project settings masih ngarah ke board yang sekarang 404. Ganti jadi Upgrade/hint
+- [x] Downgrade freeze (26 Nov, dipilih Herlangga "Bekuin semua yang lebih"): yang lebih dari limit plan baru dibekuin, data gak dihapus, nyala lagi pas upgrade. Project paling baru di atas limit nolak laporan baru (402 `PROJECT_FROZEN`, juga suggest board), tag "Paused" di project switcher. Member yang join paling akhir di atas limit seat jadi read-only (role efektif viewer, `seat_locked` di `/api/org/members`, label di Team). Invite lama gak bisa di-accept kalau seat udah penuh (`SEAT_LIMIT`). Repo di atas limit otomatis berhenti routing ke repo itu (fallback + repo paling lama tetep jalan) tanpa nunggu owner buka modal. Semua dihitung dari plan sekarang (`application/plan_freeze.go`). Test: `TestDowngrade_*`
+- [x] Free: link "Open" board di Project settings dan "View board"/"Copy link" di Public board diumpetin di bawah Indie (board-nya 404) (26 Nov)
+- [ ] Downgrade freeze lanjutan: owner belum bisa milih project mana yang tetep aktif (sekarang yang paling lama); widget di project beku cuma nampilin error kirim biasa
 - [x] Tombol "Log in" balik lagi di nav landing (desktop + menu mobile) ke `/login`, buat jualan Indie (23 Nov). Test: `landing nav has a Log in link` di `e2e/marketing.spec.ts`
 - [x] Section Mobile SDK di Integrations (26 Nov): iOS (SPM + CocoaPods), Android (Maven Central), Flutter (pub.dev), React Native (Soon). Test `mobile-sdk.test.ts`
 - [ ] React Native: publish `@saidloop/react-native` ke npm, lalu set `REACT_NATIVE_PUBLISHED=true` di `lib/mobile-sdk.ts` (juga install page S-04/S-04b masih nampilin `npm install` RN)
@@ -293,7 +294,7 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 | --- | --- | --- |
 | M0 | Landing + waitlist + interviews | Waitlist + confirmation shipped; interviews todo |
 | M1 | F1 F2 F4 F5 F6 | Complete and validated on Bear Budget Web. Free MCP gate reverted (Pricing P1, D-07) |
-| M2 | F3 F7 mobile + Multi-repo R1–R3 | Todo |
+| M2 | F3 F7 mobile + Multi-repo R1–R3 | SDK + multi-repo done; open: CocoaPods trunk, npm RN, dogfood Bear Budget KMP |
 | M3 | F8 F9 F11 | Done (Slack OAuth needs the Slack app credentials in env). Plan gating for integrations and board shipped (D-08) |
 | M4 | F10 | GitHub App + stub runner done; real runner open |
 | M5 | Billing + public beta + Pricing update | Billing code and pricing done Nov 22; go-live, credit packs and public beta open. Free, Indie, Studio only |
@@ -320,7 +321,7 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 | Partial | US-36 (stub runner, no label rules), US-38 (credit balance only, no purchase), US-44 (billing coded, not live yet) |
 | Not started | US-12…US-14, US-27, US-28 (mobile) |
 | M6 · Business (hidden until then) | US-41 (SSO), US-43 (self-host) not started; US-42 (audit log) built but hidden |
-| Not started (Multi-repo) | US-45…US-59 |
+| Multi-repo | US-45…US-55, US-59 done (merged Nov 20). US-56…US-58 nunggu runner Auto PR beneran (M4) |
 | Not started (Pricing update) | US-60, US-61, US-63, US-64, US-68, US-69. US-62 partial (dashboard path already notifies on Free) |
 | Waiting on decision | US-65, US-66 (badge), US-67 (seat Indie) |
 

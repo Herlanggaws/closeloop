@@ -55,6 +55,9 @@ type Project struct {
 	VoterNotifyEnabled bool     `json:"voter_notify_enabled"`
 	SensitiveSelectors []string `json:"sensitive_selectors"`
 	BoardSlug          string   `json:"board_slug"`
+	// Frozen is set on projects beyond the plan's project limit (after a downgrade):
+	// they keep their data but take no new reports until the org upgrades.
+	Frozen bool `json:"frozen"`
 }
 
 type Ticket struct {
@@ -335,6 +338,10 @@ func (s *Store) PrimaryOrg(ctx context.Context, userID string) (Org, string, err
 	if errors.Is(err, sql.ErrNoRows) {
 		return Org{}, "", ErrNotFound
 	}
+	if err != nil {
+		return org, role, err
+	}
+	role, err = s.effectiveRole(ctx, org.ID, userID, role)
 	return org, role, err
 }
 
@@ -411,7 +418,17 @@ func (s *Store) ListProjects(ctx context.Context, orgID string) ([]Project, erro
 		p.Platforms, p.SensitiveSelectors = []string(plats), []string(sels)
 		out = append(out, p)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	frozen, err := s.frozenProjectIDs(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		out[i].Frozen = frozen[out[i].ID]
+	}
+	return out, nil
 }
 
 func (s *Store) ProjectByID(ctx context.Context, projectID string) (Project, error) {
@@ -811,6 +828,11 @@ func (s *Store) CreateReport(ctx context.Context, project Project, in CreateRepo
 	ctxBytes, _ := json.Marshal(in.Context)
 	if in.Platform == "" {
 		in.Platform = "web"
+	}
+	if frozen, err := ProjectFrozen(ctx, s.DB, project.ID); err != nil {
+		return "", "", "", "", "", err
+	} else if frozen {
+		return "", "", "", "", "", ErrProjectFrozen
 	}
 	reporterID, err := s.EnsureReporter(ctx, project.ID, in.ExternalID, in.Email)
 	if err != nil {

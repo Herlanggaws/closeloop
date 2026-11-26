@@ -18,6 +18,9 @@ type OrgMember struct {
 	AvatarURL string    `json:"avatar_url"`
 	Role      string    `json:"role"`
 	JoinedAt  time.Time `json:"joined_at"`
+	// SeatLocked marks a member beyond the plan's seat limit (after a downgrade):
+	// they act as a viewer until the org upgrades or frees a seat.
+	SeatLocked bool `json:"seat_locked"`
 }
 
 type Invite struct {
@@ -57,6 +60,10 @@ func (s *Store) CountOrgSeats(ctx context.Context, orgID string) (int, error) {
 }
 
 func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error) {
+	locked, err := s.seatLockedUsers(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT u.id, u.email, u.name, COALESCE(u.avatar_url, ''), m.role, u.created_at
 		FROM memberships m
@@ -73,6 +80,7 @@ func (s *Store) ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, 
 		if err := rows.Scan(&m.UserID, &m.Email, &m.Name, &m.AvatarURL, &m.Role, &m.JoinedAt); err != nil {
 			return nil, err
 		}
+		m.SeatLocked = locked[m.UserID]
 		out = append(out, m)
 	}
 	if out == nil {
@@ -314,6 +322,19 @@ func (s *Store) AcceptInvite(ctx context.Context, rawToken, userID, userEmail st
 		return org, role, err
 	}
 
+	// Invites sent on a bigger plan cannot add members past the current seat limit
+	// (for example after a downgrade).
+	var plan string
+	var members int
+	if err := tx.QueryRowContext(ctx, `
+		SELECT o.plan, (SELECT COUNT(*) FROM memberships WHERE org_id=o.id)
+		FROM organizations o WHERE o.id=$1`, orgID).Scan(&plan, &members); err != nil {
+		return Org{}, "", err
+	}
+	if LimitsForPlan(plan).SeatLimitReached(members) {
+		return Org{}, "", ErrSeatLimit
+	}
+
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO memberships(org_id, user_id, role) VALUES ($1,$2,$3)`, orgID, userID, role); err != nil {
 		if strings.Contains(err.Error(), "unique") {
@@ -462,16 +483,19 @@ func (s *Store) RemoveMember(ctx context.Context, orgID, targetUserID, actorUser
 }
 
 func (s *Store) RoleForProject(ctx context.Context, userID, projectID string) (string, error) {
-	var role string
+	var role, orgID string
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT m.role
+		SELECT m.role, m.org_id
 		FROM projects p
 		JOIN memberships m ON m.org_id = p.org_id
-		WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2`, projectID, userID).Scan(&role)
+		WHERE p.id=$1 AND p.deleted_at IS NULL AND m.user_id=$2`, projectID, userID).Scan(&role, &orgID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrForbidden
 	}
-	return role, err
+	if err != nil {
+		return "", err
+	}
+	return s.effectiveRole(ctx, orgID, userID, role)
 }
 
 func CanWriteTickets(role string) bool {

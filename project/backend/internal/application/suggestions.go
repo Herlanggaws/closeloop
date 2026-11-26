@@ -86,6 +86,11 @@ func (s *Store) RequestIdeaSuggest(ctx context.Context, slug, rawEmail, rawTitle
 	if err != nil {
 		return SuggestRequestResult{}, err
 	}
+	if frozen, err := ProjectFrozen(ctx, s.DB, projectID); err != nil {
+		return SuggestRequestResult{}, err
+	} else if frozen {
+		return SuggestRequestResult{}, ErrProjectFrozen
+	}
 
 	raw, err := newVoteRawToken()
 	if err != nil {

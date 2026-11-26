@@ -679,7 +679,7 @@ export function ProjectSettings() {
                         ? `/board/${project.board_slug}`
                         : "Set a slug on Public board"}
                     </code>
-                    {project?.board_slug ? (
+                    {project?.board_slug && planAtLeast(plan, "indie") ? (
                       <Link
                         href={`/board/${encodeURIComponent(project.board_slug)}`}
                         target="_blank"
