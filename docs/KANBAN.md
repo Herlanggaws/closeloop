@@ -50,8 +50,8 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 | S-13 Integrations | `/app/settings/integrations` | **Wired** Sentry, PostHog, Slack, Webhooks, GitHub App, GitHub Issues, Linear/Jira. Plan badges + `Upgrade to Indie/Studio` on locked cards, backend `PREMIUM_REQUIRED`, old connections grandfathered (D-04, D-08). Repositories section live (D-12). **Mobile SDK** section (Nov 26): tabs iOS, Android, Flutter, React Native; 3 steps each (install, init with the project public key, `show()`), copy per code block, GitHub link per SDK. Snippets in `lib/mobile-sdk.ts` follow each SDK README. React Native shows Soon with no install command until `@saidloop/react-native` is on npm (`REACT_NATIVE_PUBLISHED`). No pen frame yet; test `mobile-sdk.test.ts` |
 | S-14 Team & roles | `/app/settings/team` | **Wired** invite/accept/resend/revoke + role change; seat caps by plan (`SEAT_LIMIT`) |
 | S-15 Billing & credits | `/app/settings/billing` | **Partial** plan + usage (Reports, Projects, Auto PR credits, Seats, Repos) + credit balance. Change plan: Free/Indie/Studio cards with limit line from `lib/plans.ts` (D-05). Monthly/Yearly toggle → hosted checkout; subscribers change or cancel in the customer portal; plan follows the billing webhook (Nov 22, needs env, see "Billing go-live"). Manual `PATCH /api/org/plan` can only reach paid plans while no billing token is set. Buy credits is a stub. No invoices list in the app (portal only) |
-| S-16 SSO & audit | `/app/settings/sso` | **Partial** audit log list/export wired (Business only, `PLAN_REQUIRED`); SSO SAML/OIDC is UI only. **Hidden until M6** (D-22) |
-| S-17 Self-host license | `/app/settings/self-host` | **UI only** route redirects to inbox; stays hidden until M6 |
+| S-16 SSO & audit | `/app/settings/sso` | **On hold** (Business). Audit log list/export wired for Business orgs only; SSO SAML/OIDC UI only. Hidden for everyone else (D-22) |
+| S-17 Self-host license | `/app/settings/self-host` | **On hold** (Business). UI only, route redirects to inbox |
 | S-18…S-20 Widget UX | `/preview/widget/*` + widget package | **Wired** launcher, annotate, Retake, Report #, `Saidloop.show()`, CDN-ready snippet |
 | S-21 Fixed banner | `/preview/widget/fixed` + widget package | **Wired** ingest updates → banner; identify refetch |
 | S-22 Mobile report sheet | `/preview/widget/mobile` + Android/iOS SDK | **Done** native sheet, offline state and drawing on the screenshot on Android and iOS |
@@ -122,14 +122,14 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [ ] **F10** Real agent runner (Agent SDK / Fly sandbox)
 
 #### M5 · Beta publik
-- [x] Polar billing code (Indie / Studio) + set `usage.subscribed` from Polar (22 Nov, di branch `claude/project-thread-kpbfoy`, belum merge ke dev)
+- [x] Polar billing code (Indie / Studio) + set `usage.subscribed` from Polar (22 Nov, udah di dev)
   - [x] Checkout + customer portal (`POST /api/billing/checkout`, `/portal`), toggle Monthly/Yearly di Billing, switch manual ke plan berbayar ketutup begitu `POLAR_ACCESS_TOKEN` diisi (22 Nov)
   - [x] Webhook `POST /api/webhooks/billing` → plan org + `usage.subscribed` (migrasi `026_billing_subscriptions.sql`, 22 Nov)
 - [ ] Polar credit packs (buy credits is a stub)
 - [x] Annual pricing: Indie $150, Studio $390 (22 Nov)
 - [ ] Early-access Indie 3 months (landing sudah menjanjikan; belum ada discount/trial di checkout)
 - [ ] **Billing go-live**: sandbox lolos 22 Nov, production belum:
-  - [ ] Review + merge branch ke `dev` lewat PR (ada migrasi `026`)
+  - [x] Review + merge branch ke `dev` (migrasi `026`)
   - [x] Isi env backend di sandbox: `POLAR_ACCESS_TOKEN` (scope `checkouts:write`, `customer_sessions:write`), `POLAR_WEBHOOK_SECRET`, `POLAR_SERVER`, `POLAR_PRODUCT_INDIE_MONTHLY`, `POLAR_PRODUCT_INDIE_YEARLY`, `POLAR_PRODUCT_STUDIO_MONTHLY`, `POLAR_PRODUCT_STUDIO_YEARLY`
   - [x] Daftarin webhook sandbox `<API_URL>/api/webhooks/billing` (format Raw, API version 2026-10), event `subscription.created`, `.active`, `.updated`, `.uncanceled`, `.canceled`, `.revoked`
   - [ ] Di dashboard Polar: nyalain Customer Portal "Enable subscription plan changes" (tanpa ini Switch plan buntu); biarin "Allow multiple subscriptions" mati
@@ -152,17 +152,24 @@ Design source: `closeloop.pen`, read via Pencil MCP. **Code work to match the No
 - [x] Pricing update P1 + P2 gating (D-07, D-08, D-09). Seat Indie = 2 (D-21, diubah 22 Nov) dan badge cuma di Free (D-20) done
 - [ ] Open waitlist → paid; target 10 paying builders / 90 days
 
-#### M6 · Business (F12)
+#### Business (F12) · ON HOLD
 
-> **Plan Business disembunyikan sampai M6.** Selama itu, user hanya melihat Free, Indie dan Studio. Kode Business yang sudah ada (audit log, gating `business`) tetap di repo, tapi tidak boleh terlihat atau bisa dipilih. Task penyembunyian: **D-22** di [brief](./Brief%20Penyesuaian%20Kode%20ke%20Desain.md).
-- [x] **D-22** Sembunyikan plan Business dari semua UI (landing, Billing, sidebar, FAQ, JSON-LD, copy upsell). Flag `BUSINESS_PLAN_VISIBLE` di `frontend/src/lib/plans.ts`
-- [ ] **F12** SAML / OIDC SSO + force-SSO (S-16)
-- [x] **F12** Audit log + export — sudah dibangun, disembunyikan sampai M6 bersama S-16
-- [ ] **F12** Docker / Helm self-host + license activation (S-17)
-- [x] Session replay 30 hari (retensi Business; Studio 7 hari tetap jalan) — udah ada: `ReplayRetentionDays` + purge di worker, dites `TestR_REPLAY_03`
+> **Ditahan per 26 Nov 2026, bukan milestone yang dijadwalkan.** Fokus produk cuma **Indie dan Studio**. Jangan kerjakan item di bawah, dan jangan tambah fitur baru yang cuma untuk Business. Kode Business yang sudah ada tetap di repo, tersembunyi di balik `BUSINESS_PLAN_VISIBLE = false` (`frontend/src/lib/plans.ts`). Org yang memang sudah `business` tetap jalan.
+
+Sudah ada (tersembunyi, jangan dihapus):
+- [x] **D-22** Plan Business disembunyikan dari landing, Billing, sidebar, FAQ, JSON-LD, tour, copy upsell; backend menolak ganti plan ke `business`
+- [x] Audit log + export (`audit.go`, khusus Business)
+- [x] Session replay 30 hari (`ReplayRetentionDays`)
+
+Ditahan (belum dikerjakan):
+- [ ] SAML / OIDC SSO + force-SSO (S-16)
+- [ ] Docker / Helm self-host + license activation (S-17)
 - [ ] Kuota laporan sesuai kontrak + harga mulai $149
 - [ ] Billing Business (kontrak / invoice tahunan, lisensi self-host)
-- [ ] Tampilkan lagi plan Business di landing, Billing, sidebar (balikkan D-22)
+- [ ] Tampilkan lagi plan Business (balikkan D-22) — hanya setelah Herlangga memutuskan Business dilanjutkan
+
+Sisa yang masih bocor ke user (masih relevan, kecil):
+- [ ] Tombol **"Log in with SSO"** di login/signup (S-02, `frontend/src/components/AuthForm.tsx`) masih tampil dan tidak melakukan apa-apa. Sembunyikan di balik `BUSINESS_PLAN_VISIBLE`, sama seperti nav SSO
 
 ---
 
@@ -183,7 +190,7 @@ Updated Nov 19 after D-01…D-09, D-22. Indie seats (D-21) and the badge (D-20) 
 | P2 | `MaxReposPerProject` (3 / 5 / 10 / ∞) | **Done** `entitlements.go` + `usage.repos` via `/api/me?project_id=` (counts `project_repos`, D-11) | US-68 |
 | P3 | Indie seats: `MaxSeats: 3` → 1 → 2 | **Done** Nov 22: 2 seats and $15 (competitor check). Was 1 seat from Nov 19 (D-21). Existing members keep access; new invites get `SEAT_LIMIT` and the S-14 v2 banner | US-67 |
 | UI | Billing Change plan cards with limit line | **Done** (D-05) | US-68 |
-| UI | Landing pricing cards | **Done** (D-06), 3 cards until M6 | US-68 |
+| UI | Landing pricing cards | **Done** (D-06), 3 cards (Business on hold) | US-68 |
 | UI | Remove "read-only / mark_fixed needs Indie" copy | **Done** (D-01, D-02) | US-60 |
 | TEST | Entitlement test per plan for every feature on a plan card | **Done** `TestIntegrationAndBoardGatingPerPlan` + `TestPlan_*` HTTP tests | US-69 |
 
@@ -300,7 +307,7 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 | M3 | F8 F9 F11 | Done (Slack OAuth needs the Slack app credentials in env). Plan gating for integrations and board shipped (D-08) |
 | M4 | F10 | GitHub App + stub runner done; real runner open |
 | M5 | Billing + public beta + Pricing update | Billing code and pricing done Nov 22; go-live, credit packs and public beta open. Free, Indie, Studio only |
-| M6 | F12 Business: SSO, audit log, self-host, replay 30d, contract quota | Audit log built; rest todo. Business plan hidden until here |
+| On hold | F12 Business: SSO, self-host, contract quota, Business billing | Held Nov 26, not scheduled. Audit log + replay 30d built and hidden |
 
 ---
 
@@ -322,7 +329,7 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 | Done (wired) | US-01…US-11, US-15…US-26, US-29…US-35, US-37, US-39, US-40 |
 | Partial | US-36 (stub runner, no label rules), US-38 (credit balance only, no purchase), US-44 (billing coded, not live yet) |
 | Not started | US-12…US-14, US-27, US-28 (mobile) |
-| M6 · Business (hidden until then) | US-41 (SSO), US-43 (self-host) not started; US-42 (audit log) built but hidden |
+| On hold · Business | US-41 (SSO), US-43 (self-host) not started; US-42 (audit log) built but hidden |
 | Multi-repo | US-45…US-55, US-59 done (merged Nov 20). US-56…US-58 nunggu runner Auto PR beneran (M4) |
 | Not started (Pricing update) | US-60, US-61, US-63, US-64, US-68, US-69. US-62 partial (dashboard path already notifies on Free) |
 | Waiting on decision | US-65, US-66 (badge), US-67 (seat Indie) |
