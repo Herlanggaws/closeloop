@@ -168,8 +168,8 @@ Ditahan (belum dikerjakan):
 - [ ] Billing Business (kontrak / invoice tahunan, lisensi self-host)
 - [ ] Tampilkan lagi plan Business (balikkan D-22) — hanya setelah Herlangga memutuskan Business dilanjutkan
 
-Sisa yang masih bocor ke user (masih relevan, kecil):
-- [ ] Tombol **"Log in with SSO"** di login/signup (S-02, `frontend/src/components/AuthForm.tsx`) masih tampil dan tidak melakukan apa-apa. Sembunyikan di balik `BUSINESS_PLAN_VISIBLE`, sama seperti nav SSO
+Sisa yang sempat bocor ke user:
+- [x] Tombol **"Log in with SSO"** di login/signup (S-02, `AuthForm.tsx`) disembunyikan di balik `BUSINESS_PLAN_VISIBLE` (26 Nov)
 
 ---
 

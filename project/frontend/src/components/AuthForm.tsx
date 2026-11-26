@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { API_URL, api, setAccessToken } from "@/lib/api";
 import { safePostAuthPath } from "@/lib/auth-redirect";
 import { CloseloopLogo } from "@/components/CloseloopLogo";
+import { BUSINESS_PLAN_VISIBLE } from "@/lib/plans";
 
 type AuthMode = "login" | "signup";
 
@@ -267,13 +268,16 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               {copy.alt.link}
             </Link>
           </p>
-          <button
-            type="button"
-            className="font-ds-ui box-border flex cursor-pointer items-center gap-[6px] border-0 bg-transparent p-0 text-[13px] font-medium text-[var(--text-primary)]"
-          >
-            <BuildingIcon />
-            Log in with SSO
-          </button>
+          {/* SSO is a Business feature, on hold until Business ships (D-22). */}
+          {BUSINESS_PLAN_VISIBLE && (
+            <button
+              type="button"
+              className="font-ds-ui box-border flex cursor-pointer items-center gap-[6px] border-0 bg-transparent p-0 text-[13px] font-medium text-[var(--text-primary)]"
+            >
+              <BuildingIcon />
+              Log in with SSO
+            </button>
+          )}
         </div>
       </form>
 

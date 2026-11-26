@@ -116,7 +116,7 @@ Konvensi umum:
 
 ### D-22 · Sembunyikan plan Business (on hold)
 
-> Update 26 Nov: Business tidak lagi dijadwalkan di M6, tapi ditahan tanpa tanggal. Flag tetap `false`; jangan dibalik sebelum Herlangga memutuskan Business dilanjutkan. Sisa yang masih bocor: tombol "Log in with SSO" di `AuthForm.tsx` (lihat KANBAN).
+> Update 26 Nov: Business tidak lagi dijadwalkan di M6, tapi ditahan tanpa tanggal. Flag tetap `false`; jangan dibalik sebelum Herlangga memutuskan Business dilanjutkan. Tombol "Log in with SSO" di `AuthForm.tsx` juga sudah disembunyikan di balik flag (26 Nov).
 
 Keputusan 19 Nov: semua fitur Business (SSO, audit log, self-host, replay 30 hari, kuota kontrak) pindah ke M6. Sampai M6, user hanya melihat **Free, Indie, Studio**. Kode Business yang sudah ada **jangan dihapus**; cukup disembunyikan supaya gampang dibalikkan di M6.
 
