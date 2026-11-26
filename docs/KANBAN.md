@@ -267,8 +267,8 @@ Status Nov 22: D-10, D-20 dan D-21 done di kode. Go-live billing masih open (M5)
 - [ ] Downgrade freeze lanjutan: owner belum bisa milih project mana yang tetep aktif (sekarang yang paling lama); widget di project beku cuma nampilin error kirim biasa
 - [x] Tombol "Log in" balik lagi di nav landing (desktop + menu mobile) ke `/login`, buat jualan Indie (23 Nov). Test: `landing nav has a Log in link` di `e2e/marketing.spec.ts`
 - [x] Section Mobile SDK di Integrations (26 Nov): iOS (SPM + CocoaPods), Android (Maven Central), Flutter (pub.dev), React Native (Soon). Test `mobile-sdk.test.ts`
-- [ ] React Native: publish `@saidloop/react-native` ke npm, lalu set `REACT_NATIVE_PUBLISHED=true` di `lib/mobile-sdk.ts` (juga install page S-04/S-04b masih nampilin `npm install` RN)
-- [ ] Flutter: `saidloop_flutter` 0.1.0 di pub.dev statusnya retracted (cek 26 Nov), jadi `^0.1.0` gak bakal resolve. Publish versi baru atau un-retract
+- [ ] React Native (ditunda, keputusan Herlangga 26 Nov: tetap "Soon"): publish `@saidloop/react-native` ke npm, lalu set `REACT_NATIVE_PUBLISHED=true` di `lib/mobile-sdk.ts` (juga install page S-04/S-04b masih nampilin `npm install` RN)
+- [x] Flutter: `saidloop_flutter` 0.1.0 di pub.dev udah di-un-retract lagi (26 Nov), `^0.1.0` resolve
 - [ ] Tambah frame Mobile SDK ke S-13 di `closeloop.pen`
 - [ ] "3 months free for early access" di kartu Indie landing belum ada di kode: harus diset sebagai diskon/trial di payment provider sebelum jualan
 
