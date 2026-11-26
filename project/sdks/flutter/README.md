@@ -34,7 +34,7 @@ Set `platform :ios, '15.0'` (or higher) at the top of the Podfile, then `cd ios 
 
 ### Android
 
-The native Android SDK (`com.saidloop:android`) is not on Maven Central yet. Until it is, Android builds need it in your local Maven repository (`mavenLocal()`). This section will be replaced with a one-line install once it is published.
+Nothing extra: the native SDK (`com.saidloop:android`) comes from Maven Central. minSdk 24.
 
 ## Quick start
 
