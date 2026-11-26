@@ -26,6 +26,8 @@ type Member = {
   name: string;
   avatar_url?: string;
   role: string;
+  /** Beyond the plan's seat limit after a downgrade: acts as a viewer until upgrade. */
+  seat_locked?: boolean;
 };
 
 type Invite = {
@@ -446,7 +448,16 @@ export function Team() {
                               {row.member.email}
                             </div>
                           </div>
-                          <span className="font-ds-ui text-xs text-[#A3A3A3]">Active</span>
+                          {row.member.seat_locked ? (
+                            <span
+                              className="font-ds-ui text-xs text-[#B45309]"
+                              title="Over your plan's seat limit. Read-only until you upgrade or free a seat."
+                            >
+                              Read-only · over seat limit
+                            </span>
+                          ) : (
+                            <span className="font-ds-ui text-xs text-[#A3A3A3]">Active</span>
+                          )}
                           {isOwner && row.member.role !== "owner" ? (
                             <select
                               value={row.member.role}

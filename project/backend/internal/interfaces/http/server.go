@@ -218,6 +218,8 @@ func mapErr(c *gin.Context, err error) {
 		writeErr(c, 400, "INVALID_INPUT", err.Error())
 	case errors.Is(err, application.ErrPlanRequired):
 		writeErr(c, 402, "PLAN_REQUIRED", "Upgrade required for this action")
+	case errors.Is(err, application.ErrProjectFrozen):
+		writeErr(c, 402, "PROJECT_FROZEN", "This project is over the plan's project limit. Upgrade to take new reports again.")
 	case errors.Is(err, application.ErrSeatLimit):
 		writeErr(c, 403, "SEAT_LIMIT", "Seat limit reached for your plan")
 	case errors.Is(err, application.ErrInvalidInput):
