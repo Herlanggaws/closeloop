@@ -6,6 +6,11 @@ export type ChangelogEntry = {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: "2026-11-26",
+    title: "Android SDK on Maven Central",
+    body: "Add Saidloop to an Android app with implementation(\"com.saidloop:android:0.1.0\"). The source now lives at github.com/XERV-Project/saidloop-android under the MIT license.",
+  },
+  {
     date: "2026-11-23",
     title: "Moving back to Free pauses Slack and the public board",
     body: "If a workspace drops below Indie, Slack posts pause and the public board goes private. Your Slack connection, ideas, votes and comments are kept, and everything comes back as soon as you upgrade again.",
