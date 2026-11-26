@@ -18,7 +18,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        // Native SDK com.saidloop:android is not on Maven Central yet: `./gradlew :sdk:publishToMavenLocal` in the Android SDK first.
+        // Native SDK com.saidloop:android is on Maven Central; mavenLocal() only for testing an unreleased SDK build.
         mavenLocal()
     }
 }

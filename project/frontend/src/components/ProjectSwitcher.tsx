@@ -13,7 +13,7 @@ import {
   type WorkspaceRow,
 } from "@/lib/usage";
 
-type ProjectRow = { id?: string; ID?: string; name?: string; Name?: string };
+type ProjectRow = { id?: string; ID?: string; name?: string; Name?: string; frozen?: boolean };
 
 function idOf(p: ProjectRow) {
   return p.id || p.ID || "";
@@ -240,6 +240,14 @@ function ProjectSwitcherMenu({
                       {projectInitial(name)}
                     </span>
                     <span className="truncate font-ds-ui text-[13px] text-[#171717]">{name}</span>
+                    {p.frozen && (
+                      <span
+                        className="ml-auto shrink-0 rounded bg-[#FEF3C7] px-1.5 font-ds-ui text-[11px] text-[#B45309]"
+                        title="Over your plan's project limit: no new reports until you upgrade."
+                      >
+                        Paused
+                      </span>
+                    )}
                   </button>
                 );
               })}

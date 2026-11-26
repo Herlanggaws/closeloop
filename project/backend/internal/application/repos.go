@@ -122,6 +122,15 @@ func (s *Store) ListProjectRepos(ctx context.Context, projectID string) ([]Proje
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	frozen, err := repoRoutingFrozen(ctx, s.DB, projectID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		if frozen[out[i].ID] {
+			out[i].RoutingPaused = true
+		}
+	}
 	routeRows, err := s.DB.QueryContext(ctx, `
 		SELECT repo_id, platform, path FROM project_repo_routes WHERE project_id=$1
 		ORDER BY array_position(ARRAY['web','android','ios','backend','shared'], platform)`, projectID)
@@ -410,14 +419,22 @@ type queryRower interface {
 }
 
 // RouteForPlatform picks the repo a new report goes to (US-49): the platform's repo,
-// else the fallback, else none. Paused repos are skipped.
-func RouteForPlatform(ctx context.Context, q queryRower, projectID, platform string) (repoID, path, kind string, err error) {
+// else the fallback, else none. Paused repos, and repos beyond the plan's limit after a
+// downgrade, are skipped.
+func RouteForPlatform(ctx context.Context, q dbQuerier, projectID, platform string) (repoID, path, kind string, err error) {
+	frozen, err := repoRoutingFrozen(ctx, q, projectID)
+	if err != nil {
+		return "", "", "", err
+	}
 	err = q.QueryRowContext(ctx, `
 		SELECT rr.repo_id, rr.path FROM project_repo_routes rr
 		JOIN project_repos pr ON pr.id = rr.repo_id
 		WHERE rr.project_id=$1 AND rr.platform=$2 AND NOT pr.routing_paused`, projectID, platform).Scan(&repoID, &path)
-	if err == nil {
+	if err == nil && !frozen[repoID] {
 		return repoID, path, "auto", nil
+	}
+	if err == nil {
+		err = sql.ErrNoRows // repo over the plan's limit after a downgrade: use the fallback
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return "", "", "", err

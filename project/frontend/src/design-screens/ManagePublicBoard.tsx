@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Tour } from "@/components/coach/Tour";
 import { api } from "@/lib/api";
+import { planAtLeast } from "@/lib/plans";
 import type { MeResponse } from "@/lib/usage";
 import { TYPE_STYLE } from "./publicBoardShared";
 
@@ -237,7 +238,8 @@ export function ManagePublicBoard() {
 
   const plan = me?.org.plan || "free";
   const email = me?.user.email || "";
-  const publicPath = project?.board_slug ? `/board/${project.board_slug}` : "";
+  // Boards below Indie are private (404), so there is no link to open or copy.
+  const publicPath = project?.board_slug && planAtLeast(plan, "indie") ? `/board/${project.board_slug}` : "";
   const ideaCount = tickets.filter((t) => t.status !== "duplicate").length;
   const roadmapByStatus = useMemo(() => {
     const map: Record<string, Ticket[]> = { open: [], in_progress: [], fixed: [] };
