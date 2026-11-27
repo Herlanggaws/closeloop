@@ -43727,6 +43727,297 @@
         },
         {
           "type": "frame",
+          "id": "qjj48",
+          "name": "Project Switcher Menu",
+          "reusable": true,
+          "width": 224,
+          "fill": "$surface",
+          "stroke": "$border-default",
+          "strokeWidth": 1,
+          "cornerRadius": "$radius-lg",
+          "clip": true,
+          "effect": [
+            {
+              "type": "shadow",
+              "shadowType": "outer",
+              "color": "#00000014",
+              "offset": {
+                "x": 0,
+                "y": 8
+              },
+              "blur": 24
+            }
+          ],
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Z7RUg",
+              "name": "Projects",
+              "width": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                4,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "vYWYE",
+                  "name": "Project Row (active)",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "P7PoA",
+                      "name": "Icon",
+                      "width": 24,
+                      "height": 24,
+                      "fill": "#F59E0B",
+                      "cornerRadius": "$radius-xs",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "CRApx",
+                          "name": "Initial",
+                          "fill": "$text-inverse",
+                          "content": "B",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "0wBAP",
+                      "name": "Name",
+                      "fill": "$text-primary",
+                      "content": "Bear Budget Web",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container"
+                    }
+                  ],
+                  "fill": "$surface-subtle"
+                },
+                {
+                  "type": "frame",
+                  "id": "QY0gE",
+                  "name": "Project Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "9RBDQ",
+                      "name": "Icon",
+                      "width": 24,
+                      "height": 24,
+                      "fill": "#F59E0B",
+                      "cornerRadius": "$radius-xs",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "1PZ0O",
+                          "name": "Initial",
+                          "fill": "$text-inverse",
+                          "content": "B",
+                          "fontFamily": "$font-sans",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "2zRcK",
+                      "name": "Name",
+                      "fill": "$text-primary",
+                      "content": "Bear Budget iOS",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "i4WKV",
+              "name": "Workspaces (only when 2+)",
+              "width": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                4,
+                0
+              ],
+              "stroke": "$border-subtle",
+              "strokeWidth": {
+                "top": 1
+              },
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "KcZjd",
+                  "name": "Label",
+                  "width": "fill_container",
+                  "padding": [
+                    6,
+                    12,
+                    4,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XO6lD",
+                      "name": "Label",
+                      "fill": "$text-tertiary",
+                      "content": "WORKSPACES",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "7f8OF",
+                  "name": "Workspace Row (active)",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    6,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gA3hR",
+                      "name": "Name",
+                      "fill": "$text-primary",
+                      "content": "Herlangga's org",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "CqtoH",
+                      "name": "Plan",
+                      "fill": "$text-tertiary",
+                      "content": "Studio",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ],
+                  "fill": "$surface-subtle"
+                },
+                {
+                  "type": "frame",
+                  "id": "vS0vd",
+                  "name": "Workspace Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    6,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kQ8yE",
+                      "name": "Name",
+                      "fill": "$text-primary",
+                      "content": "Budi's org",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 13,
+                      "fontWeight": "normal",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nhtiJ",
+                      "name": "Plan",
+                      "fill": "$text-tertiary",
+                      "content": "Free",
+                      "fontFamily": "$font-ui",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "15syP",
+              "name": "New Project",
+              "width": "fill_container",
+              "gap": 8,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "stroke": "$border-subtle",
+              "strokeWidth": {
+                "top": 1
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "id": "39c0Z",
+                  "name": "Plus",
+                  "fill": "$text-secondary",
+                  "content": "+",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "jbshy",
+                  "name": "Label",
+                  "fill": "$text-primary",
+                  "content": "New project",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
           "id": "LVCwL",
           "name": "Coach Mark",
           "reusable": true,

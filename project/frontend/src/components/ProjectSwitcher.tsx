@@ -254,7 +254,7 @@ function ProjectSwitcherMenu({
           </div>
           {workspaces.length > 1 && (
             <div className="border-t border-[#17171714] py-1" data-testid="workspace-switcher">
-              <div className="px-3 pb-1 pt-1.5 font-ds-ui text-[11px] uppercase tracking-wide text-[#A3A3A3]">
+              <div className="px-3 pb-1 pt-1.5 font-ds-ui text-[11px] font-medium uppercase tracking-wide text-[#A3A3A3]">
                 Workspaces
               </div>
               {workspaces.map((w) => (
